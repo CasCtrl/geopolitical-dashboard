@@ -254,17 +254,38 @@ export function findDiversificationOpportunities(
     benefit: string;
   }> = [];
 
+  const getMatrixValue = (rowIdx: number, colIdx: number): number => {
+    if (rowIdx < 0 || colIdx < 0) return 0;
+    const row = correlationMatrix.matrix[rowIdx];
+    if (!row || row[colIdx] === undefined || Number.isNaN(row[colIdx])) return 0;
+    return row[colIdx];
+  };
+
+  const validHoldingIndices = currentHoldings
+    .map((holding) => correlationMatrix.countries.indexOf(holding))
+    .filter((idx) => idx >= 0 && Boolean(correlationMatrix.matrix[idx]));
+
   for (const candidate of correlationMatrix.countries) {
     if (currentHoldings.includes(candidate)) continue;
 
-    let totalCorr = 0;
-    for (const holding of currentHoldings) {
-      const holdingIdx = correlationMatrix.countries.indexOf(holding);
-      const candidateIdx = correlationMatrix.countries.indexOf(candidate);
-      totalCorr += Math.abs(correlationMatrix.matrix[holdingIdx][candidateIdx]);
+    const candidateIdx = correlationMatrix.countries.indexOf(candidate);
+    if (candidateIdx < 0) continue;
+
+    if (validHoldingIndices.length === 0) {
+      opportunities.push({
+        country: candidate,
+        avgCorrelation: 0,
+        benefit: 'Low correlation - Excellent diversifier',
+      });
+      continue;
     }
 
-    const avgCorr = totalCorr / currentHoldings.length;
+    let totalCorr = 0;
+    for (const holdingIdx of validHoldingIndices) {
+      totalCorr += Math.abs(getMatrixValue(holdingIdx, candidateIdx));
+    }
+
+    const avgCorr = totalCorr / validHoldingIndices.length;
 
     let benefit = 'Low correlation - Excellent diversifier';
     if (avgCorr > 0.4) benefit = 'Moderate correlation - Good diversifier';
@@ -295,6 +316,15 @@ export function analyzeRiskWithCorrelations(
   recommendation: string;
 } {
   const countries = correlationMatrix.countries.filter((c) => c in weights);
+
+  const getMatrixValue = (rowIdx: number, colIdx: number): number => {
+    if (rowIdx < 0 || colIdx < 0) return rowIdx === colIdx ? 1 : 0;
+    const row = correlationMatrix.matrix[rowIdx];
+    if (!row || row[colIdx] === undefined || Number.isNaN(row[colIdx])) {
+      return rowIdx === colIdx ? 1 : 0;
+    }
+    return row[colIdx];
+  };
 
   if (countries.length === 0) {
     return {
@@ -327,7 +357,7 @@ export function analyzeRiskWithCorrelations(
 
       const iIdx = correlationMatrix.countries.indexOf(countries[i]);
       const jIdx = correlationMatrix.countries.indexOf(countries[j]);
-      const corr = iIdx >= 0 && jIdx >= 0 ? correlationMatrix.matrix[iIdx][jIdx] : 1;
+      const corr = getMatrixValue(iIdx, jIdx);
 
       portfolioVariance += weight_i * weight_j * risk_i * risk_j * corr;
     }

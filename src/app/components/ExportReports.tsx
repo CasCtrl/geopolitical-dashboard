@@ -313,7 +313,7 @@ export function ExportReports({
               <Button
                 onClick={handleGenerateReport}
                 disabled={isGenerating}
-                className="w-full bg-zinc-700 hover:bg-zinc-600 text-zinc-100 py-2 rounded-lg font-medium"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium disabled:bg-blue-600/70 disabled:text-blue-100"
               >
                 {isGenerating ? (
                   <>
