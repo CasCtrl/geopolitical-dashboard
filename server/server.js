@@ -14,11 +14,13 @@ import assetsRoutes from './routes/assets.js';
 import reportsRoutes from './routes/reports.js';
 import newsRoutes from './routes/news.js';
 import workspaceArtifactsRoutes from './routes/workspaceArtifacts.js';
+import integrationsRoutes from './routes/integrations.js';
 import observability from './observability.cjs';
 import adminObservability from './adminObservability.cjs';
 import auditTrailModule from './auditTrail.cjs';
 import persistentAuditSinkModule from './persistentAuditSink.cjs';
 import { createIncidentTracker } from './utils/incidentTracker.js';
+import { createIntegrationEventBus } from './utils/integrationEventBus.js';
 import sql from 'mssql';
 
 const app = express();
@@ -65,6 +67,9 @@ const incidentTracker = createIncidentTracker({
   },
 });
 const auditTrail = createAuditTrail({ maxEntries: env.AUDIT_TRAIL_MAX_ENTRIES });
+const integrationEventBus = createIntegrationEventBus({
+  webhookUrl: env.INTEGRATION_WEBHOOK_URL || undefined,
+});
 const persistentAuditSink = createPersistentAuditSink({
   enabled: env.AUDIT_SINK_ENABLED,
   directory: env.AUDIT_SINK_DIR,
@@ -387,6 +392,7 @@ app.locals.observability = {
   incidentTracker,
   recordNewsIngestion: (payload) => observability.recordNewsIngestion(requestMetrics, payload),
 };
+app.locals.integrationEvents = integrationEventBus;
 
 app.use((req, res, next) => {
   const action = classifyAuditableAction(req);
@@ -429,6 +435,7 @@ app.use('/api', assetsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api', newsRoutes);
 app.use('/api', workspaceArtifactsRoutes);
+app.use('/api/integrations', integrationsRoutes);
 
 app.post('/api/telemetry/frontend-crash', async (req, res, next) => {
   try {
@@ -676,6 +683,7 @@ async function start() {
       dbConnectStrict: env.DB_CONNECT_STRICT,
       dbInitEnabled: env.DB_INIT_ENABLED,
       incidentWebhookConfigured: Boolean(env.INCIDENT_WEBHOOK_URL),
+      integrationWebhookConfigured: Boolean(env.INTEGRATION_WEBHOOK_URL),
     });
 
     // Try a warm DB connection at startup and continue in degraded mode when unavailable.

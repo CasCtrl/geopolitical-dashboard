@@ -228,4 +228,37 @@ describe('API contract with metadata envelope', () => {
     expect(response.body).toHaveProperty('data.endpoints.auditTrail', '/api/admin/audit-trail');
     expect(response.body).toHaveProperty('meta.provenance.source', 'runtime.compliance-config');
   });
+
+  test('returns integration provider catalog and supports manual portfolio import', async () => {
+    const providersResponse = await makeRequest(server.baseUrl, 'GET', '/api/integrations/providers');
+
+    expect(providersResponse.status).toBe(200);
+    expect(Array.isArray(providersResponse.body.data.providers)).toBe(true);
+
+    const importResponse = await makeRequest(server.baseUrl, 'POST', '/api/integrations/portfolio/import', {
+      body: {
+        provider: 'manual',
+        payload: {
+          positions: [
+            { ticker: 'AAPL', quantity: 10, marketValue: 1720, currency: 'USD' },
+          ],
+        },
+      },
+    });
+
+    expect(importResponse.status).toBe(202);
+    expect(importResponse.body).toHaveProperty('data.provider', 'manual');
+    expect(importResponse.body).toHaveProperty('data.positionCount', 1);
+  });
+
+  test('returns pipeline status and enforces admin role on pipeline run', async () => {
+    const statusResponse = await makeRequest(server.baseUrl, 'GET', '/api/integrations/pipelines/status');
+    expect(statusResponse.status).toBe(200);
+    expect(statusResponse.body).toHaveProperty('data.configuredSources');
+
+    const forbiddenRun = await makeRequest(server.baseUrl, 'POST', '/api/integrations/pipelines/run', {
+      body: {},
+    });
+    expect(forbiddenRun.status).toBe(403);
+  });
 });

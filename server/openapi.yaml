@@ -184,6 +184,50 @@ paths:
           description: News payload
         '429':
           description: Expensive endpoint abuse protection triggered
+  /api/integrations/providers:
+    get:
+      summary: List available integration providers and connector readiness
+      responses:
+        '200':
+          description: Provider catalog and configuration status
+  /api/integrations/portfolio/import:
+    post:
+      summary: Import portfolio positions from integration providers (Bloomberg, CSV, manual payload)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: Import accepted
+        '409':
+          description: Artifact version conflict
+        '502':
+          description: Integration provider fetch failed
+  /api/integrations/pipelines/status:
+    get:
+      summary: Get current automated pipeline source configuration and latest run summary
+      responses:
+        '200':
+          description: Pipeline status payload
+  /api/integrations/pipelines/run:
+    post:
+      summary: Trigger automated source ingestion pipeline (admin role)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: Pipeline run accepted
+        '403':
+          description: Forbidden
+        '409':
+          description: Artifact version conflict
   /api/telemetry/frontend-crash:
     post:
       summary: Ingest frontend crash telemetry event
