@@ -22,6 +22,153 @@ The Geopolitical Risk Dashboard is a capstone project designed to help investors
 - **Dataset Selector** - Multiple pre-configured portfolios (Default, Tech + Energy + Crypto, Renewable Energy)
 - **Responsive Design** - Optimized for desktop viewing with clean, modern UI
 
+## Who This Project Is For
+
+The Geopolitical Risk Dashboard is designed for:
+
+- **Portfolio Managers** - Monitor and manage portfolio risk across multiple geopolitical dimensions
+- **Investment Advisors** - Provide data-driven insights to clients about their exposure to geopolitical risks
+- **Risk Analysts** - Analyze complex correlations between political events and asset performance
+- **Institutional Investors** - Track large-scale portfolio exposure to geopolitical factors
+- **Hedge Fund Managers** - Identify hedging opportunities and manage downside risk
+- **Financial Compliance Officers** - Monitor regulatory and compliance requirements related to geopolitical exposure
+- **ESG Analysts** - Incorporate geopolitical stability into Environmental, Social, and Governance assessments
+- **Individual Investors** - Understand and evaluate personal investment risk tolerance related to geopolitical factors
+- **Researchers & Academics** - Study relationships between geopolitical events and market performance
+
+## How It Is Used
+
+### 1. **Portfolio Assessment**
+Users upload or select their portfolio holdings and immediately see a comprehensive risk analysis. The dashboard automatically calculates exposure to all five risk dimensions (political, economic, conflict, corruption, terrorism).
+
+### 2. **Risk Monitoring**
+Continuously monitor how geopolitical events affect portfolio risk scores. The color-coded risk gauge (Green → Yellow → Orange → Red) provides instant visual feedback on portfolio health.
+
+### 3. **Country Exposure Analysis**
+Identify which countries and regions pose the highest risk to holdings. The heat map shows country risk levels, and the exposure matrix breaks down direct and indirect country exposure through supply chains and business operations.
+
+### 4. **Comparative Portfolio Evaluation**
+Use multiple pre-configured datasets to compare:
+- Tech-heavy portfolios vs. diversified portfolios
+- Traditional energy exposure vs. renewable energy alternatives
+- Cryptocurrency portfolios vs. traditional assets
+
+### 5. **Decision Making**
+Use insights from the dashboard to:
+- Rebalance portfolios to reduce geopolitical concentration
+- Identify hedging opportunities
+- Evaluate new investment opportunities for geopolitical risk
+- Make informed decisions about asset allocation
+- Justify risk management decisions to stakeholders
+
+## Use Cases
+
+### Use Case 1: Crisis Management
+**Scenario:** A geopolitical crisis emerges in a major industrial region.
+
+**How the Dashboard Helps:**
+- Instantly see how portfolio risk scores change
+- Identify affected holdings and their exposure levels
+- Quickly assess portfolio rebalancing options
+- Communicate risk assessment to stakeholders with visual evidence
+
+### Use Case 2: Pre-Investment Due Diligence
+**Scenario:** An investment advisor is evaluating a potential client's portfolio.
+
+**How the Dashboard Helps:**
+- Analyze existing portfolio geopolitical exposure
+- Compare risk profile to industry benchmarks
+- Identify concentration risks
+- Present data-driven recommendations for risk reduction
+
+### Use Case 3: ESG Integration
+**Scenario:** A fund manager needs to assess geopolitical stability as part of ESG criteria.
+
+**How the Dashboard Helps:**
+- Quantify political and governance risks for holdings
+- Track country-level political stability and corruption metrics
+- Integrate geopolitical considerations into investment screening
+- Report ESG metrics to investors
+
+### Use Case 4: Supply Chain Risk Management
+**Scenario:** An investor wants to understand indirect geopolitical exposure through supply chains.
+
+**How the Dashboard Helps:**
+- View both direct country exposure (where companies operate)
+- Identify indirect exposure through suppliers and partners
+- Assess cascading risk from supply chain disruptions
+- Make sourcing decisions based on geopolitical stability
+
+### Use Case 5: Portfolio Stress Testing
+**Scenario:** A risk manager conducts scenario analysis for stress testing.
+
+**How the Dashboard Helps:**
+- Simulate different geopolitical scenarios
+- Analyze portfolio performance under various risk conditions
+- Identify portfolio vulnerabilities
+- Test hedging strategies
+
+## Benefits
+
+### 1. **Enhanced Risk Awareness**
+- Gain comprehensive understanding of geopolitical risk exposure
+- Move beyond traditional financial metrics to include political and governance factors
+- Identify hidden risks not visible through conventional analysis
+
+### 2. **Proactive Risk Management**
+- Monitor risks continuously rather than reactively responding to crises
+- Make adjustments before geopolitical situations escalate
+- Implement preventive hedging strategies
+- Reduce portfolio volatility from geopolitical shocks
+
+### 3. **Improved Decision Making**
+- Access real-time, data-driven insights for investment decisions
+- Understand trade-offs between risk and return
+- Make informed decisions about asset allocation
+- Justify decisions with quantifiable risk metrics
+
+### 4. **Better Stakeholder Communication**
+- Use interactive visualizations to explain complex geopolitical risks
+- Present data in easily digestible formats
+- Build confidence in risk management practices
+- Demonstrate sophisticated risk analysis capabilities
+
+### 5. **Competitive Advantage**
+- Identify geopolitical opportunities others miss
+- Position for market dislocations caused by political events
+- Adjust exposure ahead of major geopolitical shifts
+- Implement alpha-generating strategies based on political analysis
+
+### 6. **Regulatory Compliance**
+- Document geopolitical risk assessment for compliance purposes
+- Demonstrate reasonable diligence in risk management
+- Track and report on risk exposures over time
+- Support audit and regulatory requirements
+
+### 7. **Time Efficiency**
+- Automate complex geopolitical risk calculations
+- Reduce manual analysis and reporting time
+- Generate insights faster than traditional methods
+- Focus analyst time on interpretation rather than data collection
+
+### 8. **Customization & Flexibility**
+- Analyze different portfolio types (tech, energy, crypto, diversified)
+- Switch between datasets instantly
+- Drill down from portfolio to individual holdings
+- Scale from small portfolios to large institutional holdings
+
+### 9. **Educational Value**
+- Learn about geopolitical risk factors and their impact on investments
+- Understand country-level risk profiles and metrics
+- Study correlations between political events and asset performance
+- Build geopolitical literacy for investment professionals
+
+### 10. **Cost Reduction**
+- Reduce losses from geopolitical shocks through better risk management
+- Lower hedging costs through better risk identification
+- Avoid expensive crisis management situations
+- Optimize portfolio returns per unit of geopolitical risk
+
 ## Technology Stack
 
 ### Frontend
