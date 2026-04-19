@@ -6,11 +6,12 @@ import { useMemo, useCallback } from "react";
 interface HoldingsTableProps {
   assets: Asset[];
   assetContributions: { ticker: string; riskScore: number; mainRisk?: string }[];
+  countryRisks: { [country: string]: number };
 }
 
 const ROWS_PER_PAGE = 10; // Show 10 rows at a time for virtualization
 
-export function HoldingsTable({ assets, assetContributions }: HoldingsTableProps) {
+export function HoldingsTable({ assets, assetContributions, countryRisks }: HoldingsTableProps) {
   const getContributionColor = useCallback((riskScore: number) => {
     if (riskScore >= 8) return "text-red-400 bg-red-950/30";
     if (riskScore >= 6) return "text-orange-400 bg-orange-950/30";
@@ -27,6 +28,44 @@ export function HoldingsTable({ assets, assetContributions }: HoldingsTableProps
     return new Map(assetContributions.map(c => [c.ticker, c]));
   }, [assetContributions]);
 
+  const sectorRiskIndexMap = useMemo(() => {
+    const sectorAccumulator = new Map<string, { weightedRisk: number; totalWeight: number }>();
+
+    const getAssetGeoRisk = (asset: Asset) => {
+      if (!asset.countryDependencies || asset.countryDependencies.length === 0) return 0;
+
+      let weightedRisk = 0;
+      let totalDependencyWeight = 0;
+
+      asset.countryDependencies.forEach((dep) => {
+        const countryRisk = countryRisks[dep.country] ?? 50;
+        weightedRisk += countryRisk * dep.weight;
+        totalDependencyWeight += dep.weight;
+      });
+
+      return totalDependencyWeight > 0 ? weightedRisk / totalDependencyWeight : 0;
+    };
+
+    assets.forEach((asset) => {
+      const sector = asset.sector || "Unknown";
+      const assetGeoRisk = getAssetGeoRisk(asset);
+      const sectorWeight = asset.weight || 0;
+
+      const current = sectorAccumulator.get(sector) || { weightedRisk: 0, totalWeight: 0 };
+      sectorAccumulator.set(sector, {
+        weightedRisk: current.weightedRisk + assetGeoRisk * sectorWeight,
+        totalWeight: current.totalWeight + sectorWeight,
+      });
+    });
+
+    const result = new Map<string, number>();
+    sectorAccumulator.forEach((value, sector) => {
+      result.set(sector, value.totalWeight > 0 ? value.weightedRisk / value.totalWeight : 0);
+    });
+
+    return result;
+  }, [assets, countryRisks]);
+
   return (
     <Card className="p-3 md:p-4 bg-zinc-950 border-zinc-900">
       <h3 className="text-sm md:text-base mb-3 text-white">Holdings Risk Analysis</h3>
@@ -37,6 +76,7 @@ export function HoldingsTable({ assets, assetContributions }: HoldingsTableProps
               <tr className="border-b border-zinc-900">
                 <th className="text-left py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Asset</th>
                 <th className="text-left py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Sector</th>
+                <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Sector Risk Index</th>
                 <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Value</th>
                 <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Allocation</th>
                 <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Risk Score</th>
@@ -46,6 +86,7 @@ export function HoldingsTable({ assets, assetContributions }: HoldingsTableProps
               {visibleAssets.map((asset) => {
                 const assetContribution = assetContributionMap.get(asset.ticker);
                 const riskScore = assetContribution?.riskScore || 0;
+                const sectorRiskIndex = sectorRiskIndexMap.get(asset.sector || "Unknown") || 0;
                 return (
                   <tr
                     key={asset.ticker}
@@ -59,6 +100,9 @@ export function HoldingsTable({ assets, assetContributions }: HoldingsTableProps
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap">
                       <span className="text-xs md:text-sm text-slate-300">{asset.sector}</span>
+                    </td>
+                    <td className="py-2 px-3 text-right whitespace-nowrap">
+                      <span className="text-xs md:text-sm text-slate-300">{sectorRiskIndex.toFixed(1)}</span>
                     </td>
                     <td className="py-2 px-3 text-right whitespace-nowrap">
                       <span className="text-xs md:text-sm text-slate-300">${asset.value.toLocaleString()}</span>

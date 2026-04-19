@@ -52,6 +52,7 @@ export function AssetScreener({ assets, countryRisks, onScreenedAssetsChange }: 
     setMinAssetValue(0);
     setMaxAssetValue(1000000);
     setShowResults(false);
+    onScreenedAssetsChange?.(assets);
   };
 
   const getRiskColor = (risk: number) => {

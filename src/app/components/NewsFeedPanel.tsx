@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Newspaper, AlertCircle, Loader, ExternalLink, TrendingUp } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -7,9 +7,11 @@ import { generateMockNews, parseNewsForRisk, newsToRiskEvent, type NewsArticle, 
 interface NewsFeedPanelProps {
   countryRisks: { [country: string]: number };
   portfolioCountries: string[];
+  compact?: boolean;
+  refreshToken?: number;
 }
 
-export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPanelProps) {
+export function NewsFeedPanel({ countryRisks, portfolioCountries, compact = false, refreshToken = 0 }: NewsFeedPanelProps) {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [riskEvents, setRiskEvents] = useState<NewsRiskEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,41 +19,60 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
   const [selectedUrgency, setSelectedUrgency] = useState<string>('all');
   const [showOnlyPortfolio, setShowOnlyPortfolio] = useState(true);
 
-  useEffect(() => {
-    const loadNews = async () => {
-      setIsLoading(true);
+  const loadNews = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      let baseArticles: any[] = [];
+
       try {
-        // Generate mock news (in production, this would call News API)
-        const mockNews = generateMockNews();
-
-        // Parse articles for risk
-        const parsedArticles = mockNews
-          .map((article) => {
-            const parsed = parseNewsForRisk(article);
-            if (parsed) {
-              return parsed;
-            }
-            return null;
-          })
-          .filter((a) => a !== null) as NewsArticle[];
-
-        // Convert to risk events
-        const events = parsedArticles.map((a) => newsToRiskEvent(a));
-
-        setArticles(parsedArticles);
-        setRiskEvents(events);
-      } catch (error) {
-        console.error('Error loading news:', error);
-      } finally {
-        setIsLoading(false);
+        const response = await fetch('http://localhost:5001/api/news?limit=40');
+        if (response.ok) {
+          const payload = await response.json();
+          baseArticles = payload.articles || [];
+        }
+      } catch (err) {
+        console.warn('[News] Bloomberg API route unavailable, using mock data');
       }
-    };
 
+      if (baseArticles.length === 0) {
+        baseArticles = generateMockNews();
+      }
+
+      // Parse articles for risk
+      const parsedArticles = baseArticles
+        .map((article) => {
+          const parsed = parseNewsForRisk(article);
+          if (parsed) {
+            return parsed;
+          }
+          return null;
+        })
+        .filter((a) => a !== null) as NewsArticle[];
+
+      // Convert to risk events
+      const events = parsedArticles.map((a) => newsToRiskEvent(a));
+
+      setArticles(parsedArticles);
+      setRiskEvents(events);
+    } catch (error) {
+      console.error('Error loading news:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     loadNews();
     // Refresh news every 30 minutes
     const interval = setInterval(loadNews, 30 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loadNews]);
+
+  useEffect(() => {
+    if (refreshToken > 0) {
+      loadNews();
+    }
+  }, [refreshToken, loadNews]);
 
   const filteredArticles = useMemo(() => {
     return articles.filter((article) => {
@@ -74,6 +95,20 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
   }, [articles]);
 
   const getUrgencyColor = (urgency: string) => {
+    if (compact) {
+      switch (urgency) {
+        case 'critical':
+          return 'bg-red-900/30 border-red-800 text-red-200';
+        case 'high':
+          return 'bg-orange-900/30 border-orange-800 text-orange-200';
+        case 'medium':
+          return 'bg-yellow-900/30 border-yellow-800 text-yellow-200';
+        case 'low':
+          return 'bg-emerald-900/30 border-emerald-800 text-emerald-200';
+        default:
+          return 'bg-zinc-900/30 border-zinc-800 text-zinc-200';
+      }
+    }
     switch (urgency) {
       case 'critical':
         return 'bg-red-900/30 border-red-800 text-red-200';
@@ -82,10 +117,15 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
       case 'medium':
         return 'bg-yellow-900/30 border-yellow-800 text-yellow-200';
       case 'low':
-        return 'bg-blue-900/30 border-blue-800 text-blue-200';
+        return 'bg-emerald-900/30 border-emerald-800 text-emerald-200';
       default:
         return 'bg-zinc-900/30 border-zinc-800 text-zinc-200';
     }
+  };
+
+  const getUrgencyLabel = (urgency: string) => {
+    if (urgency === 'medium') return 'MODERATE';
+    return urgency.toUpperCase();
   };
 
   const getUrgencyIcon = (urgency: string) => {
@@ -101,6 +141,7 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
   };
 
   const getRiskColor = (riskScore: number) => {
+    if (compact) return 'text-zinc-200';
     if (riskScore >= 80) return 'text-red-400';
     if (riskScore >= 60) return 'text-orange-400';
     if (riskScore >= 40) return 'text-yellow-400';
@@ -108,6 +149,9 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
   };
 
   const getCategoryColor = (category: string) => {
+    if (compact) {
+      return 'bg-zinc-900/50 text-zinc-300 border-zinc-800';
+    }
     switch (category) {
       case 'political':
         return 'bg-purple-900/30 text-purple-200 border-purple-800';
@@ -128,9 +172,34 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
     return articles.filter((a) => a.countries.some((c) => portfolioCountries.includes(c))).length;
   }, [articles, portfolioCountries]);
 
+  const getSourceFallbackUrl = (source: string) => {
+    const sourceName = (source || '').toLowerCase();
+    if (sourceName.includes('bloomberg')) return 'https://www.bloomberg.com/markets';
+    if (sourceName.includes('reuters')) return 'https://www.reuters.com/world/';
+    if (sourceName.includes('associated press') || sourceName === 'ap') return 'https://apnews.com/world-news';
+    if (sourceName.includes('bbc')) return 'https://www.bbc.com/news/world';
+    if (sourceName.includes('al jazeera')) return 'https://www.aljazeera.com/news/';
+    return '';
+  };
+
+  const getArticleUrl = (article: NewsArticle) => {
+    const rawUrl = (article.url || '').trim();
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      return rawUrl;
+    }
+    const sourceFallbackUrl = getSourceFallbackUrl(article.source);
+    if (sourceFallbackUrl) {
+      return sourceFallbackUrl;
+    }
+
+    const searchQuery = encodeURIComponent(`${article.title} ${article.source || ''}`.trim());
+    return `https://news.google.com/search?q=${searchQuery}`;
+  };
+
   return (
-    <div className="w-full space-y-4">
+    <div className={`w-full ${compact ? 'space-y-2' : 'space-y-4'}`}>
       {/* Header */}
+      {!compact && (
       <Card className="p-4 bg-zinc-950 border border-zinc-800">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
@@ -213,7 +282,7 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
           <div>
             <label className="text-[10px] text-zinc-400 mb-1 block">&nbsp;</label>
             <Button
-              onClick={() => window.location.reload()}
+              onClick={loadNews}
               className="w-full text-xs bg-blue-600 hover:bg-blue-700 h-7"
             >
               Refresh
@@ -221,9 +290,44 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
           </div>
         </div>
       </Card>
+      )}
+
+      {compact && (
+        <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-zinc-900/60 border border-zinc-800 rounded">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="w-full text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-zinc-200"
+          >
+            <option value="all">All</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </option>
+            ))}
+          </select>
+          <select
+            value={selectedUrgency}
+            onChange={(e) => setSelectedUrgency(e.target.value)}
+            className="w-full text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-zinc-200"
+          >
+            <option value="all">Urgency</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Moderate</option>
+            <option value="low">Low</option>
+          </select>
+          <button
+            onClick={() => setShowOnlyPortfolio((prev) => !prev)}
+            className="text-[10px] bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-zinc-300 hover:bg-zinc-800 transition-colors"
+          >
+            {showOnlyPortfolio ? 'Portfolio' : 'All News'}
+          </button>
+        </div>
+      )}
 
       {/* Articles List */}
-      <div className="space-y-3 max-h-[600px] overflow-y-auto">
+      <div className={`${compact ? 'space-y-1.5 max-h-[260px]' : 'space-y-3 max-h-[600px]'} overflow-y-auto`}>
         {isLoading ? (
           <Card className="p-8 bg-zinc-950 border border-zinc-800 text-center">
             <Loader size={24} className="animate-spin mx-auto mb-2 text-blue-400" />
@@ -236,24 +340,38 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
         ) : (
           filteredArticles.map((article) => {
             const riskEvent = riskEvents.find((e) => e.articleId === article.id);
+            const articleUrl = getArticleUrl(article);
 
             return (
               <Card
                 key={article.id}
-                className={`p-3 bg-zinc-950 border ${getUrgencyColor(riskEvent?.urgency || 'low').split(' ')[1]}`}
+                className={`${compact ? 'p-2' : 'p-3'} bg-zinc-950 border ${getUrgencyColor(riskEvent?.urgency || 'low').split(' ')[1]}`}
               >
                 <div className="space-y-2">
                   {/* Header */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <h4 className="text-xs font-semibold text-zinc-100 leading-tight mb-1 line-clamp-2">
-                        {getUrgencyIcon(riskEvent?.urgency || 'low')} {article.title}
+                        {articleUrl ? (
+                          <a
+                            href={articleUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-blue-300 transition-colors"
+                          >
+                            {!compact && `${getUrgencyIcon(riskEvent?.urgency || 'low')} `}{article.title}
+                          </a>
+                        ) : (
+                          <>{!compact && `${getUrgencyIcon(riskEvent?.urgency || 'low')} `}{article.title}</>
+                        )}
                       </h4>
-                      <p className="text-[10px] text-zinc-500 line-clamp-2">{article.description}</p>
+                      <p className="text-[10px] text-zinc-500 line-clamp-2">
+                        <span className="text-zinc-400">Summary:</span> {article.description}
+                      </p>
                     </div>
 
                     <div className="text-right flex-shrink-0">
-                      <div className={`text-sm font-bold ${getRiskColor(article.riskScore)}`}>
+                      <div className={`${compact ? 'text-xs' : 'text-sm'} font-bold ${getRiskColor(article.riskScore)}`}>
                         {article.riskScore}
                       </div>
                       <div className="text-[10px] text-zinc-500">Risk</div>
@@ -276,9 +394,11 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
 
                     {riskEvent && (
                       <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${getUrgencyColor(riskEvent.urgency).split(' ').slice(0, -1).join(' ')}`}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${getUrgencyColor(riskEvent.urgency).split(' ').slice(0, -1).join(' ')} ${
+                          ['low', 'medium', 'high'].includes(riskEvent.urgency) ? 'text-white' : 'text-red-100'
+                        }`}
                       >
-                        {riskEvent.urgency.toUpperCase()}
+                        {getUrgencyLabel(riskEvent.urgency)}
                       </span>
                     )}
                   </div>
@@ -291,7 +411,9 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
                         <span
                           key={country}
                           className={`px-1.5 py-0.5 rounded text-[10px] border ${
-                            isInPortfolio
+                            compact
+                              ? 'bg-zinc-900/50 border-zinc-800 text-zinc-400'
+                              : isInPortfolio
                               ? 'bg-amber-900/30 border-amber-800 text-amber-300'
                               : 'bg-zinc-800/50 border-zinc-700 text-zinc-400'
                           }`}
@@ -303,9 +425,9 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
                   </div>
 
                   {/* Action */}
-                  {article.url && (
+                  {articleUrl && (
                     <a
-                      href={article.url}
+                      href={articleUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 mt-1"
@@ -322,6 +444,7 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
       </div>
 
       {/* Legend */}
+      {!compact && (
       <Card className="p-3 bg-zinc-950 border border-zinc-800">
         <p className="text-xs text-zinc-400 mb-2 font-semibold">Risk Score Guide</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -343,6 +466,7 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries }: NewsFeedPane
           </div>
         </div>
       </Card>
+      )}
     </div>
   );
 }

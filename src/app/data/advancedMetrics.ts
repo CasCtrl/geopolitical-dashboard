@@ -281,6 +281,11 @@ export function analyzeRiskAttribution(
   },
   portfolioExposures: Array<{ country: string; riskContribution: number }>
 ): AttributionAnalysis {
+  const safeNumber = (value: unknown): number => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   // Calculate factor contributions
   let totalPolitical = 0,
     totalEconomic = 0,
@@ -289,35 +294,41 @@ export function analyzeRiskAttribution(
     totalTerrorism = 0;
 
   for (const country in countryRisks) {
-    const risk = countryRisks[country];
-    totalPolitical += risk.political * weights.political;
-    totalEconomic += risk.economic * weights.economic;
-    totalConflict += risk.conflict * weights.conflict;
-    totalCorruption += risk.corruption * weights.corruption;
-    totalTerrorism += risk.terrorism * weights.terrorism;
+    const risk = countryRisks[country] || {};
+    totalPolitical += safeNumber(risk.political) * safeNumber(weights.political);
+    totalEconomic += safeNumber(risk.economic) * safeNumber(weights.economic);
+    totalConflict += safeNumber(risk.conflict) * safeNumber(weights.conflict);
+    totalCorruption += safeNumber(risk.corruption) * safeNumber(weights.corruption);
+    totalTerrorism += safeNumber(risk.terrorism) * safeNumber(weights.terrorism);
   }
 
-  const totalRisk =
+  const totalRiskRaw =
     totalPolitical +
     totalEconomic +
     totalConflict +
     totalCorruption +
     totalTerrorism;
+  const totalRisk = totalRiskRaw > 0 ? totalRiskRaw : 0;
+
+  const toPercent = (part: number, total: number): number => {
+    if (total <= 0) return 0;
+    return Math.round((part / total) * 100);
+  };
 
   const byRiskFactor = {
-    political: Math.round((totalPolitical / totalRisk) * 100),
-    economic: Math.round((totalEconomic / totalRisk) * 100),
-    conflict: Math.round((totalConflict / totalRisk) * 100),
-    corruption: Math.round((totalCorruption / totalRisk) * 100),
-    terrorism: Math.round((totalTerrorism / totalRisk) * 100),
+    political: toPercent(totalPolitical, totalRisk),
+    economic: toPercent(totalEconomic, totalRisk),
+    conflict: toPercent(totalConflict, totalRisk),
+    corruption: toPercent(totalCorruption, totalRisk),
+    terrorism: toPercent(totalTerrorism, totalRisk),
   };
 
   // Calculate country contributions
   const byCountry = portfolioExposures
     .map((exposure) => ({
       country: exposure.country,
-      contribution: Math.round(exposure.riskContribution * 100) / 100,
-      percentOfTotal: Math.round((exposure.riskContribution / totalRisk) * 100),
+      contribution: Math.round(safeNumber(exposure.riskContribution) * 100) / 100,
+      percentOfTotal: toPercent(safeNumber(exposure.riskContribution), totalRisk),
     }))
     .sort((a, b) => b.contribution - a.contribution);
 

@@ -5,20 +5,30 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { generatePDFReport } from '../utils/pdfGenerator';
-import { exportToExcel, exportToCSV, exportTableToExcel } from '../utils/excelExporter';
+import { exportToExcel, exportToCSV } from '../utils/excelExporter';
 
 interface ExportReportsProps {
   portfolioSummary?: any;
   countryRisks?: Record<string, number>;
   holdings?: Array<any>;
   trends?: Array<any>;
+  weights?: {
+    political: number;
+    economic: number;
+    conflict: number;
+    corruption: number;
+    terrorism: number;
+  };
 }
+
+type ReportPageKey = 'portfolioSummary' | 'countryAnalysis' | 'holdings' | 'historicalTrends';
 
 export function ExportReports({
   portfolioSummary,
   countryRisks,
   holdings,
   trends,
+  weights,
 }: ExportReportsProps) {
   const [selectedFormat, setSelectedFormat] = useState<'pdf' | 'excel' | 'csv'>('pdf');
   const [reportTitle, setReportTitle] = useState('Geopolitical Risk Report');
@@ -26,17 +36,90 @@ export function ExportReports({
   const [recipientEmail, setRecipientEmail] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [selectedPages, setSelectedPages] = useState<Record<ReportPageKey, boolean>>({
+    portfolioSummary: true,
+    countryAnalysis: true,
+    holdings: true,
+    historicalTrends: true,
+  });
+
+  const pageDefinitions: Array<{ key: ReportPageKey; title: string; desc: string }> = [
+    { key: 'portfolioSummary', title: 'Portfolio Summary', desc: 'Overview metrics and risk score' },
+    { key: 'countryAnalysis', title: 'Country Analysis', desc: 'Country-level geopolitical risk' },
+    { key: 'holdings', title: 'Portfolio Holdings', desc: 'Asset-level holdings table' },
+    { key: 'historicalTrends', title: 'Historical Trends', desc: 'Risk trend and time series data' },
+  ];
+
+  const togglePage = (key: ReportPageKey) => {
+    setSelectedPages((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const heatmapCountries = Object.entries(countryRisks || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20);
+
+  const trendPoints = (trends || []).slice(0, 30).map((point: any, index) => ({
+    index,
+    value: Number(point?.value ?? point?.risk ?? point?.score ?? 0),
+  }));
+
+  const getHeatColor = (score: number) => {
+    if (score >= 80) return '#7f1d1d';
+    if (score >= 60) return '#b45309';
+    if (score >= 40) return '#a16207';
+    return '#166534';
+  };
+
+  const buildTrendPath = (points: Array<{ index: number; value: number }>) => {
+    if (points.length === 0) return '';
+    const width = 680;
+    const height = 220;
+    const pad = 20;
+    const xStep = points.length > 1 ? (width - pad * 2) / (points.length - 1) : 0;
+    return points
+      .map((p, i) => {
+        const x = pad + i * xStep;
+        const y = pad + (100 - Math.max(0, Math.min(100, p.value))) * ((height - pad * 2) / 100);
+        return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+      })
+      .join(' ');
+  };
+
+  const trendPath = buildTrendPath(trendPoints);
 
   const handleGenerateReport = async () => {
+    const selectedKeys = (Object.keys(selectedPages) as ReportPageKey[]).filter((key) => selectedPages[key]);
+    if (selectedKeys.length === 0) {
+      setSuccessMessage('Please select at least one reporting page.');
+      return;
+    }
+
     setIsGenerating(true);
     setSuccessMessage('');
 
     try {
       const exportData = {
-        portfolioSummary,
-        countryRisks,
-        holdings,
-        trends,
+        portfolioSummary: selectedPages.portfolioSummary
+          ? {
+              totalRiskScore: portfolioSummary?.totalRiskScore,
+              totalAssets: holdings?.length ?? 0,
+              totalCountries: portfolioSummary?.countryExposures?.length ?? 0,
+              averageCountryRisk:
+                countryRisks && Object.keys(countryRisks).length > 0
+                  ? Object.values(countryRisks).reduce((sum, val) => sum + val, 0) / Object.keys(countryRisks).length
+                  : undefined,
+              totalPortfolioValue:
+                holdings?.reduce((sum, asset) => sum + Number(asset?.value || 0), 0) ?? 0,
+            }
+          : undefined,
+        countryRisks: selectedPages.countryAnalysis ? countryRisks : undefined,
+        holdings: selectedPages.holdings ? holdings : undefined,
+        trends: selectedPages.historicalTrends ? trends : undefined,
+        countryExposures: selectedPages.countryAnalysis ? portfolioSummary?.countryExposures : undefined,
+        assetContributions: selectedPages.portfolioSummary ? portfolioSummary?.assetContributions : undefined,
+        topRiskAssets: selectedPages.portfolioSummary ? portfolioSummary?.topRiskAssets : undefined,
+        topRiskCountries: selectedPages.countryAnalysis ? portfolioSummary?.topRiskCountries : undefined,
+        weights: selectedPages.portfolioSummary ? weights : undefined,
       };
 
       switch (selectedFormat) {
@@ -44,8 +127,15 @@ export function ExportReports({
           await generatePDFReport({
             title: reportTitle,
             includeCharts,
-            portfolioSummary,
-            countryRisks,
+            portfolioSummary: exportData.portfolioSummary,
+            countryRisks: exportData.countryRisks,
+            holdings: exportData.holdings,
+            trends: exportData.trends,
+            countryExposures: exportData.countryExposures,
+            assetContributions: exportData.assetContributions,
+            topRiskAssets: exportData.topRiskAssets,
+            topRiskCountries: exportData.topRiskCountries,
+            weights: exportData.weights,
           });
           setSuccessMessage('PDF report generated successfully!');
           break;
@@ -121,6 +211,30 @@ export function ExportReports({
 
         {/* Generate Tab */}
         <TabsContent value="generate" className="space-y-4">
+          {/* Reporting Pages Selection */}
+          <Card className="p-6 bg-zinc-950 border border-zinc-800">
+            <h3 className="text-lg font-semibold text-zinc-100 mb-4">Select Reporting Pages</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {pageDefinitions.map((page) => (
+                <label
+                  key={page.key}
+                  className="flex items-start gap-3 p-3 bg-zinc-900 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPages[page.key]}
+                    onChange={() => togglePage(page.key)}
+                    className="mt-1 w-4 h-4 rounded bg-zinc-900 border border-zinc-700"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-zinc-100">{page.title}</p>
+                    <p className="text-xs text-zinc-400">{page.desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </Card>
+
           <Card className="p-6 bg-zinc-950 border border-zinc-800">
             <h3 className="text-lg font-semibold text-zinc-100 mb-4">Generate Report</h3>
 
@@ -198,7 +312,7 @@ export function ExportReports({
 
               {/* Success Message */}
               {successMessage && (
-                <div className="p-3 bg-green-900 border border-green-700 text-green-100 rounded-lg flex items-center gap-2">
+                <div className={`p-3 rounded-lg flex items-center gap-2 ${successMessage.startsWith('Error') || successMessage.startsWith('Please') ? 'bg-red-900 border border-red-700 text-red-100' : 'bg-green-900 border border-green-700 text-green-100'}`}>
                   <CheckCircle size={16} />
                   {successMessage}
                 </div>
@@ -206,31 +320,40 @@ export function ExportReports({
             </div>
           </Card>
 
-          {/* Report Templates */}
-          <Card className="p-6 bg-zinc-950 border border-zinc-800">
-            <h3 className="text-lg font-semibold text-zinc-100 mb-4">Quick Templates</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { title: 'Portfolio Summary', desc: 'Holdings & risk' },
-                { title: 'Country Analysis', desc: 'Risk by country' },
-                { title: 'Historical Trends', desc: 'Risk evolution' },
-                { title: 'Full Report', desc: 'All data & charts' },
-              ].map((template) => (
-                <button
-                  key={template.title}
-                  onClick={() => {
-                    setReportTitle(template.title);
-                    setSelectedFormat('pdf');
-                    handleGenerateReport();
-                  }}
-                  className="p-3 bg-zinc-900 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition text-left"
-                >
-                  <p className="text-sm font-medium text-zinc-100">{template.title}</p>
-                  <p className="text-xs text-zinc-400">{template.desc}</p>
-                </button>
-              ))}
+          {/* Hidden export-only snapshots for PDF capture */}
+          {selectedFormat === 'pdf' && includeCharts && (
+            <div className="fixed left-0 top-0 w-[760px] bg-white p-6 opacity-0 pointer-events-none -z-10">
+              {selectedPages.countryAnalysis && heatmapCountries.length > 0 && (
+                <div data-export-chart className="bg-white border border-zinc-200 rounded-lg p-4 mb-4">
+                  <h4 className="text-base font-semibold text-zinc-900 mb-3">Country Risk Heatmap Snapshot</h4>
+                  <div className="grid grid-cols-4 gap-2">
+                    {heatmapCountries.map(([country, score]) => (
+                      <div
+                        key={country}
+                        className="rounded px-2 py-1.5 text-white text-xs font-medium"
+                        style={{ backgroundColor: getHeatColor(score) }}
+                      >
+                        <div className="truncate">{country}</div>
+                        <div>{score.toFixed(0)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedPages.historicalTrends && trendPoints.length > 1 && (
+                <div data-export-chart className="bg-white border border-zinc-200 rounded-lg p-4">
+                  <h4 className="text-base font-semibold text-zinc-900 mb-3">Portfolio Risk Trend Snapshot</h4>
+                  <svg width="100%" height="240" viewBox="0 0 720 240" role="img" aria-label="Portfolio risk trend">
+                    <rect x="0" y="0" width="720" height="240" fill="#ffffff" />
+                    <line x1="20" y1="220" x2="700" y2="220" stroke="#d4d4d8" strokeWidth="1" />
+                    <line x1="20" y1="20" x2="20" y2="220" stroke="#d4d4d8" strokeWidth="1" />
+                    <path d={trendPath} fill="none" stroke="#dc2626" strokeWidth="3" />
+                  </svg>
+                </div>
+              )}
             </div>
-          </Card>
+          )}
         </TabsContent>
 
         {/* Email Tab */}

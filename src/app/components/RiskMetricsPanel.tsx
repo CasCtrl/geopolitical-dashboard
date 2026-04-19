@@ -23,6 +23,9 @@ interface RiskMetricsPanelProps {
   };
   portfolioRisk: number;
   portfolioExposures: Array<{ country: string; riskContribution: number }>;
+  showAdvancedMetrics?: boolean;
+  showRiskAttribution?: boolean;
+  showBenchmarkComparison?: boolean;
 }
 
 export function RiskMetricsPanel({
@@ -31,6 +34,9 @@ export function RiskMetricsPanel({
   weights,
   portfolioRisk,
   portfolioExposures,
+  showAdvancedMetrics = true,
+  showRiskAttribution = true,
+  showBenchmarkComparison = true,
 }: RiskMetricsPanelProps) {
   const metrics = useMemo(() => calculateAllMetrics(trendData), [trendData]);
   const attribution = useMemo(
@@ -61,6 +67,7 @@ export function RiskMetricsPanel({
   return (
     <div className="w-full space-y-4">
       {/* Risk Metrics */}
+      {showAdvancedMetrics && (
       <Card className="p-4 bg-zinc-950 border border-zinc-800">
         <h3 className="text-sm font-semibold mb-4 text-zinc-100 flex items-center gap-2">
           <TrendingUp size={16} className="text-blue-400" />
@@ -148,8 +155,10 @@ export function RiskMetricsPanel({
           </div>
         </div>
       </Card>
+      )}
 
       {/* Risk Attribution */}
+      {showRiskAttribution && (
       <Card className="p-4 bg-zinc-950 border border-zinc-800">
         <h3 className="text-sm font-semibold mb-3 text-zinc-100">Risk Attribution</h3>
         
@@ -198,8 +207,10 @@ export function RiskMetricsPanel({
           </div>
         </div>
       </Card>
+      )}
 
       {/* Benchmarking */}
+      {showBenchmarkComparison && (
       <Card className="p-4 bg-zinc-950 border border-zinc-800">
         <h3 className="text-sm font-semibold mb-3 text-zinc-100">Benchmark Comparison</h3>
         
@@ -238,6 +249,7 @@ export function RiskMetricsPanel({
           </div>
         </div>
       </Card>
+      )}
     </div>
   );
 }

@@ -9,7 +9,31 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function initializeDatabase() {
   let conn;
+  let bootstrapConn;
   try {
+    const targetDatabase = config.database || 'geopolitical_dashboard';
+
+    // Connect to master first so startup works even when the target DB does not exist yet.
+    const bootstrapConfig = {
+      ...config,
+      database: 'master',
+    };
+
+    bootstrapConn = new sql.ConnectionPool(bootstrapConfig);
+    await bootstrapConn.connect();
+    await bootstrapConn
+      .request()
+      .input('dbName', sql.NVarChar(128), targetDatabase)
+      .query(`
+        IF DB_ID(@dbName) IS NULL
+        BEGIN
+          DECLARE @createDbSql NVARCHAR(MAX) = N'CREATE DATABASE [' + REPLACE(@dbName, ']', ']]') + N']';
+          EXEC(@createDbSql);
+        END
+      `);
+    await bootstrapConn.close();
+    bootstrapConn = null;
+
     conn = new sql.ConnectionPool(config);
     await conn.connect();
     console.log('\u2713 Initializing database schema...');
@@ -81,6 +105,13 @@ async function initializeDatabase() {
     console.log('✓ Database initialization complete');
   } catch (err) {
     console.warn('\u26a0 Database initialization failed:', err.message);
+    if (bootstrapConn) {
+      try {
+        await bootstrapConn.close();
+      } catch (closeErr) {
+        // Ignore close errors
+      }
+    }
     if (conn) {
       try {
         await conn.close();
@@ -94,6 +125,14 @@ async function initializeDatabase() {
 async function loadDataFromCSV(conn) {
   return new Promise(async (resolve, reject) => {
     try {
+      const runQuery = async (queryText, params = {}) => {
+        const request = conn.request();
+        Object.entries(params).forEach(([key, spec]) => {
+          request.input(key, spec.type, spec.value);
+        });
+        return request.query(queryText);
+      };
+
       // Check if data already exists to avoid reloading on every startup
       const result = await conn.query('SELECT COUNT(*) as count FROM Datasets');
       if (result.recordset[0].count > 0) {
@@ -183,7 +222,7 @@ async function loadDataFromCSV(conn) {
               });
 
               try {
-                await conn.query(
+                await runQuery(
                   `INSERT INTO Countries (name, baseRiskScore) VALUES ${valueClauses}`,
                   params
                 );
@@ -203,7 +242,7 @@ async function loadDataFromCSV(conn) {
               });
 
               try {
-                await conn.query(
+                await runQuery(
                   `INSERT INTO Sectors (name) VALUES ${valueClauses}`,
                   params
                 );
@@ -215,7 +254,7 @@ async function loadDataFromCSV(conn) {
             // Batch insert datasets
             for (const [, dataset] of datasetMap) {
               try {
-                await conn.query(
+                await runQuery(
                   `INSERT INTO Datasets (datasetId, datasetName, datasetDescription) VALUES (@id, @name, @desc)`,
                   {
                     id: { value: dataset.datasetId, type: sql.NVarChar(50) },
@@ -258,7 +297,7 @@ async function loadDataFromCSV(conn) {
               });
 
               try {
-                await conn.query(
+                await runQuery(
                   `INSERT INTO Assets (datasetId, ticker, assetName, weight, value, sector) 
                    VALUES ${valueClauses}`,
                   params
@@ -286,7 +325,7 @@ async function loadDataFromCSV(conn) {
               });
 
               try {
-                await conn.query(
+                await runQuery(
                   `INSERT INTO CountryDependencies (datasetId, ticker, country, dependencyWeight, dependencyType, dependencyReason)
                    VALUES ${valueClauses}`,
                   params

@@ -7,12 +7,13 @@ import { getPool } from './db/config.js';
 import { initializeDatabase } from './db/init.js';
 import assetsRoutes from './routes/assets.js';
 import reportsRoutes from './routes/reports.js';
+import newsRoutes from './routes/news.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
-const PORT = process.env.SERVER_PORT || 5000;
+const PORT = process.env.SERVER_PORT || 5001;
 
 // Middleware
 app.use(cors());
@@ -21,6 +22,7 @@ app.use(express.json());
 // Routes
 app.use('/api', assetsRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api', newsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

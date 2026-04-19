@@ -82,6 +82,8 @@ export function HistoricalTrends({ availableCountries = [], onSelectCountry }: H
               <YAxis domain={[0, 100]} tick={{ fill: '#a1a1aa' }} />
               <Tooltip
                 contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46' }}
+                labelStyle={{ color: '#e4e4e7' }}
+                itemStyle={{ color: '#f4f4f5' }}
                 formatter={(value) => [`${Math.round(value as number)}`, 'Risk Score']}
                 labelFormatter={formatTime}
               />
@@ -207,6 +209,8 @@ export function HistoricalTrends({ availableCountries = [], onSelectCountry }: H
                         <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#a1a1aa' }} />
                         <Tooltip
                           contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', fontSize: 12 }}
+                          labelStyle={{ color: '#e4e4e7' }}
+                          itemStyle={{ color: '#f4f4f5' }}
                           formatter={(value, name, props) => {
                             const data = props.payload;
                             const change = data.change ? ` (${data.change > 0 ? '+' : ''}${Math.round(data.change * 10) / 10})` : '';

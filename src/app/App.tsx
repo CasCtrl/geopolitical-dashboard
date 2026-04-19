@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import html2canvas from "html2canvas";
+import { Toaster, toast } from "sonner";
 import { WorldMap } from "./components/WorldMap";
 import { RiskSlider } from "./components/RiskSlider";
 import { HoldingsTable } from "./components/HoldingsTable";
@@ -27,6 +29,7 @@ import { CorrelationAnalysisPanel } from "./components/CorrelationAnalysisPanel"
 import { CustomScenarioBuilderPanel } from "./components/CustomScenarioBuilderPanel";
 import { MonteCarloPanel } from "./components/MonteCarloPanel";
 import { NewsFeedPanel } from "./components/NewsFeedPanel";
+import { generateMockNews, parseNewsForRisk, newsToRiskEvent } from "./data/newsIntegration";
 import { initializeRealtimeUpdates, stopRealtimeUpdates } from "./data/realtimeUpdateManager";
 import {
   AlertTriangle,
@@ -39,11 +42,15 @@ import {
   HelpCircle,
   X,
   RefreshCw,
+  Download,
+  Newspaper,
+  Check,
 } from "lucide-react";
 import { Card } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { RiskGaugeCompact } from "./components/RiskGaugeCompact";
+import { convertPortfolioAssetToHolding, getCountriesFromAssets, getSectorsFromAssets, screenAssets } from "./utils/portfolioFilters";
 
 export default function App() {
   const [weights, setWeights] = useState(getDefaultWeights());
@@ -51,6 +58,10 @@ export default function App() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showUpdateStatus, setShowUpdateStatus] = useState(false);
   const [showAlertsWindow, setShowAlertsWindow] = useState(false);
+  const [showNewsFeedPanel, setShowNewsFeedPanel] = useState(false);
+  const [newsRefreshToken, setNewsRefreshToken] = useState(0);
+  const [newsAlertCount, setNewsAlertCount] = useState(0);
+  const [updateStatusTick, setUpdateStatusTick] = useState(0);
 
   const [datasets, setDatasets] = useState<DatasetMetadata[]>([]);
   const [selectedDatasetId, setSelectedDatasetId] = useState("default");
@@ -58,6 +69,9 @@ export default function App() {
     [datasetId: string]: Asset[];
   }>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [dashboardMinRiskFilter, setDashboardMinRiskFilter] = useState(0);
+  const [dashboardSectorFilter, setDashboardSectorFilter] = useState("all");
+  const [dashboardCountryFilter, setDashboardCountryFilter] = useState("all");
 
   // Get the current portfolio based on selected dataset
   const portfolio = assetsByDataset[selectedDatasetId] || defaultPortfolio;
@@ -74,12 +88,36 @@ export default function App() {
     return calculatePortfolioRisk(portfolio, riskData);
   }, [portfolio, riskData]);
 
+  const dashboardHoldingAssets = useMemo(() => {
+    return portfolio.map(convertPortfolioAssetToHolding);
+  }, [portfolio]);
+
+  const dashboardSectors = useMemo(() => getSectorsFromAssets(dashboardHoldingAssets), [dashboardHoldingAssets]);
+  const dashboardCountries = useMemo(() => getCountriesFromAssets(dashboardHoldingAssets), [dashboardHoldingAssets]);
+
+  const screenedDashboardAssets = useMemo(() => {
+    return screenAssets(dashboardHoldingAssets, riskData, {
+      minRisk: dashboardMinRiskFilter > 0 ? dashboardMinRiskFilter : undefined,
+      sectors: dashboardSectorFilter !== "all" ? [dashboardSectorFilter] : undefined,
+      countries: dashboardCountryFilter !== "all" ? [dashboardCountryFilter] : undefined,
+    });
+  }, [dashboardHoldingAssets, riskData, dashboardMinRiskFilter, dashboardSectorFilter, dashboardCountryFilter]);
+
+  const dashboardPortfolio = useMemo(() => {
+    const screenedTickerSet = new Set(screenedDashboardAssets.map((asset) => asset.symbol));
+    return portfolio.filter((asset) => screenedTickerSet.has(asset.ticker));
+  }, [portfolio, screenedDashboardAssets]);
+
+  const dashboardPortfolioAnalysis = useMemo(() => {
+    return calculatePortfolioRisk(dashboardPortfolio, riskData);
+  }, [dashboardPortfolio, riskData]);
+
   // Load datasets from API on mount with paralleled requests
   useEffect(() => {
     const loadDatasets = async () => {
       try {
         // Fetch datasets from API
-        const datasetsRes = await fetch("http://localhost:5000/api/datasets");
+        const datasetsRes = await fetch("http://localhost:5001/api/datasets");
         if (!datasetsRes.ok) throw new Error("Failed to fetch datasets");
         const apiDatasets = await datasetsRes.json();
 
@@ -101,8 +139,8 @@ export default function App() {
         const promises = apiDatasets.map(async (dataset: any) => {
           try {
             const [assetsRes, depsRes] = await Promise.all([
-              fetch(`http://localhost:5000/api/assets/${dataset.datasetId}`),
-              fetch(`http://localhost:5000/api/dependencies/${dataset.datasetId}`),
+              fetch(`http://localhost:5001/api/assets/${dataset.datasetId}`),
+              fetch(`http://localhost:5001/api/dependencies/${dataset.datasetId}`),
             ]);
 
             if (!assetsRes.ok) throw new Error(`Failed to fetch assets for ${dataset.datasetId}`);
@@ -180,6 +218,12 @@ export default function App() {
 
     loadDatasets();
   }, []);
+
+  useEffect(() => {
+    setDashboardMinRiskFilter(0);
+    setDashboardSectorFilter("all");
+    setDashboardCountryFilter("all");
+  }, [selectedDatasetId]);
 
   // Initialize daily update and real-time updates on app startup
   useEffect(() => {
@@ -304,8 +348,165 @@ export default function App() {
     ).length;
   }, [portfolioAnalysis, riskData]);
 
+  const downloadMapSnapshot = useCallback(async (mapElementId: string) => {
+    try {
+      const mapElement = document.getElementById(mapElementId);
+      if (!mapElement) {
+        toast.error("Map snapshot failed");
+        return;
+      }
+
+      const fileName = `global_risk_heatmap_${new Date().toISOString().split("T")[0]}.png`;
+
+      // Prefer SVG-native export for reliability and crisp output.
+      const svgElement = mapElement.querySelector("svg");
+      if (svgElement) {
+        const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+        const viewBox = svgElement.getAttribute("viewBox")?.split(" ").map(Number) || [0, 0, 1000, 500];
+        const width = Math.max(1, Math.round(svgElement.clientWidth || viewBox[2] || 1000));
+        const height = Math.max(1, Math.round(svgElement.clientHeight || viewBox[3] || 500));
+
+        clonedSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        clonedSvg.setAttribute("width", String(width));
+        clonedSvg.setAttribute("height", String(height));
+
+        const svgString = new XMLSerializer().serializeToString(clonedSvg);
+        const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+        const svgUrl = URL.createObjectURL(svgBlob);
+
+        await new Promise<void>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const canvas = document.createElement("canvas");
+              canvas.width = width * 2;
+              canvas.height = height * 2;
+              const ctx = canvas.getContext("2d");
+              if (!ctx) {
+                reject(new Error("Could not get canvas context"));
+                return;
+              }
+
+              ctx.fillStyle = "#09090b";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.scale(2, 2);
+              ctx.drawImage(img, 0, 0, width, height);
+
+              const link = document.createElement("a");
+              link.href = canvas.toDataURL("image/png");
+              link.download = fileName;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              toast.success("Map snapshot downloaded");
+              resolve();
+            } catch (err) {
+              reject(err);
+            } finally {
+              URL.revokeObjectURL(svgUrl);
+            }
+          };
+          img.onerror = (err) => {
+            URL.revokeObjectURL(svgUrl);
+            reject(err);
+          };
+          img.src = svgUrl;
+        });
+        return;
+      }
+
+      const canvas = await html2canvas(mapElement, {
+        backgroundColor: "#09090b",
+        scale: 2,
+        useCORS: true,
+      });
+
+      const link = document.createElement("a");
+      link.href = canvas.toDataURL("image/png");
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Map snapshot downloaded");
+    } catch (error) {
+      console.error("Failed to capture map snapshot:", error);
+      toast.error("Map snapshot failed");
+    }
+  }, []);
+
+  const portfolioCountriesSet = useMemo(
+    () => new Set(portfolioAnalysis.countryExposures.map((exp) => exp.country)),
+    [portfolioAnalysis.countryExposures]
+  );
+
+  const loadNewsAlertCount = useCallback(async () => {
+    try {
+      let baseArticles: any[] = [];
+
+      try {
+        const response = await fetch("http://localhost:5001/api/news?limit=40");
+        if (response.ok) {
+          const payload = await response.json();
+          baseArticles = payload.articles || [];
+        }
+      } catch {
+        // Fall back to mock data when API is unavailable.
+      }
+
+      if (baseArticles.length === 0) {
+        baseArticles = generateMockNews();
+      }
+
+      const parsedArticles = baseArticles
+        .map((article) => parseNewsForRisk(article))
+        .filter((article): article is NonNullable<typeof article> => article !== null);
+
+      const events = parsedArticles.map((article) => newsToRiskEvent(article));
+      const count = events.filter(
+        (event) =>
+          (event.urgency === "high" || event.urgency === "critical") &&
+          event.affectedCountries.some((country) => portfolioCountriesSet.has(country))
+      ).length;
+
+      setNewsAlertCount(count);
+    } catch {
+      setNewsAlertCount(0);
+    }
+  }, [portfolioCountriesSet]);
+
+  useEffect(() => {
+    loadNewsAlertCount();
+    const interval = setInterval(loadNewsAlertCount, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loadNewsAlertCount]);
+
+  useEffect(() => {
+    if (newsRefreshToken > 0) {
+      loadNewsAlertCount();
+    }
+  }, [newsRefreshToken, loadNewsAlertCount]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setUpdateStatusTick((prev) => prev + 1);
+    }, 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const updateStatus = useMemo(() => getUpdateStatus(), [updateStatusTick, showUpdateStatus]);
+  const refreshNeedsAttention = updateStatus.needsUpdate;
+  const refreshIsCurrent = !updateStatus.needsUpdate && updateStatus.lastUpdated !== 'Never';
+
   return (
     <div className="min-h-screen bg-black">
+      <Toaster
+        position="bottom-right"
+        theme="dark"
+        richColors
+        closeButton={false}
+        duration={1600}
+      />
       {/* Alerts Window Modal */}
       {showAlertsWindow && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
@@ -472,11 +673,16 @@ export default function App() {
             <div className="p-4 space-y-3">
               <div className="space-y-2">
                 <p className="text-xs text-zinc-400">
-                  <span className="font-semibold text-white">Last Updated:</span> {getUpdateStatus().lastUpdated === 'Never' ? 'App startup' : getUpdateStatus().lastUpdated}
+                  <span className="font-semibold text-white">Last Updated:</span> {updateStatus.lastUpdated === 'Never' ? 'App startup' : updateStatus.lastUpdated}
                 </p>
                 <p className="text-xs text-zinc-400">
                   <span className="font-semibold text-white">Next Update:</span> {getTimeUntilNextUpdate()}
                 </p>
+                {refreshNeedsAttention && (
+                  <p className="text-xs text-amber-300 bg-amber-900/20 border border-amber-800/40 rounded px-2 py-1.5 mt-2">
+                    Refresh required: last update is older than 24 hours.
+                  </p>
+                )}
                 <p className="text-xs text-zinc-300 mt-3">
                   Risk scores automatically update daily to reflect the latest geopolitical data. You can also manually refresh data whenever needed.
                 </p>
@@ -525,58 +731,162 @@ export default function App() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {!isLoading && datasets.length > 0 && (
-              <DatasetSelector
-                datasets={datasets}
-                selectedDataset={selectedDatasetId}
-                onDatasetChange={setSelectedDatasetId}
-              />
-            )}
-            <button
-              onClick={() => setShowUpdateStatus(!showUpdateStatus)}
-              className="p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
-              title="Daily update status"
-            >
-              <RefreshCw className="size-5" />
-            </button>
-            <button
-              onClick={() => setShowAlertsWindow(true)}
-              className="p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
-              title="Alerts & Updates"
-            >
-              <AlertTriangle className="size-5" />
-            </button>
-            <button
-              onClick={() => setShowHelpModal(true)}
-              className="p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
-              title="Help"
-            >
-              <HelpCircle className="size-5" />
-            </button>
+          <div className="flex items-end gap-2 w-full md:w-auto justify-end">
+            <div className="flex items-center gap-2">
+              {!isLoading && datasets.length > 0 && (
+                <DatasetSelector
+                  datasets={datasets}
+                  selectedDataset={selectedDatasetId}
+                  onDatasetChange={setSelectedDatasetId}
+                />
+              )}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNewsFeedPanel((prev) => !prev)}
+                  className={`relative p-2 rounded-lg transition-colors ${
+                    showNewsFeedPanel
+                      ? "bg-zinc-800 text-zinc-100"
+                      : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                  }`}
+                  title="News Feed"
+                >
+                  <Newspaper className="size-5" />
+                  {newsAlertCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 font-semibold text-center border border-zinc-950">
+                      {newsAlertCount > 99 ? "99+" : newsAlertCount}
+                    </span>
+                  )}
+                </button>
+
+                {showNewsFeedPanel && (
+                  <Card className="absolute right-0 top-full mt-2 w-[340px] max-w-[85vw] bg-zinc-950 border-zinc-800 shadow-xl z-50">
+                    <div className="p-2.5 border-b border-zinc-800 flex items-center justify-between">
+                      <div>
+                        <h2 className="text-xs font-semibold text-white flex items-center gap-2">
+                          <Newspaper className="size-3.5 text-blue-400" />
+                          News Feed
+                        </h2>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">
+                          {new Date().toLocaleDateString(undefined, {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setNewsRefreshToken((prev) => prev + 1)}
+                          className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                          title="Refresh news feed"
+                        >
+                          <RefreshCw className="size-3.5 text-zinc-400" />
+                        </button>
+                        <button
+                          onClick={() => setShowNewsFeedPanel(false)}
+                          className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                          title="Close news feed"
+                        >
+                          <X className="size-3.5 text-zinc-400" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-[320px] overflow-y-auto p-2">
+                      <NewsFeedPanel
+                        countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                          acc[country] = riskData[country] || 50;
+                          return acc;
+                        }, {} as { [country: string]: number })}
+                        portfolioCountries={portfolioAnalysis.countryExposures.map((exp) => exp.country)}
+                        compact={true}
+                        refreshToken={newsRefreshToken}
+                      />
+                    </div>
+                  </Card>
+                )}
+              </div>
+              <button
+                onClick={() => setShowAlertsWindow(true)}
+                className="relative p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
+                title="Alerts & Updates"
+              >
+                <AlertTriangle className="size-5" />
+                {alertCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 font-semibold text-center border border-zinc-950">
+                    {alertCount > 99 ? "99+" : alertCount}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setShowUpdateStatus(!showUpdateStatus)}
+                className={`relative p-2 rounded-lg transition-colors ${
+                  refreshNeedsAttention
+                    ? "text-amber-400 hover:bg-zinc-800 hover:text-amber-300"
+                    : refreshIsCurrent
+                    ? "text-emerald-400 hover:bg-zinc-800 hover:text-emerald-300"
+                    : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                }`}
+                title={refreshNeedsAttention ? "Refresh needed (older than 24h)" : "Daily update status"}
+              >
+                <RefreshCw className="size-5" />
+                {refreshIsCurrent && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-emerald-600 text-white text-[10px] leading-4 font-semibold text-center border border-zinc-950 flex items-center justify-center">
+                    <Check className="size-2.5" />
+                  </span>
+                )}
+                {refreshNeedsAttention && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-amber-500 text-zinc-900 text-[10px] leading-4 font-semibold text-center border border-zinc-950 flex items-center justify-center">
+                    <AlertTriangle className="size-2.5" />
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setShowHelpModal(true)}
+                className="p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
+                title="Help"
+              >
+                <HelpCircle className="size-5" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-5 bg-zinc-900 border border-zinc-800">
-            <TabsTrigger value="dashboard" className="text-xs md:text-sm">
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="summary" className="text-xs md:text-sm">
-              Summary
-            </TabsTrigger>
-            <TabsTrigger value="trends" className="text-xs md:text-sm">
-              Trends
-            </TabsTrigger>
-            <TabsTrigger value="exports" className="text-xs md:text-sm">
-              Exports
-            </TabsTrigger>
-            <TabsTrigger value="tools" className="text-xs md:text-sm">
-              Tools
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full md:w-auto">
+            <TabsList className="grid w-full max-w-3xl grid-cols-6 bg-zinc-900 border border-zinc-800">
+              <TabsTrigger value="dashboard" className="text-xs md:text-sm">
+                Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="summary" className="text-xs md:text-sm">
+                Summary
+              </TabsTrigger>
+              <TabsTrigger value="advanced-metrics" className="text-xs md:text-sm">
+                Metrics
+              </TabsTrigger>
+              <TabsTrigger value="trends" className="text-xs md:text-sm">
+                Trends
+              </TabsTrigger>
+              <TabsTrigger value="scenarios" className="text-xs md:text-sm">
+                Scenarios
+              </TabsTrigger>
+              <TabsTrigger value="tools" className="text-xs md:text-sm">
+                Tools
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <button
+            onClick={() => setCurrentTab("exports")}
+            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors flex items-center justify-center gap-2 shrink-0"
+            title="Open export reports"
+          >
+            <Download className="size-4" />
+            Export Reports
+          </button>
+        </div>
+
       </header>
 
       <div className="flex flex-col lg:flex-row">
@@ -660,6 +970,70 @@ export default function App() {
               <div className="text-[8px] text-zinc-600 mt-3 pt-2 border-t border-zinc-800 px-1">
                 <span className="text-zinc-500">Source:</span> Global Geopolitical Snapshot (April 2026)
               </div>
+
+              {currentTab === "dashboard" && (
+                <div className="mt-3 pt-3 border-t border-zinc-800 px-1 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] text-zinc-400 uppercase tracking-wide">Holdings Filter</h4>
+                    <button
+                      onClick={() => {
+                        setDashboardMinRiskFilter(0);
+                        setDashboardSectorFilter("all");
+                        setDashboardCountryFilter("all");
+                      }}
+                      className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
+                      Reset
+                    </button>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between text-[9px] text-zinc-500 mb-1">
+                      <span>Min Country Risk</span>
+                      <span>{dashboardMinRiskFilter}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={dashboardMinRiskFilter}
+                      onChange={(e) => setDashboardMinRiskFilter(Number(e.target.value))}
+                      className="w-full h-1 accent-blue-500"
+                    />
+                  </div>
+
+                  <select
+                    value={dashboardSectorFilter}
+                    onChange={(e) => setDashboardSectorFilter(e.target.value)}
+                    className="w-full h-7 bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 px-2"
+                  >
+                    <option value="all">All sectors</option>
+                    {dashboardSectors.map((sector) => (
+                      <option key={sector} value={sector}>
+                        {sector}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={dashboardCountryFilter}
+                    onChange={(e) => setDashboardCountryFilter(e.target.value)}
+                    className="w-full h-7 bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 px-2"
+                  >
+                    <option value="all">All countries</option>
+                    {dashboardCountries.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
+                  </select>
+
+                  <p className="text-[9px] text-zinc-500">
+                    Showing {dashboardPortfolio.length} of {portfolio.length} assets
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -671,14 +1045,26 @@ export default function App() {
             {/* MOBILE ONLY - Heat Map appears early */}
             <div className="lg:hidden">
               <Card className="p-3 bg-zinc-950 border-zinc-900">
-                <h2 className="text-xs mb-2 text-zinc-400 uppercase tracking-wide font-medium">
-                  Global Risk Heat Map
-                </h2>
-                <WorldMap
-                  riskData={riskData}
-                  countryExposures={portfolioAnalysis.countryExposures}
-                  weights={weights}
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
+                    Global Risk Heat Map
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => downloadMapSnapshot("global-risk-map-mobile")}
+                    className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                    title="Download map snapshot"
+                  >
+                    <Download className="size-3.5" />
+                  </button>
+                </div>
+                <div id="global-risk-map-mobile">
+                  <WorldMap
+                    riskData={riskData}
+                    countryExposures={dashboardPortfolioAnalysis.countryExposures}
+                    weights={weights}
+                  />
+                </div>
               </Card>
             </div>
 
@@ -692,7 +1078,7 @@ export default function App() {
                     Top Country Exposures
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {portfolioAnalysis.countryExposures.slice(0, 6).map((exposure) => {
+                    {dashboardPortfolioAnalysis.countryExposures.slice(0, 6).map((exposure) => {
                       const risk = riskData[exposure.country] || 50;
                       const isHighRisk = exposure.riskContribution > 0 && risk > 60;
                       return (
@@ -741,14 +1127,26 @@ export default function App() {
 
                 {/* DESKTOP ONLY - Large Map */}
                 <Card className="p-3 bg-zinc-950 border-zinc-900 hidden lg:block">
-                  <h2 className="text-xs mb-2 text-zinc-400 uppercase tracking-wide font-medium">
-                    Global Risk Heat Map
-                  </h2>
-                  <WorldMap
-                    riskData={riskData}
-                    countryExposures={portfolioAnalysis.countryExposures}
-                    weights={weights}
-                  />
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
+                      Global Risk Heat Map
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => downloadMapSnapshot("global-risk-map-desktop")}
+                      className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                      title="Download map snapshot"
+                    >
+                      <Download className="size-3.5" />
+                    </button>
+                  </div>
+                  <div id="global-risk-map-desktop">
+                    <WorldMap
+                      riskData={riskData}
+                      countryExposures={dashboardPortfolioAnalysis.countryExposures}
+                      weights={weights}
+                    />
+                  </div>
                 </Card>
               </div>
 
@@ -760,10 +1158,10 @@ export default function App() {
                     <p className="text-[10px] text-zinc-600 mb-2 uppercase tracking-wide font-medium">
                       Total Portfolio Risk
                     </p>
-                    <RiskGaugeCompact value={portfolioAnalysis.totalRiskScore} />
+                    <RiskGaugeCompact value={dashboardPortfolioAnalysis.totalRiskScore} />
                     <p className="text-[10px] text-zinc-600 text-center mt-1 uppercase">
                       {(() => {
-                        const score = portfolioAnalysis.totalRiskScore;
+                        const score = dashboardPortfolioAnalysis.totalRiskScore;
                         if (score >= 80) return "CRITICAL";
                         if (score >= 60) return "HIGH";
                         if (score >= 40) return "MODERATE";
@@ -776,7 +1174,7 @@ export default function App() {
                   <div className="pt-3 border-t border-zinc-900">
                     <p className="text-[10px] text-zinc-600 mb-2 uppercase tracking-wide font-medium">Top Risk Assets</p>
                     <div className="space-y-1">
-                      {portfolioAnalysis.topRiskAssets.slice(0, 5).map((asset, index) => (
+                      {dashboardPortfolioAnalysis.topRiskAssets.slice(0, 5).map((asset, index) => (
                         <div
                           key={asset}
                           className="flex items-center gap-2 text-xs bg-zinc-900/60 px-2 py-1"
@@ -792,7 +1190,7 @@ export default function App() {
                   <div className="pt-3 border-t border-zinc-900">
                     <p className="text-[10px] text-zinc-600 mb-2 uppercase tracking-wide font-medium">Top Risk Countries</p>
                     <div className="space-y-1">
-                      {portfolioAnalysis.topRiskCountries.slice(0, 5).map((country, index) => (
+                      {dashboardPortfolioAnalysis.topRiskCountries.slice(0, 5).map((country, index) => (
                         <div
                           key={country}
                           className="flex items-center gap-2 text-xs bg-zinc-900/60 px-2 py-1"
@@ -821,8 +1219,9 @@ export default function App() {
 
             {/* Holdings Table */}
             <HoldingsTable
-              assets={portfolio}
-              assetContributions={portfolioAnalysis.assetContributions}
+              assets={dashboardPortfolio}
+              assetContributions={dashboardPortfolioAnalysis.assetContributions}
+              countryRisks={riskData}
             />
           </div>
         </main>
@@ -836,102 +1235,31 @@ export default function App() {
               weights={weights}
               portfolio={portfolio}
             />
-            
-            {/* Advanced Metrics Panel */}
+          </div>
+        </main>
+        ) : currentTab === "advanced-metrics" ? (
+        /* Advanced Metrics Tab Content */
+        <main className="flex-1 p-3">
+          <div className="max-w-[1600px] mx-auto space-y-4">
             {portfolioAnalysis.countryExposures.length > 0 && (
               <>
-                <div className="border-t border-zinc-800 pt-4">
-                  <RiskMetricsPanel
-                    trendData={getPortfolioRiskTrend(30)}
-                    countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
-                      acc[country] = riskData[country] || 50;
-                      return acc;
-                    }, {} as { [country: string]: number })}
-                    weights={weights}
-                    portfolioRisk={portfolioAnalysis.totalRiskScore}
-                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
-                      country: exp.country,
-                      riskContribution: exp.riskContribution,
-                      name: exp.country
-                    }))}
-                  />
-                </div>
-                
-                {/* Backtesting Panel */}
-                <div className="border-t border-zinc-800 pt-4">
-                  <BacktestPanel
-                    baselineCountryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
-                      acc[country] = riskData[country] || 50;
-                      return acc;
-                    }, {} as { [country: string]: number })}
-                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
-                      country: exp.country,
-                      riskContribution: exp.riskContribution,
-                      name: exp.country
-                    }))}
-                    currentRisk={portfolioAnalysis.totalRiskScore}
-                  />
-                </div>
-
-                {/* Correlation Analysis Panel */}
-                <div className="border-t border-zinc-800 pt-4">
-                  <CorrelationAnalysisPanel
-                    countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
-                      acc[country] = riskData[country] || 50;
-                      return acc;
-                    }, {} as { [country: string]: number })}
-                    trendData={Object.keys(baseRiskData).reduce((acc, country) => {
-                      // Create mock trend data from current risk scores
-                      acc[country] = Array(30).fill(riskData[country] || 50);
-                      return acc;
-                    }, {} as { [country: string]: number[] })}
-                    weights={portfolioAnalysis.countryExposures.reduce((acc, exp) => {
-                      acc[exp.country] = exp.riskContribution;
-                      return acc;
-                    }, {} as { [country: string]: number })}
-                    currentPortfolioCountries={portfolioAnalysis.countryExposures.map(exp => exp.country)}
-                  />
-                </div>
-
-                {/* Custom Scenario Builder Panel */}
-                <div className="border-t border-zinc-800 pt-4">
-                  <CustomScenarioBuilderPanel
-                    baselineCountryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
-                      acc[country] = riskData[country] || 50;
-                      return acc;
-                    }, {} as { [country: string]: number })}
-                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
-                      country: exp.country,
-                      riskContribution: exp.riskContribution,
-                      name: exp.country
-                    }))}
-                    currentRisk={portfolioAnalysis.totalRiskScore}
-                  />
-                </div>
-
-                {/* Monte Carlo Simulation Panel */}
-                <div className="border-t border-zinc-800 pt-4">
-                  <MonteCarloPanel
-                    currentRisk={portfolioAnalysis.totalRiskScore}
-                    trendData={getPortfolioRiskTrend(90)}
-                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
-                      country: exp.country,
-                      riskContribution: exp.riskContribution,
-                      name: exp.country
-                    }))}
-                  />
-                </div>
-
-                {/* News Feed Panel */}
-                <div className="border-t border-zinc-800 pt-4">
-                  <NewsFeedPanel
-                    countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
-                      acc[country] = riskData[country] || 50;
-                      return acc;
-                    }, {} as { [country: string]: number })}
-                    portfolioCountries={portfolioAnalysis.countryExposures.map(exp => exp.country)}
-                  />
-                </div>
+                <RiskMetricsPanel
+                  trendData={getPortfolioRiskTrend(30)}
+                  countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                    acc[country] = riskData[country] || 50;
+                    return acc;
+                  }, {} as { [country: string]: number })}
+                  weights={weights}
+                  portfolioRisk={portfolioAnalysis.totalRiskScore}
+                  portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
+                    country: exp.country,
+                    riskContribution: exp.riskContribution,
+                    name: exp.country
+                  }))}
+                  showAdvancedMetrics={true}
+                  showBenchmarkComparison={true}
+                  showRiskAttribution={false}
+                />
               </>
             )}
           </div>
@@ -945,6 +1273,92 @@ export default function App() {
             />
           </div>
         </main>
+        ) : currentTab === "scenarios" ? (
+        /* Scenarios Tab Content */
+        <main className="flex-1 p-3">
+          <div className="max-w-[1600px] mx-auto space-y-4">
+            {portfolioAnalysis.countryExposures.length > 0 && (
+              <Tabs defaultValue="analysis" className="space-y-4">
+                <TabsList className="bg-zinc-900/70 border border-zinc-800 w-full grid grid-cols-1 md:grid-cols-3 h-auto">
+                  <TabsTrigger value="analysis" className="text-xs md:text-sm py-2">
+                    Analysis
+                  </TabsTrigger>
+                  <TabsTrigger value="custom-scenario" className="text-xs md:text-sm py-2">
+                    Custom Scenario Builder
+                  </TabsTrigger>
+                  <TabsTrigger value="monte-carlo" className="text-xs md:text-sm py-2">
+                    Monte Carlo Risk Simulation
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="analysis" className="mt-0 space-y-4">
+                  {/* Backtesting Panel */}
+                  <div className="border-t border-zinc-800 pt-4">
+                    <BacktestPanel
+                      baselineCountryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                        acc[country] = riskData[country] || 50;
+                        return acc;
+                      }, {} as { [country: string]: number })}
+                      portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
+                        country: exp.country,
+                        riskContribution: exp.riskContribution,
+                        name: exp.country
+                      }))}
+                      currentRisk={portfolioAnalysis.totalRiskScore}
+                    />
+                  </div>
+
+                  {/* Correlation Analysis Panel */}
+                  <div className="border-t border-zinc-800 pt-4">
+                    <CorrelationAnalysisPanel
+                      countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                        acc[country] = riskData[country] || 50;
+                        return acc;
+                      }, {} as { [country: string]: number })}
+                      trendData={Object.keys(baseRiskData).reduce((acc, country) => {
+                        acc[country] = Array(30).fill(riskData[country] || 50);
+                        return acc;
+                      }, {} as { [country: string]: number[] })}
+                      weights={portfolioAnalysis.countryExposures.reduce((acc, exp) => {
+                        acc[exp.country] = exp.riskContribution;
+                        return acc;
+                      }, {} as { [country: string]: number })}
+                      currentPortfolioCountries={portfolioAnalysis.countryExposures.map(exp => exp.country)}
+                    />
+                  </div>
+
+                </TabsContent>
+
+                <TabsContent value="custom-scenario" className="mt-0">
+                  <CustomScenarioBuilderPanel
+                    baselineCountryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                      acc[country] = riskData[country] || 50;
+                      return acc;
+                    }, {} as { [country: string]: number })}
+                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
+                      country: exp.country,
+                      riskContribution: exp.riskContribution,
+                      name: exp.country
+                    }))}
+                    currentRisk={portfolioAnalysis.totalRiskScore}
+                  />
+                </TabsContent>
+
+                <TabsContent value="monte-carlo" className="mt-0">
+                  <MonteCarloPanel
+                    currentRisk={portfolioAnalysis.totalRiskScore}
+                    trendData={getPortfolioRiskTrend(90)}
+                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
+                      country: exp.country,
+                      riskContribution: exp.riskContribution,
+                      name: exp.country
+                    }))}
+                  />
+                </TabsContent>
+              </Tabs>
+            )}
+          </div>
+        </main>
         ) : currentTab === "exports" ? (
         /* Exports Tab Content */
         <main className="flex-1 p-3">
@@ -953,6 +1367,8 @@ export default function App() {
               portfolioSummary={portfolioAnalysis}
               countryRisks={riskData}
               holdings={portfolio}
+              trends={getPortfolioRiskTrend(90)}
+              weights={weights}
             />
           </div>
         </main>
@@ -963,6 +1379,10 @@ export default function App() {
             <AdvancedFilters
               countryRisks={riskData}
               defaultAssets={portfolio}
+              showPortfolioTab={true}
+              showUploadTab={true}
+              showSectorsTab={false}
+              showScreeningTab={false}
             />
           </div>
         </main>
