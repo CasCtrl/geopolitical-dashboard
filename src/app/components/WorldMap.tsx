@@ -4,6 +4,8 @@ import { motion } from "motion/react";
 interface WorldMapProps {
   riskData: { [key: string]: number };
   countryExposures?: { country: string; riskContribution: number; contributingAssets: string[] }[];
+  dataFreshnessLabel?: string;
+  isStaleData?: boolean;
   weights: {
     political: number;
     economic: number;
@@ -121,6 +123,31 @@ const CountryPath = memo(function CountryPath({
     onTooltipChange("", { x: 0, y: 0 });
   }, [onTooltipChange]);
 
+  const handleFocus = useCallback((e: React.FocusEvent<SVGPathElement>) => {
+    const exposure = countryExposures?.find(ce => ce.country === countryName);
+    let tooltip = `${countryName}\nRisk Score: ${risk.toFixed(0)}`;
+    if (exposure && exposure.riskContribution > 0) {
+      tooltip += `\nExposure: ${exposure.riskContribution.toFixed(2)}%`;
+    }
+    const bounds = e.currentTarget.getBoundingClientRect();
+    onTooltipChange(tooltip, { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 });
+  }, [countryExposures, countryName, onTooltipChange, risk]);
+
+  const handleBlur = useCallback(() => {
+    onTooltipChange("", { x: 0, y: 0 });
+  }, [onTooltipChange]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<SVGPathElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const bounds = e.currentTarget.getBoundingClientRect();
+      onTooltipChange(`${countryName}\nRisk Score: ${risk.toFixed(0)}`, {
+        x: bounds.left + bounds.width / 2,
+        y: bounds.top + bounds.height / 2,
+      });
+    }
+  }, [countryName, onTooltipChange, risk]);
+
   if (!pathData) return null;
 
   return (
@@ -131,24 +158,32 @@ const CountryPath = memo(function CountryPath({
       stroke="#18181b"
       strokeWidth="0.5"
       className="transition-all hover:opacity-80 cursor-pointer"
+      role="button"
+      tabIndex={0}
+      aria-label={`${countryName} risk score ${risk.toFixed(0)}`}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
     />
   );
 });
 
-function WorldMapComponent({ riskData, countryExposures, weights }: WorldMapProps) {
+function WorldMapComponent({ riskData, countryExposures, dataFreshnessLabel, isStaleData = false, weights }: WorldMapProps) {
   const [tooltipContent, setTooltipContent] = useState("");
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [countries, setCountries] = useState<CountryFeature[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     // Load GeoJSON once and cache it
     if (geoJSONCache) {
       setCountries(geoJSONCache.features);
       setLoading(false);
+      setLoadError(null);
       return;
     }
 
@@ -158,10 +193,12 @@ function WorldMapComponent({ riskData, countryExposures, weights }: WorldMapProp
         geoJSONCache = data;
         setCountries(data.features || []);
         setLoading(false);
+        setLoadError(null);
       })
       .catch((error) => {
         console.error("Error loading map data:", error);
         setLoading(false);
+        setLoadError("Could not load map data. Please retry in a moment.");
       });
   }, []);
 
@@ -178,18 +215,45 @@ function WorldMapComponent({ riskData, countryExposures, weights }: WorldMapProp
 
   if (loading) {
     return (
-      <div className="w-full h-96 flex items-center justify-center bg-zinc-950 rounded-lg">
-        <div className="text-zinc-600">Loading map...</div>
+      <div className="w-full h-96 flex flex-col items-center justify-center gap-2 bg-zinc-950 rounded-lg border border-zinc-800" role="status" aria-live="polite">
+        <div className="text-zinc-300 text-sm">Loading map data...</div>
+        <div className="text-zinc-500 text-xs">Fetching country boundaries and risk overlays</div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="w-full h-96 flex flex-col items-center justify-center gap-2 bg-zinc-950 rounded-lg border border-red-900/50" role="alert" aria-live="assertive">
+        <div className="text-red-300 text-sm">Map unavailable</div>
+        <div className="text-red-400/80 text-xs">{loadError}</div>
+      </div>
+    );
+  }
+
+  if (countries.length === 0) {
+    return (
+      <div className="w-full h-96 flex flex-col items-center justify-center gap-2 bg-zinc-950 rounded-lg border border-zinc-800" role="status" aria-live="polite">
+        <div className="text-zinc-300 text-sm">No map features available</div>
+        <div className="text-zinc-500 text-xs">Country geometry did not return usable data</div>
       </div>
     );
   }
 
   return (
     <div className="relative bg-zinc-950">
+      {dataFreshnessLabel && (
+        <div className="mb-2 inline-flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-[11px]">
+          <span className={isStaleData ? "text-amber-300" : "text-emerald-300"}>{isStaleData ? "Stale" : "Fresh"}</span>
+          <span className="text-zinc-400">{dataFreshnessLabel}</span>
+        </div>
+      )}
       <svg
         viewBox="0 0 1000 500"
         className="w-full h-auto"
         style={{ maxHeight: "400px" }}
+        role="img"
+        aria-label="Global geopolitical risk heat map"
       >
         {/* Ocean background */}
         <rect width="1000" height="500" fill="#09090b" />

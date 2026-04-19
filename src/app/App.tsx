@@ -820,6 +820,17 @@ export default function App() {
   const updateStatus = useMemo(() => getUpdateStatus(), [updateStatusTick, showUpdateStatus]);
   const refreshNeedsAttention = updateStatus.needsUpdate;
   const refreshIsCurrent = !updateStatus.needsUpdate && updateStatus.lastUpdated !== 'Never';
+  const corePanelFreshnessLabel = useMemo(() => {
+    if (updateStatus.lastUpdated === 'Never') {
+      return 'No daily refresh has completed yet';
+    }
+
+    return `Last updated ${new Date(updateStatus.lastUpdated).toLocaleString(undefined, {
+      timeZone: selectedTimeZone,
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })}`;
+  }, [selectedTimeZone, updateStatus.lastUpdated]);
 
   return (
     <div className="min-h-screen bg-black">
@@ -1356,6 +1367,7 @@ export default function App() {
                       : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
                   }`}
                   title="News Feed"
+                  aria-label="Open news feed"
                 >
                   <Newspaper className="size-5" />
                   {newsAlertCount > 0 && (
@@ -1417,6 +1429,7 @@ export default function App() {
                 onClick={() => setShowAlertsWindow(true)}
                 className="relative h-9 w-9 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
                 title="Alerts & Updates"
+                  aria-label="Open alerts and updates"
               >
                 <AlertTriangle className="size-5" />
                 {alertCount > 0 && (
@@ -1435,6 +1448,7 @@ export default function App() {
                     : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
                 }`}
                 title={refreshNeedsAttention ? "Refresh needed (older than 24h)" : "Daily update status"}
+                  aria-label="Open daily update status"
               >
                 <RefreshCw className="size-5" />
                 {refreshIsCurrent && (
@@ -1452,6 +1466,7 @@ export default function App() {
                 onClick={() => setShowHelpModal(true)}
                 className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
                 title="Help"
+                aria-label="Open help"
               >
                 <HelpCircle className="size-5" />
               </button>
@@ -1459,6 +1474,7 @@ export default function App() {
                 onClick={() => setShowSettingsModal(true)}
                 className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
                 title="Settings"
+                aria-label="Open settings"
               >
                 <Settings className="size-5" />
               </button>
@@ -1679,6 +1695,7 @@ export default function App() {
                     onClick={() => downloadMapSnapshot("global-risk-map-mobile")}
                     className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
                     title="Download map snapshot"
+                    aria-label="Download mobile map snapshot"
                   >
                     <Download className="size-3.5" />
                   </button>
@@ -1687,6 +1704,8 @@ export default function App() {
                   <WorldMap
                     riskData={riskData}
                     countryExposures={dashboardPortfolioAnalysis.countryExposures}
+                    dataFreshnessLabel={corePanelFreshnessLabel}
+                    isStaleData={refreshNeedsAttention}
                     weights={weights}
                   />
                 </div>
@@ -1702,6 +1721,12 @@ export default function App() {
                   <h3 className="text-xs mb-2 text-zinc-400 uppercase tracking-wide font-medium">
                     Top Country Exposures
                   </h3>
+                  {dashboardPortfolioAnalysis.countryExposures.length === 0 ? (
+                    <div className="rounded border border-zinc-800 bg-zinc-900/40 p-4 text-center" role="status" aria-live="polite">
+                      <p className="text-sm text-zinc-300">No country exposures available for this selection.</p>
+                      <p className="text-xs text-zinc-500 mt-1">Try changing dataset or clearing dashboard filters.</p>
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                     {dashboardPortfolioAnalysis.countryExposures.slice(0, 6).map((exposure) => {
                       const risk = riskData[exposure.country] || 50;
@@ -1748,6 +1773,7 @@ export default function App() {
                       );
                     })}
                   </div>
+                  )}
                 </Card>
 
                 {/* DESKTOP ONLY - Large Map */}
@@ -1761,6 +1787,7 @@ export default function App() {
                       onClick={() => downloadMapSnapshot("global-risk-map-desktop")}
                       className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
                       title="Download map snapshot"
+                      aria-label="Download desktop map snapshot"
                     >
                       <Download className="size-3.5" />
                     </button>
@@ -1769,6 +1796,8 @@ export default function App() {
                     <WorldMap
                       riskData={riskData}
                       countryExposures={dashboardPortfolioAnalysis.countryExposures}
+                      dataFreshnessLabel={corePanelFreshnessLabel}
+                      isStaleData={refreshNeedsAttention}
                       weights={weights}
                     />
                   </div>
@@ -1864,6 +1893,8 @@ export default function App() {
             <HoldingsTable
               assets={dashboardPortfolio}
               assetContributions={dashboardPortfolioAnalysis.assetContributions}
+              dataFreshnessLabel={corePanelFreshnessLabel}
+              isStaleData={refreshNeedsAttention}
               countryRisks={riskData}
             />
           </div>
@@ -1874,6 +1905,8 @@ export default function App() {
           <div className="max-w-[1600px] mx-auto space-y-4">
             <Summary
               portfolioAnalysis={portfolioAnalysis}
+              dataFreshnessLabel={corePanelFreshnessLabel}
+              isStaleData={refreshNeedsAttention}
               riskData={riskData}
               weights={weights}
               portfolio={portfolio}

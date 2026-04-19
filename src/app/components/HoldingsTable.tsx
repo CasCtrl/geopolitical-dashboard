@@ -8,11 +8,13 @@ interface HoldingsTableProps {
   assets: Asset[];
   assetContributions: { ticker: string; riskScore: number; mainRisk?: string }[];
   countryRisks: { [country: string]: number };
+  dataFreshnessLabel?: string;
+  isStaleData?: boolean;
 }
 
 const ROWS_PER_PAGE = 10; // Show 10 rows at a time for virtualization
 
-export function HoldingsTable({ assets, assetContributions, countryRisks }: HoldingsTableProps) {
+export function HoldingsTable({ assets, assetContributions, countryRisks, dataFreshnessLabel, isStaleData = false }: HoldingsTableProps) {
   const getContributionColor = useCallback((riskScore: number) => {
     if (riskScore >= 8) return "text-red-400 bg-red-950/30";
     if (riskScore >= 6) return "text-orange-400 bg-orange-950/30";
@@ -76,6 +78,19 @@ export function HoldingsTable({ assets, assetContributions, countryRisks }: Hold
           calculation="Asset risk uses weighted country dependencies per asset; sector risk index is the weighted average of asset geo-risk within each sector."
         />
       </div>
+      {dataFreshnessLabel && (
+        <div className="mb-3 inline-flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-[11px]">
+          <span className={isStaleData ? "text-amber-300" : "text-emerald-300"}>{isStaleData ? "Stale" : "Fresh"}</span>
+          <span className="text-zinc-400">{dataFreshnessLabel}</span>
+        </div>
+      )}
+
+      {assets.length === 0 ? (
+        <div className="rounded border border-zinc-800 bg-zinc-900/40 p-6 text-center" role="status" aria-live="polite">
+          <p className="text-sm text-zinc-300">No holdings match the current filters.</p>
+          <p className="text-xs text-zinc-500 mt-1">Try lowering minimum risk or clearing country/sector filters.</p>
+        </div>
+      ) : (
       <div className="overflow-x-auto -mx-3 md:mx-0">
         <div className="inline-block min-w-full align-middle max-h-96 overflow-y-auto">
           <table className="min-w-full text-left">
@@ -154,6 +169,7 @@ export function HoldingsTable({ assets, assetContributions, countryRisks }: Hold
           </table>
         </div>
       </div>
+      )}
       {assets.length > ROWS_PER_PAGE && (
         <p className="text-xs text-zinc-500 mt-2">Showing {visibleAssets.length} of {assets.length} holdings</p>
       )}

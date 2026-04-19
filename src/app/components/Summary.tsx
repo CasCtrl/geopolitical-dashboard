@@ -19,6 +19,8 @@ interface SummaryProps {
     terrorism: number;
   };
   portfolio: Array<{ ticker: string; name: string; sector: string; weight: number; value: number }>;
+  dataFreshnessLabel?: string;
+  isStaleData?: boolean;
 }
 
 export function Summary({
@@ -26,6 +28,8 @@ export function Summary({
   riskData,
   weights,
   portfolio,
+  dataFreshnessLabel,
+  isStaleData = false,
 }: SummaryProps) {
   // Calculate average risk
   const averageGlobalRisk = Object.values(riskData).length > 0
@@ -147,8 +151,30 @@ export function Summary({
 
   const riskLevel = getRiskLevel(riskScore);
 
+  if (portfolio.length === 0 || portfolioAnalysis.countryExposures.length === 0) {
+    return (
+      <Card className="p-6 bg-zinc-950 border-zinc-900" role="status" aria-live="polite">
+        <h2 className="text-sm font-semibold text-white mb-2">Summary</h2>
+        {dataFreshnessLabel && (
+          <div className="mb-3 inline-flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-[11px]">
+            <span className={isStaleData ? "text-amber-300" : "text-emerald-300"}>{isStaleData ? "Stale" : "Fresh"}</span>
+            <span className="text-zinc-400">{dataFreshnessLabel}</span>
+          </div>
+        )}
+        <p className="text-sm text-zinc-300">Not enough portfolio data to generate insights yet.</p>
+        <p className="text-xs text-zinc-500 mt-1">Add holdings or switch datasets to view recommendations and risk summaries.</p>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4 pb-6">
+      {dataFreshnessLabel && (
+        <div className="inline-flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-[11px]">
+          <span className={isStaleData ? "text-amber-300" : "text-emerald-300"}>{isStaleData ? "Stale" : "Fresh"}</span>
+          <span className="text-zinc-400">{dataFreshnessLabel}</span>
+        </div>
+      )}
       {/* Current Snapshot */}
       <Card className="p-4 bg-zinc-950 border-zinc-900">
         <div className="flex items-start justify-between mb-4">
