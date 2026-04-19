@@ -104,6 +104,7 @@ Additional runtime controls:
 - Dependabot policy: `.github/dependabot.yml` + `.github/DEPENDENCY_UPDATE_POLICY.md`
 - Stricter backend security headers/CSP via Helmet policy in `server/server.js`
 - Release workflow emits `release-audit` artifact for each deploy execution
+- Operational audit sink runbook: `SECURITY_AUDIT_RUNBOOK.md`
 
 ## Stopping Services
 
