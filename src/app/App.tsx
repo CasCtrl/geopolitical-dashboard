@@ -738,13 +738,18 @@ export default function App() {
                       <p className="text-[11px] text-zinc-300 mb-2">
                         <span className="font-semibold text-white">Build:</span> 1.1 | <span className="font-semibold text-white">Last Updated:</span> April 19, 2026
                       </p>
-                      <ul className="space-y-1 text-[11px] list-disc list-inside">
-                        <li>Added Global Risk Heat Map PNG snapshot download with stronger capture reliability.</li>
-                        <li>Added toast feedback for snapshot success and error states.</li>
-                        <li>Added refresh-status indicators: checkmark for data refreshed within 24 hours, alert when overdue.</li>
-                        <li>Expanded Help content for exports, snapshot flow, daily updates, and advanced tools.</li>
-                        <li>Updated local backend runtime baseline to port 5001 with improved DB bootstrap reliability.</li>
-                      </ul>
+                      <div className="space-y-1 text-[11px]">
+                        <p>✅ Added Global Risk Heat Map PNG snapshot download with stronger capture reliability.</p>
+                        <p>✅ Added toast feedback for snapshot success and error states.</p>
+                        <p>✅ Added refresh-status indicators: checkmark for data refreshed within 24 hours, alert when overdue.</p>
+                        <p>✅ Updated alert functionality so the Alerts modal "Active Alerts" summary now matches the high-risk alert count shown in the header badge/stat.</p>
+                        <p>✅ Added live API connector feed/status in Settings (APIs tab), including connected/disconnected indicators and manual recheck.</p>
+                        <p>✅ Added a top-header live data status badge (green/red) near the dashboard title.</p>
+                        <p>✅ Added a new Settings icon and modal with API connection guidance and basic app information.</p>
+                        <p>✅ Added a persisted time zone selector in Settings for localized status timestamps.</p>
+                        <p>✅ Expanded Help content for exports, snapshot flow, daily updates, and advanced tools.</p>
+                        <p>✅ Updated local backend runtime baseline to port 5001 with improved DB bootstrap reliability.</p>
+                      </div>
                     </div>
                   </div>
                 </TabsContent>
