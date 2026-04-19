@@ -96,6 +96,48 @@ async function initializeDatabase() {
       )
     `);
 
+    await conn.query(`
+      IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[UserWorkspaceArtifacts]') AND type in (N'U'))
+      CREATE TABLE UserWorkspaceArtifacts (
+        id BIGINT PRIMARY KEY IDENTITY(1,1),
+        artifactId UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+        userId NVARCHAR(120) NOT NULL,
+        workspaceId NVARCHAR(120) NOT NULL,
+        ownerUserId NVARCHAR(120) NOT NULL,
+        ownershipRole NVARCHAR(30) NOT NULL DEFAULT 'owner',
+        artifactType NVARCHAR(64) NOT NULL,
+        artifactKey NVARCHAR(128) NOT NULL,
+        version INT NOT NULL,
+        isDeleted BIT NOT NULL DEFAULT 0,
+        payload NVARCHAR(MAX) NULL,
+        traceId NVARCHAR(120) NULL,
+        createdAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT UQ_UserWorkspaceArtifacts_Version UNIQUE (userId, workspaceId, artifactType, artifactKey, version)
+      )
+    `);
+
+    await conn.query(`
+      IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_UserWorkspaceArtifacts_Latest' AND object_id = OBJECT_ID(N'[dbo].[UserWorkspaceArtifacts]'))
+      CREATE INDEX IX_UserWorkspaceArtifacts_Latest
+      ON UserWorkspaceArtifacts (userId, workspaceId, artifactType, artifactKey, version DESC)
+      INCLUDE (isDeleted, createdAt)
+    `);
+
+    await conn.query(`
+      IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ObservabilityIncidents]') AND type in (N'U'))
+      CREATE TABLE ObservabilityIncidents (
+        id BIGINT PRIMARY KEY IDENTITY(1,1),
+        incidentId UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+        severity NVARCHAR(20) NOT NULL,
+        category NVARCHAR(64) NOT NULL,
+        message NVARCHAR(400) NOT NULL,
+        requestId NVARCHAR(120) NULL,
+        traceId NVARCHAR(120) NULL,
+        context NVARCHAR(MAX) NULL,
+        occurredAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+      )
+    `);
+
     console.log('✓ Database schema created');
 
     // Load data from CSV

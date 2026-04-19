@@ -13,6 +13,27 @@ function initializeRequestMetrics() {
     },
     latenciesMs: [],
     routeStats: new Map(),
+    domainStats: {
+      dbHealth: {
+        checks: 0,
+        healthy: 0,
+        unhealthy: 0,
+        lastCheckedAt: null,
+      },
+      newsIngestion: {
+        attempts: 0,
+        success: 0,
+        failure: 0,
+        lastSuccessAt: null,
+        lastFailureAt: null,
+        lastLatencyMs: null,
+      },
+      frontendCrashes: {
+        total: 0,
+        lastOccurredAt: null,
+        byRelease: {},
+      },
+    },
   };
 }
 
@@ -101,12 +122,128 @@ function getObservabilitySnapshot(requestMetrics) {
       p95Ms: p95Ms === null ? null : Number(p95Ms.toFixed(1)),
     },
     topRoutes: routeBreakdown,
+    domain: {
+      dbHealth: {
+        checks: requestMetrics.domainStats.dbHealth.checks,
+        healthy: requestMetrics.domainStats.dbHealth.healthy,
+        unhealthy: requestMetrics.domainStats.dbHealth.unhealthy,
+        lastCheckedAt: requestMetrics.domainStats.dbHealth.lastCheckedAt,
+      },
+      newsIngestion: {
+        attempts: requestMetrics.domainStats.newsIngestion.attempts,
+        success: requestMetrics.domainStats.newsIngestion.success,
+        failure: requestMetrics.domainStats.newsIngestion.failure,
+        lastSuccessAt: requestMetrics.domainStats.newsIngestion.lastSuccessAt,
+        lastFailureAt: requestMetrics.domainStats.newsIngestion.lastFailureAt,
+        lastLatencyMs: requestMetrics.domainStats.newsIngestion.lastLatencyMs,
+      },
+      frontendCrashes: {
+        total: requestMetrics.domainStats.frontendCrashes.total,
+        lastOccurredAt: requestMetrics.domainStats.frontendCrashes.lastOccurredAt,
+        byRelease: requestMetrics.domainStats.frontendCrashes.byRelease,
+      },
+    },
     uptimeSeconds: Math.round((Date.now() - requestMetrics.startedAt) / 1000),
+  };
+}
+
+function recordDbHealth(requestMetrics, { healthy, at = new Date().toISOString() }) {
+  requestMetrics.domainStats.dbHealth.checks += 1;
+  if (healthy) {
+    requestMetrics.domainStats.dbHealth.healthy += 1;
+  } else {
+    requestMetrics.domainStats.dbHealth.unhealthy += 1;
+  }
+  requestMetrics.domainStats.dbHealth.lastCheckedAt = at;
+}
+
+function recordNewsIngestion(requestMetrics, {
+  success,
+  latencyMs,
+  at = new Date().toISOString(),
+}) {
+  requestMetrics.domainStats.newsIngestion.attempts += 1;
+  requestMetrics.domainStats.newsIngestion.lastLatencyMs = typeof latencyMs === 'number'
+    ? Number(latencyMs.toFixed(1))
+    : null;
+
+  if (success) {
+    requestMetrics.domainStats.newsIngestion.success += 1;
+    requestMetrics.domainStats.newsIngestion.lastSuccessAt = at;
+  } else {
+    requestMetrics.domainStats.newsIngestion.failure += 1;
+    requestMetrics.domainStats.newsIngestion.lastFailureAt = at;
+  }
+}
+
+function recordFrontendCrash(requestMetrics, {
+  release = 'unknown',
+  at = new Date().toISOString(),
+}) {
+  requestMetrics.domainStats.frontendCrashes.total += 1;
+  requestMetrics.domainStats.frontendCrashes.lastOccurredAt = at;
+  requestMetrics.domainStats.frontendCrashes.byRelease[release] =
+    (requestMetrics.domainStats.frontendCrashes.byRelease[release] || 0) + 1;
+}
+
+function percent(numerator, denominator) {
+  if (!denominator || denominator <= 0) {
+    return 100;
+  }
+  return Number(((numerator / denominator) * 100).toFixed(2));
+}
+
+function getSloSnapshot(requestMetrics, thresholds) {
+  const snapshot = getObservabilitySnapshot(requestMetrics);
+  const dbChecks = snapshot.domain.dbHealth.checks;
+  const dbHealthyPct = percent(snapshot.domain.dbHealth.healthy, dbChecks);
+  const newsAttempts = snapshot.domain.newsIngestion.attempts;
+  const newsSuccessPct = percent(snapshot.domain.newsIngestion.success, newsAttempts);
+  const frontendCrashRatePer1k = snapshot.requests.total > 0
+    ? Number(((snapshot.domain.frontendCrashes.total / snapshot.requests.total) * 1000).toFixed(3))
+    : 0;
+
+  const objectives = {
+    apiErrorRateMaxPct: thresholds.errorRatePct,
+    apiP95LatencyMaxMs: thresholds.p95LatencyMs,
+    dbHealthMinPct: thresholds.dbHealthMinPct,
+    newsIngestionMinSuccessPct: thresholds.newsIngestionMinSuccessPct,
+    frontendCrashMaxPer1kRequests: thresholds.frontendCrashMaxPer1kRequests,
+  };
+
+  const indicators = {
+    apiErrorRatePct: snapshot.requests.errorRatePct,
+    apiP95LatencyMs: snapshot.latency.p95Ms,
+    dbHealthPct: dbHealthyPct,
+    newsIngestionSuccessPct: newsSuccessPct,
+    frontendCrashPer1kRequests: frontendCrashRatePer1k,
+  };
+
+  return {
+    objectives,
+    indicators,
+    status: {
+      apiErrorRateOk: indicators.apiErrorRatePct <= objectives.apiErrorRateMaxPct,
+      apiP95LatencyOk: indicators.apiP95LatencyMs === null
+        ? true
+        : indicators.apiP95LatencyMs <= objectives.apiP95LatencyMaxMs,
+      dbHealthOk: indicators.dbHealthPct >= objectives.dbHealthMinPct,
+      newsIngestionOk: indicators.newsIngestionSuccessPct >= objectives.newsIngestionMinSuccessPct,
+      frontendCrashRateOk: indicators.frontendCrashPer1kRequests <= objectives.frontendCrashMaxPer1kRequests,
+    },
+    timestamp: new Date().toISOString(),
   };
 }
 
 function getActiveAlerts({ ready, requestMetrics, thresholds }) {
   const snapshot = getObservabilitySnapshot(requestMetrics);
+  const sloSnapshot = getSloSnapshot(requestMetrics, {
+    errorRatePct: thresholds.errorRatePct,
+    p95LatencyMs: thresholds.p95LatencyMs,
+    dbHealthMinPct: thresholds.dbHealthMinPct ?? 99,
+    newsIngestionMinSuccessPct: thresholds.newsIngestionMinSuccessPct ?? 95,
+    frontendCrashMaxPer1kRequests: thresholds.frontendCrashMaxPer1kRequests ?? 2,
+  });
   const alerts = [];
 
   if (!ready) {
@@ -136,6 +273,33 @@ function getActiveAlerts({ ready, requestMetrics, thresholds }) {
     });
   }
 
+  if (!sloSnapshot.status.dbHealthOk) {
+    alerts.push({
+      id: 'db_health_low',
+      severity: 'high',
+      active: true,
+      message: `DB health ${sloSnapshot.indicators.dbHealthPct}% is below ${sloSnapshot.objectives.dbHealthMinPct}%.`,
+    });
+  }
+
+  if (!sloSnapshot.status.newsIngestionOk) {
+    alerts.push({
+      id: 'news_ingestion_unhealthy',
+      severity: 'medium',
+      active: true,
+      message: `News ingestion success ${sloSnapshot.indicators.newsIngestionSuccessPct}% is below ${sloSnapshot.objectives.newsIngestionMinSuccessPct}%.`,
+    });
+  }
+
+  if (!sloSnapshot.status.frontendCrashRateOk) {
+    alerts.push({
+      id: 'frontend_crash_rate_high',
+      severity: 'high',
+      active: true,
+      message: `Frontend crash rate ${sloSnapshot.indicators.frontendCrashPer1kRequests}/1k exceeds ${sloSnapshot.objectives.frontendCrashMaxPer1kRequests}/1k.`,
+    });
+  }
+
   return alerts;
 }
 
@@ -146,6 +310,10 @@ module.exports = {
   pushLatencySample,
   percentile,
   recordRequestCompletion,
+  recordDbHealth,
+  recordNewsIngestion,
+  recordFrontendCrash,
   getObservabilitySnapshot,
+  getSloSnapshot,
   getActiveAlerts,
 };

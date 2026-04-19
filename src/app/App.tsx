@@ -42,6 +42,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { RiskGaugeCompact } from "./components/RiskGaugeCompact";
 import { RiskScoreInfo } from "./components/RiskScoreInfo";
 import { convertPortfolioAssetToHolding, getCountriesFromAssets, getSectorsFromAssets, screenAssets } from "./utils/portfolioFilters";
+import { putWorkspaceState } from "./data/workspaceStateApi";
 
 const API_BASE_URL = "http://localhost:5001";
 const TIME_ZONE_STORAGE_KEY = "dashboard.timezone";
@@ -49,6 +50,25 @@ const WEIGHTS_STORAGE_KEY = "dashboard.weights";
 const TAB_STORAGE_KEY = "dashboard.currentTab";
 const DATASET_STORAGE_KEY = "dashboard.datasetId";
 const DASHBOARD_FILTERS_STORAGE_KEY = "dashboard.filters";
+const ADVANCED_PREFS_VERSION_KEY = "dashboard.advancedPrefsVersion";
+
+const getAdvancedPrefsVersion = (): number | undefined => {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const raw = localStorage.getItem(ADVANCED_PREFS_VERSION_KEY);
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const setAdvancedPrefsVersion = (version: number | null): void => {
+  if (typeof window === "undefined" || typeof version !== "number") {
+    return;
+  }
+
+  localStorage.setItem(ADVANCED_PREFS_VERSION_KEY, String(version));
+};
 
 const readStorage = <T,>(key: string, fallback: T): T => {
   if (typeof window === "undefined") {
@@ -560,16 +580,30 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem(
-        DASHBOARD_FILTERS_STORAGE_KEY,
-        JSON.stringify({
-          minRisk: dashboardMinRiskFilter,
-          sector: dashboardSectorFilter,
-          country: dashboardCountryFilter,
-        })
-      );
+      const filters = {
+        minRisk: dashboardMinRiskFilter,
+        sector: dashboardSectorFilter,
+        country: dashboardCountryFilter,
+      };
+
+      localStorage.setItem(DASHBOARD_FILTERS_STORAGE_KEY, JSON.stringify(filters));
+      void putWorkspaceState("advancedPrefs", "dashboard", {
+        selectedTimeZone,
+        weights,
+        currentTab,
+        selectedDatasetId,
+        filters,
+      }, getAdvancedPrefsVersion()).then(setAdvancedPrefsVersion);
     }
-  }, [dashboardMinRiskFilter, dashboardSectorFilter, dashboardCountryFilter]);
+  }, [
+    dashboardMinRiskFilter,
+    dashboardSectorFilter,
+    dashboardCountryFilter,
+    selectedTimeZone,
+    weights,
+    currentTab,
+    selectedDatasetId,
+  ]);
 
   useEffect(() => {
     if (!showSettingsModal) return;
@@ -589,6 +623,49 @@ export default function App() {
     setDashboardSectorFilter("all");
     setDashboardCountryFilter("all");
   }, [selectedDatasetId]);
+
+  useEffect(() => {
+    const postCrash = (payload: Record<string, unknown>) => {
+      void fetch(`${API_BASE_URL}/api/telemetry/frontend-crash`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch(() => {
+        // Best-effort telemetry: ignore network failures.
+      });
+    };
+
+    const onWindowError = (event: ErrorEvent) => {
+      postCrash({
+        message: event.message || "Unhandled frontend error",
+        route: window.location.pathname,
+        release: "1.1",
+        stack: event.error?.stack || null,
+      });
+    };
+
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      const message = typeof reason === "string"
+        ? reason
+        : reason?.message || "Unhandled frontend promise rejection";
+
+      postCrash({
+        message,
+        route: window.location.pathname,
+        release: "1.1",
+        stack: reason?.stack || null,
+      });
+    };
+
+    window.addEventListener("error", onWindowError);
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+
+    return () => {
+      window.removeEventListener("error", onWindowError);
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    };
+  }, []);
 
   // Initialize daily update and real-time updates on app startup
   useEffect(() => {

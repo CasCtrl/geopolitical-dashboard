@@ -60,6 +60,11 @@ const envSchema = z
     OBS_MIN_REQUESTS: z.coerce.number().int().min(1).max(100000).default(20),
     OBS_ERROR_RATE_THRESHOLD_PCT: z.coerce.number().min(0).max(100).default(5),
     OBS_P95_LATENCY_THRESHOLD_MS: z.coerce.number().min(1).max(60000).default(800),
+    OBS_DB_HEALTH_MIN_PCT: z.coerce.number().min(0).max(100).default(99),
+    OBS_NEWS_INGESTION_MIN_SUCCESS_PCT: z.coerce.number().min(0).max(100).default(95),
+    OBS_FRONTEND_CRASH_MAX_PER_1K: z.coerce.number().min(0).max(1000).default(2),
+    INCIDENT_MAX_ENTRIES: z.coerce.number().int().min(10).max(100000).default(500),
+    INCIDENT_WEBHOOK_URL: z.string().url().optional().or(z.literal('')),
   })
   .superRefine((env, ctx) => {
     const insecureDefaultPassword = 'YourPassword123!';

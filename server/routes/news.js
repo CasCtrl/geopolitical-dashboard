@@ -93,6 +93,8 @@ function scoreWorldRelevance(article) {
 
 router.get('/news', validateQuery(newsQuerySchema), async (req, res, next) => {
   const { limit } = req.query;
+  const startedAt = Date.now();
+  const observabilityHooks = req.app?.locals?.observability;
 
   try {
     const responses = await Promise.allSettled(
@@ -129,6 +131,23 @@ router.get('/news', validateQuery(newsQuerySchema), async (req, res, next) => {
     const fallbackUsed = sorted.length === 0;
     const reliabilityScore = fallbackUsed ? 0.5 : 0.82;
 
+    if (observabilityHooks?.recordNewsIngestion) {
+      observabilityHooks.recordNewsIngestion({
+        success: !fallbackUsed,
+        latencyMs: Date.now() - startedAt,
+      });
+    }
+
+    if (fallbackUsed && observabilityHooks?.incidentTracker) {
+      void observabilityHooks.incidentTracker.capture({
+        severity: 'medium',
+        category: 'news_ingestion_fallback',
+        message: 'News ingestion returned no articles and fell back to degraded payload',
+        requestId: req.requestId,
+        traceId: req.traceId,
+      });
+    }
+
     sendDataWithMeta(
       res,
       {
@@ -156,6 +175,23 @@ router.get('/news', validateQuery(newsQuerySchema), async (req, res, next) => {
       })
     );
   } catch {
+    if (observabilityHooks?.recordNewsIngestion) {
+      observabilityHooks.recordNewsIngestion({
+        success: false,
+        latencyMs: Date.now() - startedAt,
+      });
+    }
+
+    if (observabilityHooks?.incidentTracker) {
+      void observabilityHooks.incidentTracker.capture({
+        severity: 'high',
+        category: 'news_ingestion_failed',
+        message: 'Unable to fetch Bloomberg news feed',
+        requestId: req.requestId,
+        traceId: req.traceId,
+      });
+    }
+
     next(new ApiError(502, 'NEWS_FETCH_FAILED', 'Unable to fetch Bloomberg news feed'));
   }
 });

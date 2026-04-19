@@ -4,6 +4,7 @@
  */
 
 import { runBacktest, type BacktestResult } from './backtestingEngine';
+import { putWorkspaceState } from './workspaceStateApi';
 
 export interface CustomScenario {
   id: string;
@@ -25,6 +26,29 @@ export interface ScenarioTemplate {
 }
 
 const STORAGE_KEY = 'geopolitical_custom_scenarios';
+const SCENARIO_VERSION_KEY = 'geopolitical_custom_scenarios_version';
+
+function getScenarioVersion(): number | undefined {
+  try {
+    const raw = localStorage.getItem(SCENARIO_VERSION_KEY);
+    const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+    return Number.isFinite(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function setScenarioVersion(version: number | null): void {
+  if (typeof version !== 'number') {
+    return;
+  }
+
+  try {
+    localStorage.setItem(SCENARIO_VERSION_KEY, String(version));
+  } catch {
+    // Ignore local version cache failures.
+  }
+}
 
 /**
  * Scenario templates for quick creation
@@ -165,6 +189,8 @@ export function saveCustomScenario(scenario: CustomScenario): void {
     }
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarios));
+    void putWorkspaceState('scenarioOutputs', 'custom-scenarios', { scenarios }, getScenarioVersion())
+      .then(setScenarioVersion);
     console.log('[Scenarios] Saved scenario:', scenario.name);
   } catch (error) {
     console.error('[Scenarios] Failed to save scenario:', error);
@@ -202,6 +228,8 @@ export function deleteCustomScenario(id: string): void {
 
     const scenarios = JSON.parse(stored).filter((s: CustomScenario) => s.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarios));
+    void putWorkspaceState('scenarioOutputs', 'custom-scenarios', { scenarios }, getScenarioVersion())
+      .then(setScenarioVersion);
     console.log('[Scenarios] Deleted scenario:', id);
   } catch (error) {
     console.error('[Scenarios] Failed to delete scenario:', error);

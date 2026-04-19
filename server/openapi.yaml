@@ -66,6 +66,24 @@ paths:
           description: Forbidden
         '429':
           description: Admin abuse protection triggered
+  /api/admin/incidents:
+    get:
+      summary: Recent incidents with tracing context and severity breakdown (admin)
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        '200':
+          description: Incident timeline and summary
+        '403':
+          description: Forbidden
+        '429':
+          description: Admin abuse protection triggered
   /api/admin/audit-trail:
     get:
       summary: Recent admin/release audit events (admin)
@@ -160,6 +178,102 @@ paths:
           description: News payload
         '429':
           description: Expensive endpoint abuse protection triggered
+  /api/telemetry/frontend-crash:
+    post:
+      summary: Ingest frontend crash telemetry event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: Telemetry event accepted
+  /api/workspace/state/{bucket}:
+    get:
+      summary: List latest persisted artifacts for a user/workspace bucket
+      parameters:
+        - in: path
+          name: bucket
+          required: true
+          schema:
+            type: string
+            enum: [scenarioOutputs, alertConfigs, customThresholds, schedulesHistory, advancedPrefs]
+        - in: query
+          name: includeDeleted
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Latest versioned artifacts for bucket
+        '503':
+          description: Database unavailable
+  /api/workspace/state/{bucket}/{artifactKey}:
+    get:
+      summary: Retrieve latest persisted artifact for bucket/key
+      parameters:
+        - in: path
+          name: bucket
+          required: true
+          schema:
+            type: string
+            enum: [scenarioOutputs, alertConfigs, customThresholds, schedulesHistory, advancedPrefs]
+        - in: path
+          name: artifactKey
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Latest artifact
+        '404':
+          description: Artifact not found
+    put:
+      summary: Persist new artifact version with optimistic concurrency
+      parameters:
+        - in: path
+          name: bucket
+          required: true
+          schema:
+            type: string
+            enum: [scenarioOutputs, alertConfigs, customThresholds, schedulesHistory, advancedPrefs]
+        - in: path
+          name: artifactKey
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Artifact version persisted
+        '409':
+          description: Version conflict
+    delete:
+      summary: Soft-delete artifact by creating a tombstone version
+      parameters:
+        - in: path
+          name: bucket
+          required: true
+          schema:
+            type: string
+            enum: [scenarioOutputs, alertConfigs, customThresholds, schedulesHistory, advancedPrefs]
+        - in: path
+          name: artifactKey
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Artifact deleted
+        '404':
+          description: Artifact not found
   /api/reports/generate:
     post:
       summary: Generate report metadata

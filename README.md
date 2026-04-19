@@ -247,6 +247,61 @@ Individual risk assessments:
 - **MSSQL Database** - Data persistence and analysis
 - **Docker & Docker Compose** - Containerization and orchestration
 
+## Persistence and Observability Enhancements
+
+### Persistent User/Workspace Artifacts
+
+The backend now persists user-generated artifacts with ownership and versioning (not only local/session state):
+
+- Scenario outputs
+- Alert configs
+- Custom thresholds
+- Schedules/history
+- Advanced preferences
+
+API endpoints:
+
+- `GET /api/workspace/state/:bucket`
+- `GET /api/workspace/state/:bucket/:artifactKey`
+- `PUT /api/workspace/state/:bucket/:artifactKey`
+- `DELETE /api/workspace/state/:bucket/:artifactKey`
+
+Buckets:
+
+- `scenarioOutputs`
+- `alertConfigs`
+- `customThresholds`
+- `schedulesHistory`
+- `advancedPrefs`
+
+Context headers (optional, defaults applied when missing):
+
+- `x-user-id`
+- `x-workspace-id`
+
+### Observability and Incident Response Stack
+
+Expanded observability now includes:
+
+- Centralized incident tracking with severity/category and trace context
+- Optional external webhook forwarding for incidents (`INCIDENT_WEBHOOK_URL`)
+- Admin incident dashboard endpoint: `GET /api/admin/incidents`
+- SLO-backed alerting in `GET /api/admin/alerts` for:
+   - API latency and error rate
+   - DB health availability
+   - News ingestion success rate
+   - Frontend crash rate
+- Frontend crash telemetry ingestion endpoint:
+   - `POST /api/telemetry/frontend-crash`
+
+New environment variables:
+
+- `OBS_DB_HEALTH_MIN_PCT`
+- `OBS_NEWS_INGESTION_MIN_SUCCESS_PCT`
+- `OBS_FRONTEND_CRASH_MAX_PER_1K`
+- `INCIDENT_MAX_ENTRIES`
+- `INCIDENT_WEBHOOK_URL`
+
 ## Docker Setup
 
 The application uses Docker for complete containerization and easy deployment.

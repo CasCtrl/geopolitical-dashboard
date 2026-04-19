@@ -13,10 +13,13 @@ import { ApiError, sendApiError } from './middleware/apiError.js';
 import assetsRoutes from './routes/assets.js';
 import reportsRoutes from './routes/reports.js';
 import newsRoutes from './routes/news.js';
+import workspaceArtifactsRoutes from './routes/workspaceArtifacts.js';
 import observability from './observability.cjs';
 import adminObservability from './adminObservability.cjs';
 import auditTrailModule from './auditTrail.cjs';
 import persistentAuditSinkModule from './persistentAuditSink.cjs';
+import { createIncidentTracker } from './utils/incidentTracker.js';
+import sql from 'mssql';
 
 const app = express();
 const PORT = env.SERVER_PORT;
@@ -30,6 +33,8 @@ const {
   DEFAULT_MAX_LATENCY_SAMPLES,
   initializeRequestMetrics,
   recordRequestCompletion,
+  recordDbHealth,
+  recordFrontendCrash,
   getObservabilitySnapshot,
 } = observability;
 const { buildAdminAlertsPayload } = adminObservability;
@@ -37,6 +42,28 @@ const { createAuditTrail } = auditTrailModule;
 const { createPersistentAuditSink } = persistentAuditSinkModule;
 
 const requestMetrics = initializeRequestMetrics();
+const incidentTracker = createIncidentTracker({
+  maxEntries: env.INCIDENT_MAX_ENTRIES,
+  webhookUrl: env.INCIDENT_WEBHOOK_URL || undefined,
+  persistIncident: async (incident) => {
+    const pool = await getPool();
+    if (!pool) {
+      return;
+    }
+
+    const request = pool.request();
+    request.input('severity', sql.NVarChar(20), incident.severity);
+    request.input('category', sql.NVarChar(64), incident.category);
+    request.input('message', sql.NVarChar(400), incident.message.slice(0, 400));
+    request.input('requestId', sql.NVarChar(120), incident.requestId || null);
+    request.input('traceId', sql.NVarChar(120), incident.traceId || null);
+    request.input('context', sql.NVarChar(sql.MAX), JSON.stringify(incident.context || null));
+    await request.query(`
+      INSERT INTO ObservabilityIncidents (severity, category, message, requestId, traceId, context)
+      VALUES (@severity, @category, @message, @requestId, @traceId, @context)
+    `);
+  },
+});
 const auditTrail = createAuditTrail({ maxEntries: env.AUDIT_TRAIL_MAX_ENTRIES });
 const persistentAuditSink = createPersistentAuditSink({
   enabled: env.AUDIT_SINK_ENABLED,
@@ -236,7 +263,9 @@ app.use(cors({
 
 app.use((req, res, next) => {
   req.requestId = req.headers['x-request-id'] || randomUUID();
+  req.traceId = req.headers['x-trace-id'] || randomUUID();
   res.setHeader('X-Request-Id', req.requestId);
+  res.setHeader('X-Trace-Id', req.traceId);
   next();
 });
 
@@ -322,6 +351,7 @@ app.use((req, res, next) => {
 
     logEvent('info', 'request.completed', {
       requestId: req.requestId,
+      traceId: req.traceId,
       method: req.method,
       path: req.originalUrl,
       statusCode: res.statusCode,
@@ -335,6 +365,12 @@ app.use((req, res, next) => {
 
 app.use('/api', authMiddleware);
 app.use('/api/admin', adminLimiter);
+
+app.locals.observability = {
+  requestMetrics,
+  incidentTracker,
+  recordNewsIngestion: (payload) => observability.recordNewsIngestion(requestMetrics, payload),
+};
 
 app.use((req, res, next) => {
   const action = classifyAuditableAction(req);
@@ -376,6 +412,43 @@ app.use((req, res, next) => {
 app.use('/api', assetsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api', newsRoutes);
+app.use('/api', workspaceArtifactsRoutes);
+
+app.post('/api/telemetry/frontend-crash', async (req, res, next) => {
+  try {
+    const release = typeof req.body?.release === 'string' && req.body.release.trim()
+      ? req.body.release.trim()
+      : APP_VERSION;
+    const message = typeof req.body?.message === 'string' && req.body.message.trim()
+      ? req.body.message.trim()
+      : 'frontend crash reported';
+
+    recordFrontendCrash(requestMetrics, { release });
+
+    await incidentTracker.capture({
+      severity: 'high',
+      category: 'frontend_crash',
+      message,
+      requestId: req.requestId,
+      traceId: req.traceId,
+      context: {
+        release,
+        route: req.body?.route || null,
+        stack: req.body?.stack || null,
+        userAgent: req.headers['user-agent'] || null,
+      },
+    });
+
+    res.status(202).json({
+      accepted: true,
+      requestId: req.requestId,
+      traceId: req.traceId,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.get('/api/admin/metrics', requireRoles([ADMIN_ROLE]), async (req, res) => {
   const memory = process.memoryUsage();
@@ -412,6 +485,9 @@ app.get('/api/admin/alerts', requireRoles([ADMIN_ROLE]), async (req, res) => {
     minRequests: env.OBS_MIN_REQUESTS,
     errorRatePct: env.OBS_ERROR_RATE_THRESHOLD_PCT,
     p95LatencyMs: env.OBS_P95_LATENCY_THRESHOLD_MS,
+    dbHealthMinPct: env.OBS_DB_HEALTH_MIN_PCT,
+    newsIngestionMinSuccessPct: env.OBS_NEWS_INGESTION_MIN_SUCCESS_PCT,
+    frontendCrashMaxPer1kRequests: env.OBS_FRONTEND_CRASH_MAX_PER_1K,
   };
 
   res.json(buildAdminAlertsPayload({ ready, requestMetrics, thresholds }));
@@ -424,6 +500,17 @@ app.get('/api/admin/audit-trail', requireRoles([ADMIN_ROLE]), async (req, res) =
   res.json({
     entries: auditTrail.listRecent({ limit }),
     totalEntries: auditTrail.size(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/admin/incidents', requireRoles([ADMIN_ROLE]), async (req, res) => {
+  const rawLimit = Number.parseInt(String(req.query.limit ?? '100'), 10);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
+
+  res.json({
+    incidents: incidentTracker.list({ limit }),
+    summary: incidentTracker.summary(),
     timestamp: new Date().toISOString(),
   });
 });
@@ -459,6 +546,7 @@ app.get('/api/openapi.yaml', async (req, res, next) => {
 app.get('/ready', async (req, res) => {
   const dbPool = await getPool();
   const ready = Boolean(dbPool?.connected);
+  recordDbHealth(requestMetrics, { healthy: ready });
 
   res.status(ready ? 200 : 503).json({
     status: ready ? 'ready' : 'degraded',
@@ -476,12 +564,26 @@ app.use((err, req, res, next) => {
 
   logEvent('error', 'request.failed', {
     requestId: req.requestId,
+    traceId: req.traceId,
     method: req.method,
     path: req.originalUrl,
     code,
     message,
     details: isApiError ? err.details : undefined,
     stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
+  });
+
+  void incidentTracker.capture({
+    severity: statusCode >= 500 ? 'critical' : 'medium',
+    category: 'request_failure',
+    message: `${code}: ${message}`,
+    requestId: req.requestId,
+    traceId: req.traceId,
+    context: {
+      method: req.method,
+      path: req.originalUrl,
+      details: isApiError ? err.details : undefined,
+    },
   });
 
   return sendApiError(res, {
@@ -497,12 +599,24 @@ process.on('unhandledRejection', reason => {
   logEvent('error', 'process.unhandledRejection', {
     reason: reason instanceof Error ? reason.message : String(reason),
   });
+  void incidentTracker.capture({
+    severity: 'critical',
+    category: 'unhandled_rejection',
+    message: reason instanceof Error ? reason.message : String(reason),
+    context: reason instanceof Error ? { stack: reason.stack } : { reason: String(reason) },
+  });
 });
 
 process.on('uncaughtException', error => {
   logEvent('error', 'process.uncaughtException', {
     message: error.message,
     stack: error.stack,
+  });
+  void incidentTracker.capture({
+    severity: 'critical',
+    category: 'uncaught_exception',
+    message: error.message,
+    context: { stack: error.stack },
   });
 });
 
@@ -515,13 +629,21 @@ async function start() {
       nodeEnv: env.NODE_ENV,
       dbConnectStrict: env.DB_CONNECT_STRICT,
       dbInitEnabled: env.DB_INIT_ENABLED,
+      incidentWebhookConfigured: Boolean(env.INCIDENT_WEBHOOK_URL),
     });
 
     // Try a warm DB connection at startup and continue in degraded mode when unavailable.
     try {
       await getPool();
+      recordDbHealth(requestMetrics, { healthy: true });
     } catch (dbErr) {
       logEvent('error', 'database.connect.failed', {
+        message: dbErr instanceof Error ? dbErr.message : String(dbErr),
+      });
+      recordDbHealth(requestMetrics, { healthy: false });
+      void incidentTracker.capture({
+        severity: 'critical',
+        category: 'database_connect_failed',
         message: dbErr instanceof Error ? dbErr.message : String(dbErr),
       });
 

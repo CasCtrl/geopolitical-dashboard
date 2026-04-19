@@ -186,4 +186,37 @@ describe('API contract with metadata envelope', () => {
     expect(Array.isArray(response.body.data.templates)).toBe(true);
     expect(response.body).toHaveProperty('meta.reliability.methodologyVersion');
   });
+
+  test('accepts frontend crash telemetry and exposes incidents dashboard endpoint', async () => {
+    const telemetryResponse = await makeRequest(server.baseUrl, 'POST', '/api/telemetry/frontend-crash', {
+      body: {
+        message: 'UI crashed while rendering map',
+        route: '/dashboard',
+        release: '1.1.0-test',
+      },
+    });
+
+    expect(telemetryResponse.status).toBe(202);
+    expect(telemetryResponse.body).toHaveProperty('accepted', true);
+    expect(telemetryResponse.body).toHaveProperty('traceId');
+
+    const incidentsResponse = await makeRequest(server.baseUrl, 'GET', '/api/admin/incidents', {
+      headers: { 'x-user-role': 'admin' },
+    });
+
+    expect(incidentsResponse.status).toBe(200);
+    expect(Array.isArray(incidentsResponse.body.incidents)).toBe(true);
+    expect(incidentsResponse.body).toHaveProperty('summary.total');
+  });
+
+  test('returns alert payload with SLO dashboard fields', async () => {
+    const response = await makeRequest(server.baseUrl, 'GET', '/api/admin/alerts', {
+      headers: { 'x-user-role': 'admin' },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('slo.objectives');
+    expect(response.body).toHaveProperty('slo.indicators');
+    expect(response.body).toHaveProperty('slo.status');
+  });
 });

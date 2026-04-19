@@ -1,7 +1,11 @@
 const {
   initializeRequestMetrics,
   recordRequestCompletion,
+  recordDbHealth,
+  recordNewsIngestion,
+  recordFrontendCrash,
   getObservabilitySnapshot,
+  getSloSnapshot,
   getActiveAlerts,
 } = require('../observability.cjs');
 const { buildAdminAlertsPayload } = require('../adminObservability.cjs');
@@ -17,6 +21,9 @@ describe('server observability alerts', () => {
         minRequests: 20,
         errorRatePct: 5,
         p95LatencyMs: 800,
+        dbHealthMinPct: 99,
+        newsIngestionMinSuccessPct: 95,
+        frontendCrashMaxPer1kRequests: 2,
       },
     });
 
@@ -42,6 +49,9 @@ describe('server observability alerts', () => {
         minRequests: 20,
         errorRatePct: 5,
         p95LatencyMs: 800,
+        dbHealthMinPct: 99,
+        newsIngestionMinSuccessPct: 95,
+        frontendCrashMaxPer1kRequests: 2,
       },
     });
 
@@ -71,6 +81,9 @@ describe('server observability alerts', () => {
         minRequests: 20,
         errorRatePct: 5,
         p95LatencyMs: 800,
+        dbHealthMinPct: 99,
+        newsIngestionMinSuccessPct: 95,
+        frontendCrashMaxPer1kRequests: 2,
       },
     });
 
@@ -99,6 +112,9 @@ describe('server observability alerts', () => {
         minRequests: 20,
         errorRatePct: 5,
         p95LatencyMs: 800,
+        dbHealthMinPct: 99,
+        newsIngestionMinSuccessPct: 95,
+        frontendCrashMaxPer1kRequests: 2,
       },
     });
 
@@ -124,6 +140,9 @@ describe('server observability alerts', () => {
         minRequests: 20,
         errorRatePct: 5,
         p95LatencyMs: 800,
+        dbHealthMinPct: 99,
+        newsIngestionMinSuccessPct: 95,
+        frontendCrashMaxPer1kRequests: 2,
       },
       now: () => '2026-04-19T00:00:00.000Z',
     });
@@ -132,10 +151,65 @@ describe('server observability alerts', () => {
       minRequests: 20,
       errorRatePct: 5,
       p95LatencyMs: 800,
+      dbHealthMinPct: 99,
+      newsIngestionMinSuccessPct: 95,
+      frontendCrashMaxPer1kRequests: 2,
     });
     expect(payload.timestamp).toBe('2026-04-19T00:00:00.000Z');
     expect(payload.alerts.some((alert) => alert.id === 'readiness_degraded')).toBe(true);
     expect(payload.alerts.some((alert) => alert.id === 'error_rate_high')).toBe(true);
     expect(payload.alerts.some((alert) => alert.id === 'latency_p95_high')).toBe(true);
+  });
+
+  test('computes SLO snapshot and emits domain-specific alerts', () => {
+    const metrics = initializeRequestMetrics();
+
+    for (let i = 0; i < 30; i += 1) {
+      recordRequestCompletion(metrics, {
+        method: 'GET',
+        path: '/api/news',
+        statusCode: 200,
+        durationMs: 120,
+      });
+    }
+
+    recordDbHealth(metrics, { healthy: true });
+    recordDbHealth(metrics, { healthy: false });
+
+    recordNewsIngestion(metrics, { success: true, latencyMs: 230 });
+    recordNewsIngestion(metrics, { success: false, latencyMs: 410 });
+
+    for (let i = 0; i < 3; i += 1) {
+      recordFrontendCrash(metrics, { release: '1.1.0' });
+    }
+
+    const slo = getSloSnapshot(metrics, {
+      errorRatePct: 5,
+      p95LatencyMs: 800,
+      dbHealthMinPct: 80,
+      newsIngestionMinSuccessPct: 80,
+      frontendCrashMaxPer1kRequests: 50,
+    });
+
+    expect(slo.indicators.dbHealthPct).toBe(50);
+    expect(slo.indicators.newsIngestionSuccessPct).toBe(50);
+    expect(slo.indicators.frontendCrashPer1kRequests).toBe(100);
+
+    const alerts = getActiveAlerts({
+      ready: true,
+      requestMetrics: metrics,
+      thresholds: {
+        minRequests: 20,
+        errorRatePct: 5,
+        p95LatencyMs: 800,
+        dbHealthMinPct: 80,
+        newsIngestionMinSuccessPct: 80,
+        frontendCrashMaxPer1kRequests: 50,
+      },
+    });
+
+    expect(alerts.some((alert) => alert.id === 'db_health_low')).toBe(true);
+    expect(alerts.some((alert) => alert.id === 'news_ingestion_unhealthy')).toBe(true);
+    expect(alerts.some((alert) => alert.id === 'frontend_crash_rate_high')).toBe(true);
   });
 });

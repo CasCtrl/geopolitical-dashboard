@@ -4,6 +4,8 @@
  * Tracks risk threshold breaches and notifies users
  */
 
+import { putWorkspaceState } from './workspaceStateApi';
+
 export interface AlertThreshold {
   id: string;
   name: string;
@@ -29,7 +31,30 @@ export interface AlertEvent {
 
 const THRESHOLDS_KEY = "geopolitical_alert_thresholds";
 const EVENTS_KEY = "geopolitical_alert_events";
+const THRESHOLDS_VERSION_KEY = "geopolitical_alert_thresholds_version";
+const EVENTS_VERSION_KEY = "geopolitical_alert_events_version";
 const MAX_EVENTS = 100;
+
+function getVersion(key: string): number | undefined {
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+    return Number.isFinite(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function setVersion(key: string, version: number | null): void {
+  if (typeof version !== 'number') {
+    return;
+  }
+  try {
+    localStorage.setItem(key, String(version));
+  } catch {
+    // Ignore local version cache failures.
+  }
+}
 
 /**
  * Create a new alert threshold
@@ -57,6 +82,8 @@ export function createThreshold(
 
   try {
     localStorage.setItem(THRESHOLDS_KEY, JSON.stringify(thresholds));
+    void putWorkspaceState("customThresholds", "risk-thresholds", { thresholds }, getVersion(THRESHOLDS_VERSION_KEY))
+      .then((version) => setVersion(THRESHOLDS_VERSION_KEY, version));
     console.log(`[Alert] Created threshold: ${name} (${id})`);
   } catch (error) {
     console.error("[Alert] Failed to save threshold:", error);
@@ -103,6 +130,8 @@ export function updateThreshold(
 
   try {
     localStorage.setItem(THRESHOLDS_KEY, JSON.stringify(thresholds));
+    void putWorkspaceState("customThresholds", "risk-thresholds", { thresholds }, getVersion(THRESHOLDS_VERSION_KEY))
+      .then((version) => setVersion(THRESHOLDS_VERSION_KEY, version));
     console.log(`[Alert] Updated threshold: ${id}`);
   } catch (error) {
     console.error("[Alert] Failed to update threshold:", error);
@@ -122,6 +151,8 @@ export function deleteThreshold(id: string): boolean {
 
   try {
     localStorage.setItem(THRESHOLDS_KEY, JSON.stringify(filtered));
+    void putWorkspaceState("customThresholds", "risk-thresholds", { thresholds: filtered }, getVersion(THRESHOLDS_VERSION_KEY))
+      .then((version) => setVersion(THRESHOLDS_VERSION_KEY, version));
     console.log(`[Alert] Deleted threshold: ${id}`);
   } catch (error) {
     console.error("[Alert] Failed to delete threshold:", error);
@@ -217,6 +248,8 @@ export function createAlertEvent(
 
   try {
     localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+    void putWorkspaceState("alertConfigs", "alert-events", { events }, getVersion(EVENTS_VERSION_KEY))
+      .then((version) => setVersion(EVENTS_VERSION_KEY, version));
     console.log(`[Alert Event] ${type.toUpperCase()}: ${message}`);
   } catch (error) {
     console.error("[Alert Event] Failed to save event:", error);
@@ -258,6 +291,8 @@ export function markAlertEventAsRead(id: string): AlertEvent | null {
 
   try {
     localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+    void putWorkspaceState("alertConfigs", "alert-events", { events }, getVersion(EVENTS_VERSION_KEY))
+      .then((version) => setVersion(EVENTS_VERSION_KEY, version));
   } catch (error) {
     console.error("[Alert Event] Failed to update event:", error);
   }
@@ -274,6 +309,8 @@ export function markAllAlertEventsAsRead(): void {
 
   try {
     localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+    void putWorkspaceState("alertConfigs", "alert-events", { events }, getVersion(EVENTS_VERSION_KEY))
+      .then((version) => setVersion(EVENTS_VERSION_KEY, version));
     console.log("[Alert Event] Marked all events as read");
   } catch (error) {
     console.error("[Alert Event] Failed to update events:", error);
