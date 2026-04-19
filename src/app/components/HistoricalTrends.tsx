@@ -6,13 +6,28 @@ import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { getPortfolioRiskTrend, getCountryTrend, getLatestSnapshot, getPreviousSnapshot, compareSnapshots } from '../data/historicalSnapshotManager';
 import { RiskScoreInfo } from './RiskScoreInfo';
+import { Asset } from '../data/portfolioData';
+import {
+  buildAssetHedgingSuggestion,
+  calculateDependencyDepth,
+  calculateTopCorrelationPairs,
+  findSinglePointFailures,
+  suggestAlternativeCountries,
+} from '../utils/riskIntelligence';
 
 interface HistoricalTrendsProps {
   availableCountries?: string[];
   onSelectCountry?: (country: string) => void;
+  portfolio?: Asset[];
+  riskData?: { [country: string]: number };
 }
 
-export function HistoricalTrends({ availableCountries = [], onSelectCountry }: HistoricalTrendsProps) {
+export function HistoricalTrends({
+  availableCountries = [],
+  onSelectCountry,
+  portfolio = [],
+  riskData = {},
+}: HistoricalTrendsProps) {
   const [selectedCountry, setSelectedCountry] = useState<string>(availableCountries[0] || '');
   const [timeRange, setTimeRange] = useState<number>(7); // days
 
@@ -31,6 +46,35 @@ export function HistoricalTrends({ availableCountries = [], onSelectCountry }: H
     const previous = getPreviousSnapshot(latest || undefined);
     return latest && previous ? compareSnapshots(previous, latest) : null;
   }, []);
+
+  const singlePointFailures = useMemo(() => findSinglePointFailures(portfolio), [portfolio]);
+
+  const dependencyDepthByAsset = useMemo(
+    () =>
+      portfolio
+        .map((asset) => ({
+          ticker: asset.ticker,
+          name: asset.name,
+          depth: calculateDependencyDepth(asset),
+          alternatives: suggestAlternativeCountries(asset, riskData),
+        }))
+        .sort((a, b) => b.depth.maxDepth - a.depth.maxDepth)
+        .slice(0, 8),
+    [portfolio, riskData]
+  );
+
+  const hedgingSuggestions = useMemo(
+    () =>
+      portfolio
+        .map((asset) => ({
+          ticker: asset.ticker,
+          suggestion: buildAssetHedgingSuggestion(asset, riskData),
+        }))
+        .slice(0, 8),
+    [portfolio, riskData]
+  );
+
+  const topCorrelations = useMemo(() => calculateTopCorrelationPairs(portfolio), [portfolio]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -261,6 +305,98 @@ export function HistoricalTrends({ availableCountries = [], onSelectCountry }: H
           </div>
         </Card>
       )}
+
+      {/* Supply Chain Mapping */}
+      <Card className="p-4 bg-zinc-950 border border-zinc-800">
+        <div className="mb-3 flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold text-zinc-100">Supply Chain Exposure Mapping</h3>
+          <RiskScoreInfo
+            meaning="Highlights indirect dependency concentration and depth through supply chains."
+            calculation="Single-point-of-failure flags countries shared by multiple assets with high average dependency weight; depth is inferred from dependency type mix (direct/indirect/macro)."
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <p className="text-xs text-zinc-300 font-medium">Single-Point-of-Failure Suppliers</p>
+            {singlePointFailures.length > 0 ? (
+              singlePointFailures.map((entry) => (
+                <div key={entry.country} className="p-2 rounded border border-zinc-800 bg-zinc-900/60 text-xs">
+                  <div className="flex justify-between text-zinc-200">
+                    <span>{entry.country}</span>
+                    <span>Risk {entry.riskScore}</span>
+                  </div>
+                  <p className="text-zinc-400 mt-1">
+                    {entry.assetCount} assets depend on this country (avg dependency {Math.round(entry.averageDependencyWeight * 100)}%).
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-zinc-500">No concentrated supplier bottlenecks detected in the current portfolio slice.</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs text-zinc-300 font-medium">Dependency Depth + Alternative Sourcing</p>
+            {dependencyDepthByAsset.map((entry) => (
+              <div key={entry.ticker} className="p-2 rounded border border-zinc-800 bg-zinc-900/60 text-xs">
+                <div className="flex justify-between text-zinc-200">
+                  <span>{entry.ticker}</span>
+                  <span>Depth {entry.depth.maxDepth}</span>
+                </div>
+                <p className="text-zinc-500 mt-1">
+                  Direct {entry.depth.direct} | Indirect {entry.depth.indirect} | Macro {entry.depth.macro}
+                </p>
+                <p className="text-zinc-400 mt-1">
+                  Alternative low-risk sourcing: {entry.alternatives.length > 0
+                    ? entry.alternatives.map((alt) => `${alt.country} (${alt.score})`).join(', ')
+                    : 'None suggested'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* Asset-Level Intelligence */}
+      <Card className="p-4 bg-zinc-950 border border-zinc-800">
+        <div className="mb-3 flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold text-zinc-100">Asset-Level Intelligence</h3>
+          <RiskScoreInfo
+            meaning="Provides per-asset hedging ideas and concentration overlap signals across holdings."
+            calculation="Suggestions are derived from highest weighted country risk dependency per asset; overlap uses weighted dependency-set similarity between holding pairs."
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <p className="text-xs text-zinc-300 font-medium">Hedging Suggestions</p>
+            {hedgingSuggestions.map((item) => (
+              <div key={item.ticker} className="p-2 rounded border border-zinc-800 bg-zinc-900/60 text-xs">
+                <p className="text-zinc-200 font-medium">{item.ticker}</p>
+                <p className="text-zinc-400 mt-1">{item.suggestion}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs text-zinc-300 font-medium">Highest Correlated Holdings</p>
+            {topCorrelations.length > 0 ? (
+              topCorrelations.map((item) => (
+                <div key={item.pair} className="p-2 rounded border border-zinc-800 bg-zinc-900/60 text-xs flex justify-between">
+                  <span className="text-zinc-200">{item.pair}</span>
+                  <span className="text-amber-300">{Math.round(item.overlap * 100)}% overlap</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-zinc-500">No significant concentration overlaps detected.</p>
+            )}
+            <p className="text-xs text-zinc-500 pt-1">
+              Diversification opportunity: reduce exposure where overlap exceeds 50% by shifting weight into lower-correlation holdings.
+            </p>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }

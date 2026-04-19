@@ -3,18 +3,35 @@ import { Asset } from "../data/portfolioData";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useMemo, useCallback } from "react";
 import { RiskScoreInfo } from "./RiskScoreInfo";
+import { computeAssetConfidence, getCountryIntelligence } from "../utils/riskIntelligence";
 
 interface HoldingsTableProps {
   assets: Asset[];
   assetContributions: { ticker: string; riskScore: number; mainRisk?: string }[];
   countryRisks: { [country: string]: number };
+  weights?: {
+    political: number;
+    economic: number;
+    conflict: number;
+    corruption: number;
+    terrorism: number;
+  };
   dataFreshnessLabel?: string;
   isStaleData?: boolean;
 }
 
 const ROWS_PER_PAGE = 10; // Show 10 rows at a time for virtualization
 
-export function HoldingsTable({ assets, assetContributions, countryRisks, dataFreshnessLabel, isStaleData = false }: HoldingsTableProps) {
+const defaultWeights = { political: 20, economic: 20, conflict: 20, corruption: 20, terrorism: 20 };
+
+export function HoldingsTable({
+  assets,
+  assetContributions,
+  countryRisks,
+  weights = defaultWeights,
+  dataFreshnessLabel,
+  isStaleData = false,
+}: HoldingsTableProps) {
   const getContributionColor = useCallback((riskScore: number) => {
     if (riskScore >= 8) return "text-red-400 bg-red-950/30";
     if (riskScore >= 6) return "text-orange-400 bg-orange-950/30";
@@ -69,6 +86,31 @@ export function HoldingsTable({ assets, assetContributions, countryRisks, dataFr
     return result;
   }, [assets, countryRisks]);
 
+  const assetIntelligence = useMemo(() => {
+    return new Map(
+      assets.map((asset) => {
+        const confidence = computeAssetConfidence(asset, weights);
+        const topDependency = asset.countryDependencies
+          .map((dep) => {
+            const countryIntelligence = getCountryIntelligence(dep.country, weights);
+            return {
+              country: dep.country,
+              weightedRisk: (countryRisks[dep.country] ?? 50) * dep.weight,
+              lastUpdated: countryIntelligence.lastUpdated,
+              topFactors: countryIntelligence.topFactors,
+            };
+          })
+          .sort((a, b) => b.weightedRisk - a.weightedRisk)[0];
+
+        return [asset.ticker, {
+          confidence,
+          topFactors: topDependency?.topFactors ?? [],
+          lastUpdated: topDependency?.lastUpdated,
+        }];
+      })
+    );
+  }, [assets, countryRisks, weights]);
+
   return (
     <Card className="p-3 md:p-4 bg-zinc-950 border-zinc-900">
       <div className="mb-3 flex items-center gap-1.5">
@@ -107,6 +149,24 @@ export function HoldingsTable({ assets, assetContributions, countryRisks, dataFr
                     />
                   </div>
                 </th>
+                <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">
+                  <div className="inline-flex items-center gap-1">
+                    <span>Data Confidence</span>
+                    <RiskScoreInfo
+                      meaning="Estimated quality confidence for each holding's risk estimate."
+                      calculation="Computed as dependency-weighted average of country confidence scores used by the geopolitical model."
+                    />
+                  </div>
+                </th>
+                <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">
+                  <div className="inline-flex items-center gap-1">
+                    <span>Top Drivers</span>
+                    <RiskScoreInfo
+                      meaning="Primary risk factors driving this holding's country exposure profile."
+                      calculation="Derived from top weighted factor impacts for the dominant dependency country per holding."
+                    />
+                  </div>
+                </th>
                 <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Value</th>
                 <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Allocation</th>
                 <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">
@@ -125,6 +185,7 @@ export function HoldingsTable({ assets, assetContributions, countryRisks, dataFr
                 const assetContribution = assetContributionMap.get(asset.ticker);
                 const riskScore = assetContribution?.riskScore || 0;
                 const sectorRiskIndex = sectorRiskIndexMap.get(asset.sector || "Unknown") || 0;
+                const intelligence = assetIntelligence.get(asset.ticker);
                 return (
                   <tr
                     key={asset.ticker}
@@ -141,6 +202,19 @@ export function HoldingsTable({ assets, assetContributions, countryRisks, dataFr
                     </td>
                     <td className="py-2 px-3 text-right whitespace-nowrap">
                       <span className="text-xs md:text-sm text-slate-300">{sectorRiskIndex.toFixed(1)}</span>
+                    </td>
+                    <td className="py-2 px-3 text-right whitespace-nowrap">
+                      <div className="text-xs md:text-sm text-slate-300">{intelligence?.confidence ?? 60}%</div>
+                      <div className="text-[10px] text-zinc-500">
+                        {intelligence?.lastUpdated ? new Date(intelligence.lastUpdated).toLocaleDateString() : "-"}
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 text-right whitespace-nowrap">
+                      <span className="text-xs text-zinc-300">
+                        {intelligence?.topFactors?.length
+                          ? intelligence.topFactors.map((factor) => factor.label).join(" / ")
+                          : "n/a"}
+                      </span>
                     </td>
                     <td className="py-2 px-3 text-right whitespace-nowrap">
                       <span className="text-xs md:text-sm text-slate-300">${asset.value.toLocaleString()}</span>

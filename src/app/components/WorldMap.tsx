@@ -1,5 +1,6 @@
 import { useState, useEffect, memo, useMemo, useCallback } from "react";
 import { motion } from "motion/react";
+import { getCountryIntelligence } from "../utils/riskIntelligence";
 
 interface WorldMapProps {
   riskData: { [key: string]: number };
@@ -83,6 +84,7 @@ interface CountryPathProps {
   countryExposures?: { country: string; riskContribution: number; contributingAssets: string[] }[];
   weights: WorldMapProps['weights'];
   onTooltipChange: (content: string | null, position: { x: number; y: number }) => void;
+  onCountryHighlight: (country: string) => void;
 }
 
 const CountryPath = memo(function CountryPath({
@@ -92,6 +94,7 @@ const CountryPath = memo(function CountryPath({
   countryExposures,
   weights,
   onTooltipChange,
+  onCountryHighlight,
 }: CountryPathProps) {
   const countryName = country.properties?.name || "Unknown";
   const totalWeight = weights.political + weights.economic + weights.conflict + weights.corruption + weights.terrorism;
@@ -103,16 +106,20 @@ const CountryPath = memo(function CountryPath({
   );
 
   const handleMouseEnter = useCallback((e: React.MouseEvent<SVGPathElement>) => {
+    const intelligence = getCountryIntelligence(countryName, weights);
     const exposure = countryExposures?.find(ce => ce.country === countryName);
     let tooltip = `${countryName}\nRisk Score: ${risk.toFixed(0)}`;
+    tooltip += `\nConfidence: ${intelligence.confidence}%`;
+    tooltip += `\nUpdated: ${new Date(intelligence.lastUpdated).toLocaleDateString()}`;
     if (exposure && exposure.riskContribution > 0) {
       tooltip += `\nExposure: ${exposure.riskContribution.toFixed(2)}%`;
       if (exposure.contributingAssets.length > 0) {
         tooltip += `\nAssets: ${exposure.contributingAssets.slice(0, 3).join(', ')}${exposure.contributingAssets.length > 3 ? '...' : ''}`;
       }
     }
+    onCountryHighlight(countryName);
     onTooltipChange(tooltip, { x: e.clientX, y: e.clientY });
-  }, [countryName, risk, countryExposures, onTooltipChange]);
+  }, [countryName, risk, countryExposures, onTooltipChange, onCountryHighlight, weights]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGPathElement>) => {
     // Update position only by passing null as content
@@ -124,14 +131,18 @@ const CountryPath = memo(function CountryPath({
   }, [onTooltipChange]);
 
   const handleFocus = useCallback((e: React.FocusEvent<SVGPathElement>) => {
+    const intelligence = getCountryIntelligence(countryName, weights);
     const exposure = countryExposures?.find(ce => ce.country === countryName);
     let tooltip = `${countryName}\nRisk Score: ${risk.toFixed(0)}`;
+    tooltip += `\nConfidence: ${intelligence.confidence}%`;
+    tooltip += `\nUpdated: ${new Date(intelligence.lastUpdated).toLocaleDateString()}`;
     if (exposure && exposure.riskContribution > 0) {
       tooltip += `\nExposure: ${exposure.riskContribution.toFixed(2)}%`;
     }
+    onCountryHighlight(countryName);
     const bounds = e.currentTarget.getBoundingClientRect();
     onTooltipChange(tooltip, { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 });
-  }, [countryExposures, countryName, onTooltipChange, risk]);
+  }, [countryExposures, countryName, onTooltipChange, onCountryHighlight, risk, weights]);
 
   const handleBlur = useCallback(() => {
     onTooltipChange("", { x: 0, y: 0 });
@@ -177,6 +188,7 @@ function WorldMapComponent({ riskData, countryExposures, dataFreshnessLabel, isS
   const [countries, setCountries] = useState<CountryFeature[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [highlightedCountry, setHighlightedCountry] = useState<string>("United States");
 
   useEffect(() => {
     // Load GeoJSON once and cache it
@@ -212,6 +224,11 @@ function WorldMapComponent({ riskData, countryExposures, dataFreshnessLabel, isS
       setTooltipPosition(position);
     }
   }, []);
+
+  const highlightedIntelligence = useMemo(
+    () => getCountryIntelligence(highlightedCountry, weights),
+    [highlightedCountry, weights]
+  );
 
   if (loading) {
     return (
@@ -268,9 +285,24 @@ function WorldMapComponent({ riskData, countryExposures, dataFreshnessLabel, isS
             countryExposures={countryExposures}
             weights={weights}
             onTooltipChange={handleTooltipChange}
+            onCountryHighlight={setHighlightedCountry}
           />
         ))}
       </svg>
+
+      <div className="mt-3 rounded border border-zinc-800 bg-zinc-900/50 p-2 text-[11px] text-zinc-300">
+        <p className="font-medium text-zinc-100">Data Quality & Sensitivity: {highlightedCountry}</p>
+        <p className="text-zinc-400 mt-1">Source: {highlightedIntelligence.source}</p>
+        <div className="mt-1 grid grid-cols-1 md:grid-cols-2 gap-1">
+          <p><span className="text-zinc-500">Confidence:</span> {highlightedIntelligence.confidence}%</p>
+          <p><span className="text-zinc-500">Historical Accuracy:</span> {highlightedIntelligence.predictionAccuracy}%</p>
+          <p><span className="text-zinc-500">Last Country Update:</span> {new Date(highlightedIntelligence.lastUpdated).toLocaleDateString()}</p>
+          <p>
+            <span className="text-zinc-500">Top Drivers:</span>{" "}
+            {highlightedIntelligence.topFactors.map((factor) => factor.label).join(", ")}
+          </p>
+        </div>
+      </div>
 
       {tooltipContent && (
         <motion.div
