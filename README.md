@@ -169,6 +169,62 @@ Use insights from the dashboard to:
 - Avoid expensive crisis management situations
 - Optimize portfolio returns per unit of geopolitical risk
 
+## Application Screenshots
+
+### Dashboard Overview
+Main dashboard displaying portfolio analytics, global risk heat map, and key performance indicators:
+
+![Geopolitical Risk Dashboard Overview](screenshots/001.png)
+
+The dashboard shows:
+- **Portfolio Value**: $3.4M in total assets
+- **Asset Count**: 10 holdings tracked
+- **Global Risk Score**: Real-time risk assessment with color-coded gauge
+- **Risk Factor Weights**: Breakdown of political, economic, conflict, corruption, and terrorism risks
+- **Global Heat Map**: Visual representation of risk levels across countries (green = low risk, yellow/red = elevated risk)
+- **Country Exposure Matrix**: Top 5 country exposures with direct/indirect breakdowns
+
+### Holdings Risk Analysis - Minimal Risk
+Holdings table with detailed asset information and minimal geopolitical exposure:
+
+![Holdings Risk Analysis - Low Risk](screenshots/002.png)
+
+Shows all 10 holdings with:
+- Asset names and company details
+- Sector classification (Technology, Energy, Finance, Commodities, Media)
+- Current portfolio value
+- Allocation percentage
+- Individual asset risk scores
+
+### Risk Assessment Dashboard - Moderate Risk
+Dashboard with elevated risk indicators and color-coded risk visualization:
+
+![Holdings Risk Analysis - Moderate Risk](screenshots/003.png)
+
+Displays:
+- **Avg Global Risk**: 37.9 (up from baseline)
+- **High Risk Alerts**: 13 active alerts
+- **Risk Factor Breakdown**: Political 100%, Economic 96%, Conflict 100%, Corruption 42%, Terrorism 100%
+- **Updated Risk Gauge**: Shows MODERATE risk level (54/100)
+- **Heat Map Changes**: Red zones highlight high-risk regions (Middle East, specific Asian countries)
+
+### Holdings with Individual Risk Scores
+Detailed view of each holding's geopolitical risk exposure:
+
+![Holdings with Risk Scores](screenshots/004.png)
+
+Individual risk assessments:
+- AAPL: 8.30 risk score
+- MSFT: 4.80 risk score
+- NVDA: 7.26 risk score
+- XOM (Energy exposure): 9.73 risk score (highest due to geopolitical factors)
+- TSLA: 5.91 risk score
+- BTC: 4.44 risk score
+- JPM: 4.12 risk score
+- AMD: 4.16 risk score
+- GLD: 1.74 risk score (lowest)
+- NFLX: 3.97 risk score
+
 ## Technology Stack
 
 ### Frontend
@@ -270,62 +326,6 @@ docker-compose down -v
 npm run build
 npm run preview
 ```
-
-## Application Screenshots
-
-### Dashboard Overview
-Main dashboard displaying portfolio analytics, global risk heat map, and key performance indicators:
-
-![Geopolitical Risk Dashboard Overview](screenshots/001.png)
-
-The dashboard shows:
-- **Portfolio Value**: $3.4M in total assets
-- **Asset Count**: 10 holdings tracked
-- **Global Risk Score**: Real-time risk assessment with color-coded gauge
-- **Risk Factor Weights**: Breakdown of political, economic, conflict, corruption, and terrorism risks
-- **Global Heat Map**: Visual representation of risk levels across countries (green = low risk, yellow/red = elevated risk)
-- **Country Exposure Matrix**: Top 5 country exposures with direct/indirect breakdowns
-
-### Holdings Risk Analysis - Minimal Risk
-Holdings table with detailed asset information and minimal geopolitical exposure:
-
-![Holdings Risk Analysis - Low Risk](screenshots/002.png)
-
-Shows all 10 holdings with:
-- Asset names and company details
-- Sector classification (Technology, Energy, Finance, Commodities, Media)
-- Current portfolio value
-- Allocation percentage
-- Individual asset risk scores
-
-### Risk Assessment Dashboard - Moderate Risk
-Dashboard with elevated risk indicators and color-coded risk visualization:
-
-![Holdings Risk Analysis - Moderate Risk](screenshots/003.png)
-
-Displays:
-- **Avg Global Risk**: 37.9 (up from baseline)
-- **High Risk Alerts**: 13 active alerts
-- **Risk Factor Breakdown**: Political 100%, Economic 96%, Conflict 100%, Corruption 42%, Terrorism 100%
-- **Updated Risk Gauge**: Shows MODERATE risk level (54/100)
-- **Heat Map Changes**: Red zones highlight high-risk regions (Middle East, specific Asian countries)
-
-### Holdings with Individual Risk Scores
-Detailed view of each holding's geopolitical risk exposure:
-
-![Holdings with Risk Scores](screenshots/004.png)
-
-Individual risk assessments:
-- AAPL: 8.30 risk score
-- MSFT: 4.80 risk score
-- NVDA: 7.26 risk score
-- XOM (Energy exposure): 9.73 risk score (highest due to geopolitical factors)
-- TSLA: 5.91 risk score
-- BTC: 4.44 risk score
-- JPM: 4.12 risk score
-- AMD: 4.16 risk score
-- GLD: 1.74 risk score (lowest)
-- NFLX: 3.97 risk score
 
 ## Project Structure
 
