@@ -64,7 +64,7 @@ tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,GOOGL,Alp
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AMZN,Amazon.com Inc.,2,5000,technology,United States,0.85,direct,Corporate headquarters
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AMZN,Amazon.com Inc.,2,5000,technology,India,0.4,indirect,Cloud operations and retail
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,META,Meta Platforms,2,5000,technology,United States,0.8,direct,HQ and data centers
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,META,Meta Platforms,2,5000,technology,Europe,0.5,indirect,Regulatory environment
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,META,Meta Platforms,2,5000,technology,Ireland,0.5,indirect,Regulatory environment
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AVGO,Broadcom Inc.,2,5000,technology,United States,0.7,direct,Headquarters
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AVGO,Broadcom Inc.,2,5000,technology,China,0.6,indirect,Semiconductor demand
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ASML,ASML Holding,2,5000,technology,Netherlands,0.85,direct,Manufacturing and R&D
@@ -90,9 +90,9 @@ tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,IBM,IBM C
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PYPL,PayPal Holdings,2,5000,technology,United States,0.8,direct,Headquarters
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PYPL,PayPal Holdings,2,5000,technology,India,0.2,indirect,Engineering
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SQ,Block Inc.,2,5000,technology,United States,0.75,direct,HQ and operations
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SQ,Block Inc.,2,5000,technology,Africa,0.4,indirect,Emerging market risk
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SQ,Block Inc.,2,5000,technology,Nigeria,0.4,indirect,Emerging market risk
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NOW,ServiceNow Inc.,2,5000,technology,United States,0.8,direct,Headquarters
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NOW,ServiceNow Inc.,2,5000,technology,Europe,0.2,indirect,Operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NOW,ServiceNow Inc.,2,5000,technology,Germany,0.2,indirect,Operations
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,WDAY,Workday Inc.,2,5000,technology,United States,0.75,direct,HQ
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,WDAY,Workday Inc.,2,5000,technology,India,0.3,indirect,Development
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SNOW,Snowflake Inc.,2,5000,technology,United States,0.8,direct,HQ and operations
@@ -102,13 +102,13 @@ tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SHOP,Shop
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,UBER,Uber Technologies,2,5000,technology,United States,0.75,direct,HQ
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,UBER,Uber Technologies,2,5000,technology,India,0.5,indirect,Operations and market
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PINS,Pinterest Inc.,2,5000,technology,United States,0.8,direct,HQ
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PINS,Pinterest Inc.,2,5000,technology,Asia,0.3,indirect,Market exposure
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PINS,Pinterest Inc.,2,5000,technology,Japan,0.3,indirect,Market exposure
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SNAP,Snap Inc.,2,5000,technology,United States,0.8,direct,HQ and development
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SNAP,Snap Inc.,2,5000,technology,India,0.2,indirect,Engineering
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,TWTR,Twitter/X Corp.,2,5000,technology,United States,0.85,direct,HQ and operations
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,TWTR,Twitter/X Corp.,2,5000,technology,Global,0.4,macro,Global regulatory risk
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,TWTR,Twitter/X Corp.,2,5000,technology,United States,0.4,macro,Global regulatory risk
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NFLX,Netflix Inc.,2,5000,technology,United States,0.8,direct,HQ and streaming
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NFLX,Netflix Inc.,2,5000,technology,Global,0.3,indirect,Content licensing
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NFLX,Netflix Inc.,2,5000,technology,United States,0.3,indirect,Content licensing
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ROKU,Roku Inc.,2,5000,technology,United States,0.75,direct,HQ
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ROKU,Roku Inc.,2,5000,technology,China,0.2,indirect,Supply chain
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SVHN,Sovern Holdings,2,5000,technology,United States,0.7,direct,HQ
@@ -116,7 +116,7 @@ tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SVHN,Sove
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DASH,DoorDash Inc.,2,5000,technology,United States,0.8,direct,HQ and delivery
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DASH,DoorDash Inc.,2,5000,technology,India,0.4,indirect,Operations
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase Global,2,5000,technology,United States,0.9,direct,HQ and operations
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase Global,2,5000,technology,Global,0.6,macro,Regulatory risk
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase Global,2,5000,technology,United States,0.6,macro,Regulatory risk
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CRWD,CrowdStrike,2,5000,technology,United States,0.85,direct,HQ and security
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CRWD,CrowdStrike,2,5000,technology,Israel,0.2,indirect,R&D partnership
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,OKTA,Okta Inc.,2,5000,technology,United States,0.8,direct,HQ and development
