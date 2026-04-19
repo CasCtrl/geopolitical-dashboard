@@ -8,12 +8,10 @@ export function RiskGaugeCompact({ value, max = 100 }: RiskGaugeCompactProps) {
   const rotation = (percentage / 100) * 180 - 90;
 
   const getColor = (val: number) => {
-    if (val > 80) return "#991b1b"; // Dark Red
-    if (val > 60) return "#dc2626"; // Red
-    if (val > 40) return "#ea580c"; // Orange
-    if (val > 20) return "#eab308"; // Yellow
-    if (val > 5) return "#facc15"; // Light Yellow Warning
-    return "#84cc16"; // Green
+    if (val >= 75) return "#dc2626"; // Critical - Red
+    if (val >= 51) return "#ea580c"; // High - Orange
+    if (val >= 26) return "#eab308"; // Medium - Yellow
+    return "#16a34a"; // Low - Green
   };
 
   const color = getColor(value);
@@ -56,8 +54,12 @@ export function RiskGaugeCompact({ value, max = 100 }: RiskGaugeCompactProps) {
         <defs>
           <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#16a34a" />
-            <stop offset="40%" stopColor="#eab308" />
-            <stop offset="70%" stopColor="#ea580c" />
+            <stop offset="25%" stopColor="#16a34a" />
+            <stop offset="26%" stopColor="#eab308" />
+            <stop offset="50%" stopColor="#eab308" />
+            <stop offset="51%" stopColor="#ea580c" />
+            <stop offset="74%" stopColor="#ea580c" />
+            <stop offset="75%" stopColor="#dc2626" />
             <stop offset="100%" stopColor="#dc2626" />
           </linearGradient>
         </defs>

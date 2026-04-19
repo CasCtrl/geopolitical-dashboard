@@ -41,10 +41,14 @@ import { Card } from "./components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { RiskGaugeCompact } from "./components/RiskGaugeCompact";
 import { RiskScoreInfo } from "./components/RiskScoreInfo";
+import { RiskLegend } from "./components/RiskLegend";
 import { convertPortfolioAssetToHolding, getCountriesFromAssets, getSectorsFromAssets, screenAssets } from "./utils/portfolioFilters";
 import { putWorkspaceState } from "./data/workspaceStateApi";
 
 const API_BASE_URL = "http://localhost:5001";
+const MIN_ALERT_RISK_SCORE = 25;
+const HIGH_RISK_SCORE_THRESHOLD = 51;
+const CRITICAL_RISK_SCORE_THRESHOLD = 75;
 const TIME_ZONE_STORAGE_KEY = "dashboard.timezone";
 const WEIGHTS_STORAGE_KEY = "dashboard.weights";
 const TAB_STORAGE_KEY = "dashboard.currentTab";
@@ -186,9 +190,6 @@ const AdvancedFilters = lazy(() =>
 const BacktestPanel = lazy(() =>
   import("./components/BacktestPanel").then((module) => ({ default: module.BacktestPanel }))
 );
-const RealtimeStatusPanel = lazy(() =>
-  import("./components/RealtimeStatusPanel").then((module) => ({ default: module.RealtimeStatusPanel }))
-);
 const CorrelationAnalysisPanel = lazy(() =>
   import("./components/CorrelationAnalysisPanel").then((module) => ({ default: module.CorrelationAnalysisPanel }))
 );
@@ -215,6 +216,7 @@ export default function App() {
   const [showUpdateStatus, setShowUpdateStatus] = useState(false);
   const [showAlertsWindow, setShowAlertsWindow] = useState(false);
   const [showNewsFeedPanel, setShowNewsFeedPanel] = useState(false);
+  const [alertsRefreshToken, setAlertsRefreshToken] = useState(0);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [healthMetrics, setHealthMetrics] = useState<BasicHealthMetrics>({
     loading: false,
@@ -773,12 +775,17 @@ export default function App() {
       : 0;
   }, [riskData]);
 
-  // Count high-risk alerts
-  const alertCount = useMemo(() => {
-    return portfolioAnalysis.countryExposures.filter(
-      (e) => riskData[e.country] > 5
-    ).length;
+  const activeRiskAlerts = useMemo(() => {
+    return portfolioAnalysis.countryExposures
+      .map((exposure) => ({
+        ...exposure,
+        riskScore: riskData[exposure.country] || 50,
+      }))
+      .filter((exposure) => exposure.riskScore > MIN_ALERT_RISK_SCORE)
+      .sort((a, b) => b.riskContribution - a.riskContribution);
   }, [portfolioAnalysis, riskData]);
+
+  const alertCount = activeRiskAlerts.length;
 
   const downloadMapSnapshot = useCallback(async (mapElementId: string) => {
     try {
@@ -954,49 +961,6 @@ export default function App() {
         closeButton={false}
         duration={1600}
       />
-      {/* Alerts Window Modal */}
-      {showAlertsWindow && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
-          <Card className="bg-zinc-950 border-zinc-800 w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-zinc-800 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <AlertTriangle className="size-4 text-orange-400" />
-                  Alerts & Updates
-                </h2>
-                <button
-                  onClick={() => setShowAlertsWindow(false)}
-                  className="p-1 rounded hover:bg-zinc-800 transition-colors"
-                >
-                  <X className="size-4 text-zinc-400" />
-                </button>
-              </div>
-            </div>
-            <div className="overflow-y-auto flex-1 p-4 space-y-4">
-              {/* Real-Time Status Panel */}
-              <Suspense fallback={tabLoadingFallback}>
-                <RealtimeStatusPanel />
-              </Suspense>
-              
-              {/* Alerts and Notifications */}
-              <div className="border-t border-zinc-800 pt-4">
-                <Suspense fallback={tabLoadingFallback}>
-                  <AlertsAndNotifications activeAlertCount={alertCount} />
-                </Suspense>
-              </div>
-            </div>
-            <div className="p-4 border-t border-zinc-800 flex-shrink-0">
-              <button
-                onClick={() => setShowAlertsWindow(false)}
-                className="w-full px-3 py-2 bg-orange-600 hover:bg-orange-700 rounded text-white text-xs font-medium transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </Card>
-        </div>
-      )}
-
       {/* Help Modal */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
@@ -1477,7 +1441,10 @@ export default function App() {
               )}
               <div className="relative">
                 <button
-                  onClick={() => setShowNewsFeedPanel((prev) => !prev)}
+                  onClick={() => {
+                    setShowNewsFeedPanel((prev) => !prev);
+                    setShowAlertsWindow(false);
+                  }}
                   className={`relative h-9 w-9 flex items-center justify-center rounded-lg transition-colors ${
                     showNewsFeedPanel
                       ? "bg-zinc-800 text-zinc-100"
@@ -1544,19 +1511,74 @@ export default function App() {
                   </Card>
                 )}
               </div>
-              <button
-                onClick={() => setShowAlertsWindow(true)}
-                className="relative h-9 w-9 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
-                title="Alerts & Updates"
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowAlertsWindow((prev) => !prev);
+                    setShowNewsFeedPanel(false);
+                  }}
+                  className={`relative h-9 w-9 flex items-center justify-center rounded-lg transition-colors ${
+                    showAlertsWindow
+                      ? "bg-zinc-800 text-zinc-100"
+                      : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                  }`}
+                  title="Alerts & Updates"
                   aria-label="Open alerts and updates"
-              >
-                <AlertTriangle className="size-5" />
-                {alertCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 font-semibold text-center border border-zinc-950">
-                    {alertCount > 99 ? "99+" : alertCount}
-                  </span>
+                >
+                  <AlertTriangle className="size-5" />
+                  {alertCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 font-semibold text-center border border-zinc-950">
+                      {alertCount > 99 ? "99+" : alertCount}
+                    </span>
+                  )}
+                </button>
+
+                {showAlertsWindow && (
+                  <Card className="absolute right-0 top-full mt-2 w-[380px] max-w-[90vw] bg-zinc-950 border-zinc-800 shadow-xl z-50">
+                    <div className="p-2.5 border-b border-zinc-800 flex items-center justify-between">
+                      <div>
+                        <h2 className="text-xs font-semibold text-white flex items-center gap-2">
+                          <AlertTriangle className="size-3.5 text-orange-400" />
+                          Alerts & Updates
+                        </h2>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">
+                          {new Date().toLocaleDateString(undefined, {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setAlertsRefreshToken((prev) => prev + 1)}
+                          className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                          title="Refresh alerts"
+                        >
+                          <RefreshCw className="size-3.5 text-zinc-400" />
+                        </button>
+                        <button
+                          onClick={() => setShowAlertsWindow(false)}
+                          className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                          title="Close alerts"
+                        >
+                          <X className="size-3.5 text-zinc-400" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-[360px] overflow-y-auto p-2">
+                      <Suspense fallback={tabLoadingFallback}>
+                        <AlertsAndNotifications
+                          key={alertsRefreshToken}
+                          activeAlertCount={alertCount}
+                          activeRiskAlerts={activeRiskAlerts}
+                        />
+                      </Suspense>
+                    </div>
+                  </Card>
                 )}
-              </button>
+              </div>
               <button
                 onClick={() => setShowUpdateStatus(!showUpdateStatus)}
                 className={`relative h-9 w-9 flex items-center justify-center rounded-lg transition-colors ${
@@ -1665,7 +1687,7 @@ export default function App() {
                 <p className="text-sm font-bold text-white leading-tight">{averageRisk}</p>
               </Card>
               <Card className="p-1.5 bg-zinc-900/60 border-zinc-800">
-                <p className="text-[10px] text-zinc-500 leading-none">High Risk Alerts</p>
+                <p className="text-[10px] text-zinc-500 leading-none">Risk Alerts</p>
                 <p className="text-sm font-bold text-amber-400 leading-tight">{alertCount}</p>
               </Card>
             </div>
@@ -1840,6 +1862,9 @@ export default function App() {
                   <h3 className="text-xs mb-2 text-zinc-400 uppercase tracking-wide font-medium">
                     Top Country Exposures
                   </h3>
+                  <p className="text-[10px] text-zinc-500 mb-2">
+                    Uses one score metric throughout: Risk Score (0-100). Impact Weight is separate and shows portfolio influence.
+                  </p>
                   {dashboardPortfolioAnalysis.countryExposures.length === 0 ? (
                     <div className="rounded border border-zinc-800 bg-zinc-900/40 p-4 text-center" role="status" aria-live="polite">
                       <p className="text-sm text-zinc-300">No country exposures available for this selection.</p>
@@ -1881,10 +1906,10 @@ export default function App() {
                             </div>
                             <div className="text-right ml-2">
                               <p className={`text-xs ${isHighRisk ? "text-red-300" : "text-white"}`}>
-                                {exposure.riskContribution.toFixed(1)}
+                                {risk.toFixed(0)}
                               </p>
                               <p className={`text-[10px] ${isHighRisk ? "text-red-400" : "text-zinc-500"}`}>
-                                Risk: {risk.toFixed(0)}
+                                Impact Weight: {exposure.riskContribution.toFixed(1)}%
                               </p>
                             </div>
                           </div>
@@ -1924,8 +1949,8 @@ export default function App() {
               </div>
 
               {/* Total Portfolio Risk Score - Vertical Layout - Right Column */}
-              <Card className="p-3 bg-zinc-950 border-zinc-900 lg:col-span-1">
-                <div className="space-y-4">
+              <Card className="p-3 bg-zinc-950 border-zinc-900 lg:col-span-1 h-full">
+                <div className="flex h-full flex-col gap-4">
                   {/* Gauge */}
                   <div>
                     <div className="mb-2 flex items-center justify-center gap-1">
@@ -1941,69 +1966,78 @@ export default function App() {
                     <p className="text-[10px] text-zinc-600 text-center mt-1 uppercase">
                       {(() => {
                         const score = dashboardPortfolioAnalysis.totalRiskScore;
-                        if (score >= 80) return "CRITICAL";
-                        if (score >= 60) return "HIGH";
-                        if (score >= 40) return "MODERATE";
+                        if (score >= CRITICAL_RISK_SCORE_THRESHOLD) return "CRITICAL";
+                        if (score >= HIGH_RISK_SCORE_THRESHOLD) return "HIGH";
+                        if (score >= 26) return "MEDIUM";
                         return "LOW";
                       })()}
                     </p>
-                  </div>
-
-                  {/* Top Risk Assets */}
-                  <div className="pt-3 border-t border-zinc-900">
-                    <div className="mb-2 flex items-center gap-1">
-                      <p className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium">Top Risk Assets</p>
-                      <RiskScoreInfo
-                        meaning="Assets adding the most risk to the current portfolio."
-                        calculation="Ordered by each asset's calculated risk contribution from country exposure and allocation weight."
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      {dashboardPortfolioAnalysis.topRiskAssets.slice(0, 5).map((asset, index) => (
-                        <div
-                          key={asset}
-                          className="flex items-center gap-2 text-xs bg-zinc-900/60 px-2 py-1"
-                        >
-                          <span className="text-zinc-700 text-[10px] w-3">{index + 1}</span>
-                          <span className="font-mono text-zinc-300 text-xs">{asset}</span>
-                        </div>
-                      ))}
+                    <div className="mt-2">
+                      <RiskLegend compact={true} showTitle={false} />
                     </div>
                   </div>
 
-                  {/* Top Risk Countries */}
-                  <div className="pt-3 border-t border-zinc-900">
-                    <div className="mb-2 flex items-center gap-1">
-                      <p className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium">Top Risk Countries</p>
-                      <RiskScoreInfo
-                        meaning="Countries currently driving the largest share of portfolio geopolitical risk."
-                        calculation="Ordered by aggregated country risk contribution across all holdings exposed to each country."
-                      />
+                  {/* Active Risk Alerts */}
+                  <div className="pt-3 border-t border-zinc-900 flex-1 min-h-0 flex flex-col">
+                    <div className="flex items-center gap-2 text-amber-400 mb-2">
+                      <AlertTriangle className="size-3" />
+                      <p className="text-[10px] uppercase tracking-wide">
+                        {alertCount} Risk {alertCount === 1 ? "Alert" : "Alerts"}
+                      </p>
                     </div>
-                    <div className="space-y-1">
-                      {dashboardPortfolioAnalysis.topRiskCountries.slice(0, 5).map((country, index) => (
-                        <div
-                          key={country}
-                          className="flex items-center gap-2 text-xs bg-zinc-900/60 px-2 py-1"
-                        >
-                          <span className="text-zinc-700 text-[10px] w-3">{index + 1}</span>
-                          <span className="text-zinc-300 text-xs">{country}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                    <p className="text-[10px] text-zinc-500 mb-2">
+                      Logic: alerts include portfolio-exposed countries with risk score &gt; {MIN_ALERT_RISK_SCORE}. High risk is {HIGH_RISK_SCORE_THRESHOLD}-74. Critical starts at {CRITICAL_RISK_SCORE_THRESHOLD}+.
+                    </p>
 
-                  {/* Alert Count */}
-                  {alertCount > 0 && (
-                    <div className="pt-3 border-t border-zinc-900">
-                      <div className="flex items-center gap-2 text-amber-400">
-                        <AlertTriangle className="size-3" />
-                        <p className="text-[10px] uppercase tracking-wide">
-                          {alertCount} Active Risk {alertCount === 1 ? "Alert" : "Alerts"}
-                        </p>
+                    {alertCount === 0 ? (
+                      <p className="text-[10px] text-zinc-500">No active risk alerts.</p>
+                    ) : (
+                      <div className="min-h-0 flex-1 overflow-y-auto pr-1 space-y-1">
+                        {activeRiskAlerts.map((alert, index) => (
+                          <div
+                            key={`${alert.country}-${alert.exposureType}-${index}`}
+                            className="flex items-center justify-between gap-2 bg-zinc-900/70 border border-zinc-800 px-2 py-1"
+                          >
+                            <p className="text-[10px] text-zinc-300 truncate min-w-0">{alert.country}</p>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] border ${
+                                  alert.riskScore >= CRITICAL_RISK_SCORE_THRESHOLD
+                                    ? 'bg-red-900/40 border-red-800 text-red-200'
+                                    : alert.riskScore >= HIGH_RISK_SCORE_THRESHOLD
+                                    ? 'bg-orange-900/40 border-orange-800 text-orange-200'
+                                    : alert.riskScore >= 26
+                                    ? 'bg-yellow-900/40 border-yellow-800 text-yellow-200'
+                                    : 'bg-emerald-900/40 border-emerald-800 text-emerald-200'
+                                }`}
+                              >
+                                {alert.riskScore >= CRITICAL_RISK_SCORE_THRESHOLD
+                                  ? 'CRITICAL'
+                                  : alert.riskScore >= HIGH_RISK_SCORE_THRESHOLD
+                                  ? 'HIGH'
+                                  : alert.riskScore >= 26
+                                  ? 'MEDIUM'
+                                  : 'LOW'}
+                              </span>
+                              <p
+                                className={`text-[10px] ${
+                                  alert.riskScore >= CRITICAL_RISK_SCORE_THRESHOLD
+                                    ? 'text-red-200'
+                                    : alert.riskScore >= HIGH_RISK_SCORE_THRESHOLD
+                                    ? 'text-orange-200'
+                                    : alert.riskScore >= 26
+                                    ? 'text-yellow-200'
+                                    : 'text-emerald-200'
+                                }`}
+                              >
+                                {alert.riskScore.toFixed(0)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </Card>
             </div>

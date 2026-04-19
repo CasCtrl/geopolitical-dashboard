@@ -3,6 +3,7 @@ import { AlertTriangle, Bell, Plus, Trash2, Eye, CheckCircle2 } from 'lucide-rea
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { RiskLegend } from './RiskLegend';
 import {
   getAllThresholds,
   getUnreadAlertEvents,
@@ -18,9 +19,35 @@ import {
 
 interface AlertsAndNotificationsProps {
   activeAlertCount?: number;
+  activeRiskAlerts?: Array<{
+    country: string;
+    exposureType: string;
+    riskContribution: number;
+    riskScore: number;
+    contributingAssets: string[];
+  }>;
 }
 
-export function AlertsAndNotifications({ activeAlertCount }: AlertsAndNotificationsProps) {
+type AlertUrgency = 'critical' | 'high' | 'medium' | 'low';
+const MIN_ALERT_RISK_SCORE = 25;
+const HIGH_RISK_SCORE_THRESHOLD = 51;
+const CRITICAL_RISK_SCORE_THRESHOLD = 75;
+
+function getAlertUrgency(riskScore: number): AlertUrgency {
+  if (riskScore >= CRITICAL_RISK_SCORE_THRESHOLD) return 'critical';
+  if (riskScore >= HIGH_RISK_SCORE_THRESHOLD) return 'high';
+  if (riskScore >= 26) return 'medium';
+  return 'low';
+}
+
+function getUrgencyBadgeClass(urgency: AlertUrgency): string {
+  if (urgency === 'critical') return 'bg-red-900/40 border-red-800 text-red-200';
+  if (urgency === 'high') return 'bg-orange-900/40 border-orange-800 text-orange-200';
+  if (urgency === 'medium') return 'bg-yellow-900/40 border-yellow-800 text-yellow-200';
+  return 'bg-emerald-900/40 border-emerald-800 text-emerald-200';
+}
+
+export function AlertsAndNotifications({ activeAlertCount, activeRiskAlerts = [] }: AlertsAndNotificationsProps) {
   const [thresholds, setThresholds] = useState<AlertThreshold[]>(getAllThresholds());
   const [alertEvents, setAlertEvents] = useState<AlertEvent[]>(getAllAlertEvents());
   const [showCreateThreshold, setShowCreateThreshold] = useState(false);
@@ -37,7 +64,31 @@ export function AlertsAndNotifications({ activeAlertCount }: AlertsAndNotificati
   });
 
   const unreadCount = useMemo(() => getUnreadAlertEvents().length, [alertEvents]);
-  const displayedActiveCount = activeAlertCount ?? unreadCount;
+  const displayedActiveCount = activeAlertCount ?? activeRiskAlerts.length;
+  const detailedRiskAlerts = useMemo(() => {
+    return activeRiskAlerts
+      .filter((alert) => alert.riskScore > MIN_ALERT_RISK_SCORE)
+      .map((alert) => ({
+        ...alert,
+        urgency: getAlertUrgency(alert.riskScore),
+      }))
+      .sort((a, b) => b.riskContribution - a.riskContribution);
+  }, [activeRiskAlerts]);
+
+  const urgencyCounts = useMemo(() => {
+    const counts: Record<AlertUrgency, number> = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+    };
+
+    detailedRiskAlerts.forEach((alert) => {
+      counts[alert.urgency] += 1;
+    });
+
+    return counts;
+  }, [detailedRiskAlerts]);
 
   const handleCreateThreshold = () => {
     if (newThresholdData.name && newThresholdData.target) {
@@ -91,7 +142,7 @@ export function AlertsAndNotifications({ activeAlertCount }: AlertsAndNotificati
           <div className="flex items-center gap-3">
             <Bell className="text-orange-500" size={20} />
             <div>
-              <p className="text-xs font-semibold text-zinc-300">Active Alerts</p>
+              <p className="text-xs font-semibold text-zinc-300">Risk Alerts</p>
               <p className="text-lg font-bold text-orange-400">
                 {displayedActiveCount} {displayedActiveCount === 1 ? 'alert' : 'alerts'}
               </p>
@@ -107,6 +158,101 @@ export function AlertsAndNotifications({ activeAlertCount }: AlertsAndNotificati
             </Button>
           )}
         </div>
+        <p className="text-[10px] text-zinc-500 mt-2">
+          Logic: includes portfolio-exposed countries with risk score &gt; {MIN_ALERT_RISK_SCORE}. High risk is {HIGH_RISK_SCORE_THRESHOLD}-74. Critical starts at {CRITICAL_RISK_SCORE_THRESHOLD}+.
+        </p>
+        <div className="mt-2">
+          <RiskLegend compact={true} showTitle={true} />
+        </div>
+      </Card>
+
+      {/* Portfolio Risk Alerts Feed (News-style detailed cards) */}
+      <Card className="p-4 bg-zinc-950 border-zinc-800">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-zinc-100">Portfolio Risk Alerts Feed</h3>
+          <span className="text-xs text-zinc-400">{detailedRiskAlerts.length} shown</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 p-2 bg-zinc-900 rounded border border-zinc-800 mb-3">
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1 text-center">
+            <p className="text-[10px] text-zinc-500">Risk Alerts</p>
+            <p className="text-sm font-bold text-orange-400">{displayedActiveCount}</p>
+          </div>
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1 text-center">
+            <p className="text-[10px] text-zinc-500">Critical</p>
+            <p className="text-sm font-bold text-red-400">{urgencyCounts.critical}</p>
+          </div>
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1 text-center">
+            <p className="text-[10px] text-zinc-500">High</p>
+            <p className="text-sm font-bold text-orange-400">{urgencyCounts.high}</p>
+          </div>
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1 text-center">
+            <p className="text-[10px] text-zinc-500">Medium</p>
+            <p className="text-sm font-bold text-yellow-400">{urgencyCounts.medium}</p>
+          </div>
+          <div className="md:col-span-4 grid grid-cols-1 gap-2 mt-1">
+            <Button
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => setAlertEvents(getAllAlertEvents())}
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        {detailedRiskAlerts.length === 0 ? (
+          <p className="text-xs text-zinc-500 text-center py-3">No active alerts found.</p>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {detailedRiskAlerts.map((alert, index) => (
+              <div
+                key={`${alert.country}-${alert.exposureType}-${index}`}
+                className="p-3 rounded-lg border bg-zinc-900/80 border-zinc-700"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-zinc-100 truncate">{alert.country}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs font-semibold text-zinc-100">Risk Score {alert.riskScore.toFixed(0)}</p>
+                    <p className="text-[10px] text-zinc-400">Impact Weight {alert.riskContribution.toFixed(1)}%</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] border border-zinc-700 bg-zinc-800 text-zinc-200">
+                    RISK ALERT
+                  </span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] border ${getUrgencyBadgeClass(alert.urgency)}`}>
+                    RISK LEVEL: {alert.urgency.toUpperCase()}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] border border-zinc-700 bg-zinc-800 text-zinc-300">
+                    {alert.contributingAssets.length} stock{alert.contributingAssets.length === 1 ? '' : 's'} impacted
+                  </span>
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-zinc-500 mb-1">Affected Stocks</p>
+                  <div className="flex flex-wrap gap-1">
+                    {alert.contributingAssets.length > 0 ? (
+                      alert.contributingAssets.map((asset) => (
+                        <span
+                          key={`${alert.country}-${alert.exposureType}-${asset}`}
+                          className="px-1.5 py-0.5 rounded text-[10px] border border-zinc-700 bg-zinc-800/80 text-zinc-200"
+                        >
+                          {asset}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[10px] text-zinc-500">No stock details available</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Recent Alert Events */}

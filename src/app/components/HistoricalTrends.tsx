@@ -311,8 +311,8 @@ export function HistoricalTrends({
         <div className="mb-3 flex items-center gap-1.5">
           <h3 className="text-sm font-semibold text-zinc-100">Supply Chain Exposure Mapping</h3>
           <RiskScoreInfo
-            meaning="Highlights indirect dependency concentration and depth through supply chains."
-            calculation="Single-point-of-failure flags countries shared by multiple assets with high average dependency weight; depth is inferred from dependency type mix (direct/indirect/macro)."
+            meaning="Highlights dependency concentration and depth through supply chains."
+            calculation="Single-point-of-failure flags countries shared by multiple assets with high average dependency weight; depth is inferred from exposure tiers (Tier 1/Tier 2/Tier 3)."
           />
         </div>
 
@@ -345,7 +345,7 @@ export function HistoricalTrends({
                   <span>Depth {entry.depth.maxDepth}</span>
                 </div>
                 <p className="text-zinc-500 mt-1">
-                  Direct {entry.depth.direct} | Indirect {entry.depth.indirect} | Macro {entry.depth.macro}
+                  Tier 1 {entry.depth.direct} | Tier 2 {entry.depth.indirect} | Tier 3 {entry.depth.macro}
                 </p>
                 <p className="text-zinc-400 mt-1">
                   Alternative low-risk sourcing: {entry.alternatives.length > 0

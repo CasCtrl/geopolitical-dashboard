@@ -36,12 +36,10 @@ type GeoMultiPolygon = GeoPolygon[];
 let geoJSONCache: { features: CountryFeature[] } | null = null;
 
 const getColor = (risk: number) => {
-  if (risk > 80) return "#991b1b"; // Very High - Dark Red
-  if (risk > 60) return "#dc2626"; // High - Red
-  if (risk > 40) return "#f59e0b"; // Medium - Orange
-  if (risk > 20) return "#fbbf24"; // Low - Yellow
-  if (risk > 5) return "#eab308"; // Very Low Warning - Light Yellow
-  return "#84cc16"; // Very Low - Green (no risk)
+  if (risk >= 75) return "#dc2626"; // Critical - Red
+  if (risk >= 51) return "#ea580c"; // High - Orange
+  if (risk >= 26) return "#eab308"; // Medium - Yellow
+  return "#84cc16"; // Low - Green (restored previous shade)
 };
 
 // Memoize coordinate path calculation
