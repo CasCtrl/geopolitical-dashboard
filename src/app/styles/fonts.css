@@ -1,0 +1,9 @@
+/* System fonts configuration */
+@font-face {
+  font-family: 'System';
+  src: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+* {
+  font-family: 'System', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

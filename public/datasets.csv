@@ -1,0 +1,139 @@
+datasetId,datasetName,datasetDescription,ticker,assetName,weight,value,sector,country,dependencyWeight,dependencyType,dependencyReason
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AAPL,Apple Inc.,20,50000,technology,United States,0.7,direct,U.S. headquarters and operations
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AAPL,Apple Inc.,20,50000,technology,China,0.6,indirect,Manufacturing and supply chain
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AAPL,Apple Inc.,20,50000,technology,Taiwan,0.3,indirect,Semiconductor supply chain
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,MSFT,Microsoft Corporation,20,50000,technology,United States,0.8,direct,U.S. headquarters and operations
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,MSFT,Microsoft Corporation,20,50000,technology,India,0.2,indirect,Development centers
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NVDA,NVIDIA Corporation,15,37500,technology,United States,0.6,direct,U.S. headquarters
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NVDA,NVIDIA Corporation,15,37500,technology,Taiwan,0.9,indirect,TSMC semiconductor manufacturing
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NVDA,NVIDIA Corporation,15,37500,technology,China,0.4,indirect,Market demand
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,15,37500,energy,United States,0.7,direct,U.S. headquarters and operations
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,15,37500,energy,Saudi Arabia,0.5,indirect,OPEC energy market influence
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,15,37500,energy,United Arab Emirates,0.4,indirect,Gulf energy market
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,15,37500,energy,Iraq,0.3,indirect,Regional energy supply
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,TSLA,Tesla Inc.,15,37500,manufacturing,United States,0.6,direct,U.S. headquarters
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,TSLA,Tesla Inc.,15,37500,manufacturing,China,0.7,indirect,Shanghai Gigafactory and market
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,TSLA,Tesla Inc.,15,37500,manufacturing,Germany,0.3,indirect,Berlin Gigafactory
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,15,37500,commodities,United States,0.4,macro,Regulatory environment
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,15,37500,commodities,China,0.3,macro,Mining and regulation
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,15,37500,commodities,Russia,0.2,macro,Sanctions and alternative currency
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,JPM,JP Morgan Chase,10,25000,finance,United States,0.85,direct,U.S. headquarters and operations
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,JPM,JP Morgan Chase,10,25000,finance,United Kingdom,0.6,indirect,London banking hub
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,JPM,JP Morgan Chase,10,25000,finance,China,0.4,indirect,Market and regulatory risk
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AMD,Advanced Micro Devices,8,20000,technology,United States,0.75,direct,Design and headquarters
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AMD,Advanced Micro Devices,8,20000,technology,Taiwan,0.8,indirect,Contract manufacturing
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AMD,Advanced Micro Devices,8,20000,technology,China,0.5,indirect,Market exposure
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,GLD,Gold Trust,7,17500,commodities,United States,0.5,direct,U.S. trust structure
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,GLD,Gold Trust,7,17500,commodities,Australia,0.4,indirect,Mining operations
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,GLD,Gold Trust,7,17500,commodities,South Africa,0.3,indirect,Gold production
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NFLX,Netflix Inc.,10,25000,media,United States,0.8,direct,Headquarters and streaming
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NFLX,Netflix Inc.,10,25000,media,India,0.4,indirect,Content production
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NFLX,Netflix Inc.,10,25000,media,South Korea,0.3,indirect,Content licensing
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,ICLN,iShares Clean Energy ETF,30,75000,energy,United States,0.8,direct,Major renewable energy infrastructure
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,ICLN,iShares Clean Energy ETF,30,75000,energy,China,0.7,indirect,Solar and wind manufacturing
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,ICLN,iShares Clean Energy ETF,30,75000,energy,Germany,0.6,indirect,Renewable energy leader
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,TAN,Invesco Solar ETF,25,62500,energy,United States,0.7,direct,Solar manufacturing and installation
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,TAN,Invesco Solar ETF,25,62500,energy,Malaysia,0.5,indirect,Solar panel manufacturing
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,TAN,Invesco Solar ETF,25,62500,energy,Vietnam,0.4,indirect,Electronics components
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,PLUG,Plug Power Inc.,25,62500,energy,United States,0.9,direct,U.S. based hydrogen leader
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,PLUG,Plug Power Inc.,25,62500,energy,Canada,0.5,indirect,Hydrogen production
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,PLUG,Plug Power Inc.,25,62500,energy,Australia,0.3,indirect,Renewable energy export
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,TSM,Taiwan Semiconductor,20,50000,technology,Taiwan,0.95,direct,Headquarters and manufacturing
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,TSM,Taiwan Semiconductor,20,50000,technology,United States,0.4,indirect,Key customer base
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,TSM,Taiwan Semiconductor,20,50000,technology,China,0.3,indirect,Market and supply chain risks
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,ENPH,Enphase Energy,15,37500,energy,United States,0.8,direct,Design and manufacturing
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,ENPH,Enphase Energy,15,37500,energy,Mexico,0.5,indirect,Manufacturing facilities
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,ENPH,Enphase Energy,15,37500,energy,China,0.4,indirect,Supply chain
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,RUN,Sunrun Inc.,12,30000,energy,United States,0.85,direct,Residential solar installation
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,RUN,Sunrun Inc.,12,30000,energy,China,0.5,indirect,Equipment and supply chain
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,NEE,NextEra Energy,18,45000,energy,United States,0.9,direct,Renewable utility operations
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,NEE,NextEra Energy,18,45000,energy,Canada,0.4,indirect,Operations and wind farms
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,SEDG,Solaredge Technologies,10,25000,energy,Israel,0.9,direct,HQ and engineering
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,SEDG,Solaredge Technologies,10,25000,energy,China,0.6,indirect,Manufacturing and supply
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,SMCI,Super Micro Computer,8,20000,technology,United States,0.75,direct,Data center equipment HQ
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,SMCI,Super Micro Computer,8,20000,technology,China,0.7,indirect,Manufacturing
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,VSLR,Vivint Solar Holdings,9,22500,energy,United States,0.8,direct,Solar installation provider
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,VSLR,Vivint Solar Holdings,9,22500,energy,China,0.4,indirect,Equipment supply chain
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AAPL,Apple Inc.,2,5000,technology,China,0.6,indirect,Manufacturing base
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MSFT,Microsoft Corporation,2,5000,technology,United States,0.8,direct,HQ and cloud infrastructure
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MSFT,Microsoft Corporation,2,5000,technology,Ireland,0.3,indirect,Data centers
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NVDA,NVIDIA Corporation,2,5000,technology,United States,0.6,direct,Headquarters and design
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NVDA,NVIDIA Corporation,2,5000,technology,Taiwan,0.9,indirect,TSMC manufacturing
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,GOOGL,Alphabet Inc.,2,5000,technology,United States,0.8,direct,HQ and R&D centers
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,GOOGL,Alphabet Inc.,2,5000,technology,China,0.5,indirect,Market restrictions
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AMZN,Amazon.com Inc.,2,5000,technology,United States,0.85,direct,Corporate headquarters
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AMZN,Amazon.com Inc.,2,5000,technology,India,0.4,indirect,Cloud operations and retail
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,META,Meta Platforms,2,5000,technology,United States,0.8,direct,HQ and data centers
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,META,Meta Platforms,2,5000,technology,Europe,0.5,indirect,Regulatory environment
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AVGO,Broadcom Inc.,2,5000,technology,United States,0.7,direct,Headquarters
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AVGO,Broadcom Inc.,2,5000,technology,China,0.6,indirect,Semiconductor demand
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ASML,ASML Holding,2,5000,technology,Netherlands,0.85,direct,Manufacturing and R&D
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ASML,ASML Holding,2,5000,technology,China,0.7,indirect,Export restrictions and market
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,QCOM,Qualcomm Inc.,2,5000,technology,United States,0.75,direct,Design and headquarters
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,QCOM,Qualcomm Inc.,2,5000,technology,Taiwan,0.7,indirect,Manufacturing partnerships
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,TSM,Taiwan Semiconductor,2,5000,technology,Taiwan,0.95,direct,HQ and manufacturing
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,TSM,Taiwan Semiconductor,2,5000,technology,China,0.6,indirect,Geopolitical risk
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CSCO,Cisco Systems,2,5000,technology,United States,0.8,direct,Headquarters and R&D
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CSCO,Cisco Systems,2,5000,technology,India,0.3,indirect,Software development
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ADBE,Adobe Inc.,2,5000,technology,United States,0.8,direct,HQ and development
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ADBE,Adobe Inc.,2,5000,technology,India,0.4,indirect,Engineering centers
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,INTC,Intel Corporation,2,5000,technology,United States,0.85,direct,HQ and fabs
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,INTC,Intel Corporation,2,5000,technology,Ireland,0.4,indirect,Manufacturing
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AMD,Advanced Micro Devices,2,5000,technology,United States,0.75,direct,Design and headquarters
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AMD,Advanced Micro Devices,2,5000,technology,Taiwan,0.8,indirect,Contract manufacturing
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CRM,Salesforce Inc.,2,5000,technology,United States,0.8,direct,HQ and cloud
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CRM,Salesforce Inc.,2,5000,technology,India,0.3,indirect,Development
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ORCL,Oracle Corporation,2,5000,technology,United States,0.8,direct,HQ and data centers
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ORCL,Oracle Corporation,2,5000,technology,India,0.35,indirect,Operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,IBM,IBM Corporation,2,5000,technology,United States,0.75,direct,HQ
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,IBM,IBM Corporation,2,5000,technology,Germany,0.3,indirect,Operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PYPL,PayPal Holdings,2,5000,technology,United States,0.8,direct,Headquarters
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PYPL,PayPal Holdings,2,5000,technology,India,0.2,indirect,Engineering
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SQ,Block Inc.,2,5000,technology,United States,0.75,direct,HQ and operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SQ,Block Inc.,2,5000,technology,Africa,0.4,indirect,Emerging market risk
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NOW,ServiceNow Inc.,2,5000,technology,United States,0.8,direct,Headquarters
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NOW,ServiceNow Inc.,2,5000,technology,Europe,0.2,indirect,Operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,WDAY,Workday Inc.,2,5000,technology,United States,0.75,direct,HQ
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,WDAY,Workday Inc.,2,5000,technology,India,0.3,indirect,Development
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SNOW,Snowflake Inc.,2,5000,technology,United States,0.8,direct,HQ and operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SNOW,Snowflake Inc.,2,5000,technology,Canada,0.2,indirect,Data centers
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SHOP,Shopify Inc.,2,5000,technology,Canada,0.8,direct,HQ and operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SHOP,Shopify Inc.,2,5000,technology,United States,0.3,direct,U.S. market
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,UBER,Uber Technologies,2,5000,technology,United States,0.75,direct,HQ
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,UBER,Uber Technologies,2,5000,technology,India,0.5,indirect,Operations and market
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PINS,Pinterest Inc.,2,5000,technology,United States,0.8,direct,HQ
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PINS,Pinterest Inc.,2,5000,technology,Asia,0.3,indirect,Market exposure
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SNAP,Snap Inc.,2,5000,technology,United States,0.8,direct,HQ and development
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SNAP,Snap Inc.,2,5000,technology,India,0.2,indirect,Engineering
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,TWTR,Twitter/X Corp.,2,5000,technology,United States,0.85,direct,HQ and operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,TWTR,Twitter/X Corp.,2,5000,technology,Global,0.4,macro,Global regulatory risk
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NFLX,Netflix Inc.,2,5000,technology,United States,0.8,direct,HQ and streaming
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NFLX,Netflix Inc.,2,5000,technology,Global,0.3,indirect,Content licensing
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ROKU,Roku Inc.,2,5000,technology,United States,0.75,direct,HQ
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ROKU,Roku Inc.,2,5000,technology,China,0.2,indirect,Supply chain
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SVHN,Sovern Holdings,2,5000,technology,United States,0.7,direct,HQ
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SVHN,Sovern Holdings,2,5000,technology,India,0.3,indirect,Operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DASH,DoorDash Inc.,2,5000,technology,United States,0.8,direct,HQ and delivery
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DASH,DoorDash Inc.,2,5000,technology,India,0.4,indirect,Operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase Global,2,5000,technology,United States,0.9,direct,HQ and operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase Global,2,5000,technology,Global,0.6,macro,Regulatory risk
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CRWD,CrowdStrike,2,5000,technology,United States,0.85,direct,HQ and security
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CRWD,CrowdStrike,2,5000,technology,Israel,0.2,indirect,R&D partnership
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,OKTA,Okta Inc.,2,5000,technology,United States,0.8,direct,HQ and development
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,OKTA,Okta Inc.,2,5000,technology,India,0.3,indirect,Engineering centers
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PSTG,Pure Storage,2,5000,technology,United States,0.8,direct,HQ and R&D
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PSTG,Pure Storage,2,5000,technology,China,0.3,indirect,Market exposure
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MSTR,MicroStrategy,2,5000,technology,United States,0.8,direct,HQ and operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MSTR,MicroStrategy,2,5000,technology,India,0.2,indirect,Development
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ALRM,Alarm.com,2,5000,technology,United States,0.8,direct,HQ
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ALRM,Alarm.com,2,5000,technology,Canada,0.1,indirect,Operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,FTNT,Fortinet Inc.,2,5000,technology,United States,0.7,direct,HQ and R&D
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,FTNT,Fortinet Inc.,2,5000,technology,Canada,0.15,indirect,Operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NET,Cloudflare Inc.,2,5000,technology,United States,0.75,direct,HQ
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NET,Cloudflare Inc.,2,5000,technology,Singapore,0.2,indirect,Operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SPLK,Splunk Inc.,2,5000,technology,United States,0.8,direct,HQ
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SPLK,Splunk Inc.,2,5000,technology,India,0.25,indirect,Engineering
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MDB,MongoDB Inc.,2,5000,technology,United States,0.8,direct,HQ
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MDB,MongoDB Inc.,2,5000,technology,India,0.2,indirect,Development
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DDOG,Datadog Inc.,2,5000,technology,United States,0.8,direct,HQ and operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DDOG,Datadog Inc.,2,5000,technology,France,0.15,indirect,European operations
