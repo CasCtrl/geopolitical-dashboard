@@ -4,57 +4,34 @@ import path from 'path';
 const DIST_DIR = path.resolve(process.cwd(), 'dist');
 const ASSETS_DIR = path.join(DIST_DIR, 'assets');
 const INDEX_HTML = path.join(DIST_DIR, 'index.html');
-const MANIFEST_PATH = path.join(DIST_DIR, '.vite', 'manifest.json');
 
 const KB = 1024;
 const BUDGETS = {
-  maxInitialJsKb: Number(process.env.BUNDLE_BUDGET_INITIAL_JS_KB || 1600),
-  maxEntryJsKb: Number(process.env.BUNDLE_BUDGET_ENTRY_JS_KB || 450),
-  maxAsyncChunkJsKb: Number(process.env.BUNDLE_BUDGET_ASYNC_CHUNK_JS_KB || 900),
+  maxInitialJsKb: Number(process.env.BUNDLE_BUDGET_INITIAL_JS_KB || 300),
+  maxEntryJsKb: Number(process.env.BUNDLE_BUDGET_ENTRY_JS_KB || 180),
+  maxAsyncChunkJsKb: Number(process.env.BUNDLE_BUDGET_ASYNC_CHUNK_JS_KB || 500),
 };
 
 function toKb(bytes) {
   return Number((bytes / KB).toFixed(1));
 }
 
-async function getEntryScriptName() {
+async function getStartupScriptNames() {
   const html = await readFile(INDEX_HTML, 'utf8');
   const entryMatch = html.match(/<script\s+type="module"\s+crossorigin\s+src="\/assets\/([^"]+\.js)">/i);
-  return entryMatch?.[1] || null;
-}
+  const preloadMatches = Array.from(
+    html.matchAll(/<link\s+rel="modulepreload"\s+crossorigin\s+href="\/assets\/([^"]+\.js)">/gi)
+  ).map((match) => match[1]);
 
-async function readManifest() {
-  const manifestContent = await readFile(MANIFEST_PATH, 'utf8');
-  return JSON.parse(manifestContent);
-}
-
-function collectInitialImports(manifest, entryKey) {
-  const visited = new Set();
-  const stack = [entryKey];
-  const files = new Set();
-
-  while (stack.length > 0) {
-    const key = stack.pop();
-    if (!key || visited.has(key)) {
-      continue;
-    }
-
-    visited.add(key);
-    const chunk = manifest[key];
-    if (!chunk) {
-      continue;
-    }
-
-    if (chunk.file && chunk.file.endsWith('.js')) {
-      files.add(path.basename(chunk.file));
-    }
-
-    for (const imported of chunk.imports || []) {
-      stack.push(imported);
-    }
+  const startupScripts = new Set(preloadMatches);
+  if (entryMatch?.[1]) {
+    startupScripts.add(entryMatch[1]);
   }
 
-  return files;
+  return {
+    entryScript: entryMatch?.[1] || null,
+    startupScripts,
+  };
 }
 
 async function collectJsAssets() {
@@ -76,10 +53,9 @@ async function collectJsAssets() {
 }
 
 async function main() {
-  const [entryScript, assets, manifest] = await Promise.all([
-    getEntryScriptName(),
+  const [{ entryScript, startupScripts }, assets] = await Promise.all([
+    getStartupScriptNames(),
     collectJsAssets(),
-    readManifest(),
   ]);
 
   if (assets.length === 0) {
@@ -87,17 +63,10 @@ async function main() {
   }
 
   const entryAsset = entryScript ? assets.find((asset) => asset.file === entryScript) : null;
-  const entryManifestKey = Object.keys(manifest).find((key) => manifest[key]?.isEntry);
-
-  if (!entryManifestKey) {
-    throw new Error('No entry chunk found in manifest.');
-  }
-
-  const initialFiles = collectInitialImports(manifest, entryManifestKey);
-  const initialAssets = assets.filter((asset) => initialFiles.has(asset.file));
-  const asyncAssets = assets.filter((asset) => !initialFiles.has(asset.file));
+  const initialAssets = assets.filter((asset) => startupScripts.has(asset.file));
+  const asyncAssets = assets.filter((asset) => !startupScripts.has(asset.file));
   const totalInitialJsBytes = initialAssets.reduce((sum, asset) => sum + asset.bytes, 0);
-  const largestAsyncChunk = asyncAssets.sort((a, b) => b.bytes - a.bytes)[0] || null;
+  const largestAsyncChunk = asyncAssets[0] || null;
 
   const violations = [];
 
@@ -130,6 +99,18 @@ async function main() {
     console.log(
       `- Largest async JS chunk: ${largestAsyncChunk.file} ${toKb(largestAsyncChunk.bytes)} KB (budget ${BUDGETS.maxAsyncChunkJsKb} KB)`
     );
+  }
+  if (initialAssets.length > 0) {
+    console.log('- Startup scripts considered:');
+    initialAssets.forEach((asset) => {
+      console.log(`  - ${asset.file} (${toKb(asset.bytes)} KB)`);
+    });
+  }
+  if (asyncAssets.length > 0) {
+    console.log('- Top async chunks:');
+    asyncAssets.slice(0, 5).forEach((asset) => {
+      console.log(`  - ${asset.file} (${toKb(asset.bytes)} KB)`);
+    });
   }
 
   if (violations.length > 0) {
