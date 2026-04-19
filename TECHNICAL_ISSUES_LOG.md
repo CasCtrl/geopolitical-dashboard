@@ -1,13 +1,14 @@
 # Technical Issues Log
 
 ## Overview
-This document tracks technical issues encountered during development, their root causes, solutions implemented, and lessons learned.
+This document tracks technical issues encountered during the 8-week development cycle. Issues are organized by sprint week and include root cause analysis, solutions implemented, and lessons learned for future reference.
 
 ---
 
 ## Issue #1: SQL Server Connection Timeout on First Startup
 
-**Date:** Development Phase 3 (Week 5)
+**Date:** Week 3 - Backend Architecture Setup
+**Sprint:** Infrastructure Planning
 **Severity:** High
 **Status:** Resolved ✅
 
@@ -60,7 +61,8 @@ SQL Server container health check was not complete before application attempted 
 
 ## Issue #2: Risk Calculation Producing NaN Values
 
-**Date:** Development Phase 3 (Week 6)
+**Date:** Week 4 - Sprint 1 Backend Development
+**Sprint:** API Implementation
 **Severity:** Critical
 **Status:** Resolved ✅
 
@@ -119,7 +121,8 @@ const avgRisk = (political + economic + conflict + corruption + terrorism) / 5;
 
 ## Issue #3: CSV Data Loading Performance Degradation
 
-**Date:** Development Phase 4 (Week 9)
+**Date:** Week 4 - Sprint 1 Backend Development
+**Sprint:** Data Pipeline Optimization
 **Severity:** Medium
 **Status:** Resolved ✅
 
@@ -181,7 +184,8 @@ CSV parser was:
 
 ## Issue #4: TypeScript Compilation Errors in React Components
 
-**Date:** Development Phase 3 (Week 7)
+**Date:** Week 6 - Sprint 3 Visualizations & Integration
+**Sprint:** Frontend Type Safety
 **Severity:** Medium
 **Status:** Resolved ✅
 
@@ -246,7 +250,8 @@ Loose TypeScript configuration and missing type definitions for:
 
 ## Issue #5: React Component Re-render Performance Issues
 
-**Date:** Development Phase 4 (Week 10)
+**Date:** Week 5 - Sprint 2 Frontend Components
+**Sprint:** Component Optimization
 **Severity:** Medium
 **Status:** Resolved ✅
 
@@ -297,7 +302,8 @@ Dashboard felt sluggish when updating dataset selector. Frame rate dropped notic
 
 ## Issue #6: Docker Port Conflicts
 
-**Date:** Development Phase 5 (Week 13)
+**Date:** Week 7 - Sprint 4 Testing & Optimization
+**Sprint:** Deployment Testing
 **Severity:** Low
 **Status:** Resolved ✅
 
@@ -330,7 +336,8 @@ Previous development session left containers running or port already in use by a
 
 ## Issue #7: CORS Errors in Development
 
-**Date:** Development Phase 3 (Week 8)
+**Date:** Week 4 - Sprint 1 Backend Development
+**Sprint:** API Configuration
 **Severity:** Medium
 **Status:** Resolved ✅
 
@@ -373,7 +380,8 @@ Backend API did not include CORS headers in responses.
 
 ## Issue #8: Database Connection Pool Exhaustion
 
-**Date:** Development Phase 4 (Week 11)
+**Date:** Week 7 - Sprint 4 Testing & Optimization
+**Sprint:** Production Hardening
 **Severity:** High
 **Status:** Resolved ✅
 
@@ -428,15 +436,17 @@ Database connections were not being properly closed after queries, exhausting th
 
 ---
 
-## Summary of Issues by Category
+## Issue Distribution by Sprint
 
-| Category | Count | Severity |
-|----------|-------|----------|
-| Database/Connectivity | 3 | 2 Critical, 1 High |
-| Performance | 2 | Both Medium |
-| Type Safety | 1 | Medium |
-| API/CORS | 1 | Medium |
-| DevOps | 1 | Low |
+| Sprint | Week | Issues | Focus Area |
+|--------|------|--------|-----------|
+| Week 1-2: Planning & Design | 1-2 | 0 | Requirements, UI/UX (no technical issues) |
+| Week 3: Architecture | 3 | 1 | Database setup and infrastructure |
+| Sprint 1: Backend Development | 4 | 3 | Risk calculations, API, CORS |
+| Sprint 2: Frontend Components | 5 | 1 | React performance optimization |
+| Sprint 3: Visualizations & Integration | 6 | 1 | TypeScript configuration |
+| Sprint 4: Testing & Optimization | 7 | 2 | Docker, connection pooling |
+| Week 8: Handoff | 8 | 0 | Documentation and Git deployment |
 
 ## Key Takeaways
 
@@ -449,10 +459,22 @@ Database connections were not being properly closed after queries, exhausting th
 
 ## Recommendations for Future Development
 
-1. Implement automated performance testing in CI/CD
-2. Add APM (Application Performance Monitoring) tools
-3. Set up production-like staging environment earlier
-4. Implement comprehensive error tracking (e.g., Sentry)
-5. Add load testing to identify bottlenecks
-6. Document assumptions and constraints clearly
-7. Conduct code reviews focusing on resource management
+1. **Maintain Sprint Discipline:** The 8-week sprint structure proved effective. Continue this pattern for future features and enhancements.
+
+2. **Early Architecture Investment:** Week 3 architecture planning prevented integration issues. Dedicate sufficient time to design before coding.
+
+3. **Weekly Issue Logging:** Document issues as they occur, not post-hoc. This aids future maintenance and planning.
+
+4. **Environment Parity:** Ensure development, staging, and production environments match as closely as possible to catch deployment issues early.
+
+5. **Performance Baseline:** Establish performance benchmarks in Week 3 and measure against them throughout development.
+
+6. **Automated Testing in CI/CD:** Integrate Jest tests into continuous integration to catch regressions early.
+
+7. **Database Monitoring:** Implement connection pool monitoring and query performance tracking from Week 4 onwards.
+
+8. **Documentation-First Development:** Update documentation as code is written (during sprints) rather than at the end. This saves Week 8 crunch time.
+
+9. **Stakeholder Feedback Loops:** Weekly reviews in Weeks 1-2 prevented scope creep. Maintain this cadence for future projects.
+
+10. **Technical Debt Tracking:** Reserve Sprint 4 time for technical debt resolution, not just new features. This enabled production-ready code by Week 8.

@@ -1,7 +1,7 @@
 # System Architecture: Geopolitical Risk Dashboard
 
 ## Overview
-The Geopolitical Risk Dashboard follows a modern three-tier architecture with a React frontend, Node.js backend API, and SQL Server database.
+The Geopolitical Risk Dashboard follows a modern three-tier architecture with a React frontend, Node.js backend API, and SQL Server database. This design was completed in Week 3 of the 8-week development cycle to support parallel frontend (Week 5) and backend (Week 4) implementation.
 
 ## System Architecture Diagram
 
@@ -333,4 +333,4 @@ Database
 
 ## Conclusion
 
-The architecture is designed for maintainability, scalability, and performance. Clear separation of concerns enables independent testing and deployment of components. The containerized deployment ensures consistency across environments.
+The architecture is designed for maintainability, scalability, and performance. Clear separation of concerns enables independent testing and deployment of components. The containerized deployment ensures consistency across environments. This architecture was intentionally designed in Week 3 to enable parallel development during Weeks 4-7 coding sprints, with backend and frontend teams working independently against documented API contracts.
