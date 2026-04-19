@@ -572,6 +572,18 @@ export default function App() {
                     This Geopolitical Risk Dashboard helps you analyze and monitor geopolitical risks across your investment portfolio. It evaluates how different risk factors (political instability, economic challenges, conflicts, corruption, and terrorism) impact your holdings in various countries.
                   </p>
                 </div>
+                <div className="bg-zinc-900/60 border border-zinc-800 rounded p-2">
+                  <h3 className="font-semibold text-white mb-1">Version Information</h3>
+                  <p className="text-[11px] text-zinc-300">
+                    <span className="font-semibold text-white">Latest Version:</span> 1.1
+                  </p>
+                  <p className="text-[11px] text-zinc-300">
+                    <span className="font-semibold text-white">Build:</span> 1.1
+                  </p>
+                  <p className="text-[11px] text-zinc-300">
+                    <span className="font-semibold text-white">Last Updated:</span> April 19, 2026
+                  </p>
+                </div>
                 <div>
                   <h3 className="font-semibold text-white mb-1">Getting Started</h3>
                   <ul className="space-y-0.5 list-disc list-inside text-[11px]">
@@ -619,15 +631,21 @@ export default function App() {
                   </p>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white mb-1">Download Report</h3>
+                  <h3 className="font-semibold text-white mb-1">Export Reports</h3>
                   <p className="text-[11px]">
-                    Click the "Report" button in the Portfolio Snapshot section to download a comprehensive summary of your analysis. The report includes your risk score, active risk factors, key insights, recommendations, top assets and countries, portfolio composition, and all risk factor weights in an easy-to-share text format.
+                    Click "Export Reports" in the header to generate PDF, Excel, or CSV exports. Use "Select Reporting Pages" to include only the sections you want, then generate the report with current dashboard data, charts, and risk analytics.
                   </p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-white mb-1">Daily Updates</h3>
                   <p className="text-[11px]">
-                    Risk scores automatically update daily to reflect the latest geopolitical conditions. Click the refresh icon in the header to view your last update timestamp and time until the next automatic update. You can also manually refresh data anytime by clicking "Refresh Now" in the update status panel.
+                    Risk scores automatically update daily to reflect the latest geopolitical conditions. The refresh icon now includes live status: a green check means data was refreshed within 24 hours, and an alert badge means refresh is overdue. Click it to view details and use "Refresh Now" anytime.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white mb-1">Map Snapshot Download</h3>
+                  <p className="text-[11px]">
+                    In the Global Risk Heat Map card, use the download icon in the top-right corner to save a PNG snapshot of the currently rendered map. A toast confirms success or failure after each capture.
                   </p>
                 </div>
                 <div>
@@ -638,6 +656,9 @@ export default function App() {
                     <li><span className="font-semibold">CSV Upload:</span> Bulk-import holdings directly from a CSV file. Download a template to get started. The tool validates your data and provides instant feedback on what was imported.</li>
                     <li><span className="font-semibold">Sector Breakdown:</span> Analyze your portfolio by sector with detailed risk metrics. See total portfolio value, average risk scores, and allocation percentages for each sector. Risk levels are color-coded (green, yellow, red) for quick assessment.</li>
                     <li><span className="font-semibold">Asset Screener:</span> Filter assets using multiple criteria including risk ranges, specific sectors, countries, and asset value thresholds. Find assets matching your portfolio criteria in seconds.</li>
+                    <li><span className="font-semibold">Advanced Filters:</span> Apply focused country, sector, and risk-threshold filters to quickly isolate exposures and identify concentration risk.</li>
+                    <li><span className="font-semibold">Backtesting:</span> Replay historical stress periods to evaluate how your portfolio profile would have behaved under prior geopolitical shocks.</li>
+                    <li><span className="font-semibold">Correlation & Scenarios:</span> Explore cross-country risk relationships and test custom what-if scenarios before making allocation changes.</li>
                   </ul>
                 </div>
               </div>
