@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:server": "node server/server.js",
+    "dev": "NODE_OPTIONS=--max_old_space_size=4096 vite",
+    "dev:server": "NODE_OPTIONS=--max_old_space_size=2048 node server/server.js",
     "dev:full": "concurrently \"npm run dev:server\" \"npm run dev\"",
     "build": "tsc && vite build",
     "preview": "vite preview",
@@ -96,6 +96,7 @@
     "jest": "^30.3.0",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.2.2",
+    "terser": "^5.46.1",
     "ts-jest": "^29.4.9",
     "typescript": "^6.0.3",
     "vite": "^8.0.8"

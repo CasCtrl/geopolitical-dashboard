@@ -30,8 +30,10 @@ async function start() {
   try {
     console.log('Starting server...');
     
-    // Initialize database
-    await initializeDatabase();
+    // Initialize database (non-blocking)
+    initializeDatabase().catch(err => {
+      console.warn('⚠ Database initialization failed (continuing without DB):', err.message);
+    });
 
     // Start server
     app.listen(PORT, () => {

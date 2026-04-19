@@ -1,0 +1,31 @@
+
+> geopolitical-dashboard@0.1.0 dev:full
+> concurrently "npm run dev:server" "npm run dev"
+
+[1] 
+[1] > geopolitical-dashboard@0.1.0 dev
+[1] > NODE_OPTIONS=--max_old_space_size=4096 vite
+[1] 
+[0] 
+[0] > geopolitical-dashboard@0.1.0 dev:server
+[0] > NODE_OPTIONS=--max_old_space_size=2048 node server/server.js
+[0] 
+[1] Port 3000 is in use, trying another one...
+[1] Port 3001 is in use, trying another one...
+[1] Port 3002 is in use, trying another one...
+[1] Port 3003 is in use, trying another one...
+[1] Port 3004 is in use, trying another one...
+[1] 
+[1]   VITE v8.0.8  ready in 373 ms
+[1] 
+[1]   ➜  Local:   http://localhost:3005/
+[1]   ➜  Network: use --host to expose
+[0] ◇ injected env (7) from server/.env // tip: ⌘ override existing { override: true }
+[0] Starting server...
+[0] ✓ Server running on http://localhost:5000
+[0] ✓ API available at http://localhost:5000/api
+[0] ⚠ Database initialization failed: Failed to connect to localhost:1433 - Could not connect (sequence)
+[0] npm run dev:server exited with code 0
+[1] [vite:css][postcss] @import must precede all other statements (besides @charset or empty @layer)
+[1] 
+[1] npm run dev exited with code 143

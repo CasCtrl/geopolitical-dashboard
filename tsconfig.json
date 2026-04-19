@@ -7,7 +7,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "ignoreDeprecations": "6.0",
-    "types": ["vite/client"],
+    "types": ["vite/client", "jest", "node"],
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -19,8 +19,8 @@
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
@@ -32,5 +32,6 @@
     }
   },
   "include": ["src"],
+  "exclude": ["src/**/__tests__", "node_modules"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

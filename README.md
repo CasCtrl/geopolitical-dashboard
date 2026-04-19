@@ -20,7 +20,11 @@ The Geopolitical Risk Dashboard is a capstone project designed to help investors
 - **Risk Gauge Visualization** - Comprehensive risk assessment with color-coded indicators
 - **Country Exposure Matrix** - Top country exposures (direct and indirect)
 - **Dataset Selector** - Multiple pre-configured portfolios (Default, Tech + Energy + Crypto, Renewable Energy)
-- **Responsive Design** - Optimized for desktop viewing with clean, modern UI
+- **Responsive Design** - Optimized for desktop and mobile viewing with clean, modern UI
+- **Interactive Help System** - Comprehensive help modal explaining app features with responsive design for all screen sizes
+- **Daily Risk Updates** - Automatic daily updates to risk snapshot scores with manual refresh capability
+- **Portfolio Report Download** - Generate and download comprehensive risk reports in text format
+- **Summary Insights** - Actionable insights and recommendations for portfolio management
 
 ## Who This Project Is For
 

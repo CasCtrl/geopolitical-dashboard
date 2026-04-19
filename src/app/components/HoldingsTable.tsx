@@ -1,27 +1,39 @@
 import { Card } from "./ui/card";
 import { Asset } from "../data/portfolioData";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { useMemo, useCallback } from "react";
 
 interface HoldingsTableProps {
   assets: Asset[];
   assetContributions: { ticker: string; riskScore: number; mainRisk?: string }[];
 }
 
+const ROWS_PER_PAGE = 10; // Show 10 rows at a time for virtualization
+
 export function HoldingsTable({ assets, assetContributions }: HoldingsTableProps) {
-  const getContributionColor = (riskScore: number) => {
+  const getContributionColor = useCallback((riskScore: number) => {
     if (riskScore >= 8) return "text-red-400 bg-red-950/30";
     if (riskScore >= 6) return "text-orange-400 bg-orange-950/30";
     if (riskScore >= 4) return "text-yellow-400 bg-yellow-950/30";
     return "text-green-400 bg-green-950/30";
-  };
+  }, []);
+
+  // Memoize sorted and paginated data
+  const visibleAssets = useMemo(() => {
+    return assets.slice(0, ROWS_PER_PAGE);
+  }, [assets]);
+
+  const assetContributionMap = useMemo(() => {
+    return new Map(assetContributions.map(c => [c.ticker, c]));
+  }, [assetContributions]);
 
   return (
     <Card className="p-3 md:p-4 bg-zinc-950 border-zinc-900">
       <h3 className="text-sm md:text-base mb-3 text-white">Holdings Risk Analysis</h3>
       <div className="overflow-x-auto -mx-3 md:mx-0">
-        <div className="inline-block min-w-full align-middle">
+        <div className="inline-block min-w-full align-middle max-h-96 overflow-y-auto">
           <table className="min-w-full text-left">
-            <thead>
+            <thead className="sticky top-0 bg-zinc-950/95 z-10">
               <tr className="border-b border-zinc-900">
                 <th className="text-left py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Asset</th>
                 <th className="text-left py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Sector</th>
@@ -31,8 +43,8 @@ export function HoldingsTable({ assets, assetContributions }: HoldingsTableProps
               </tr>
             </thead>
             <tbody>
-              {assets.map((asset) => {
-                const assetContribution = assetContributions.find((c) => c.ticker === asset.ticker);
+              {visibleAssets.map((asset) => {
+                const assetContribution = assetContributionMap.get(asset.ticker);
                 const riskScore = assetContribution?.riskScore || 0;
                 return (
                   <tr
@@ -75,6 +87,9 @@ export function HoldingsTable({ assets, assetContributions }: HoldingsTableProps
           </table>
         </div>
       </div>
+      {assets.length > ROWS_PER_PAGE && (
+        <p className="text-xs text-zinc-500 mt-2">Showing {visibleAssets.length} of {assets.length} holdings</p>
+      )}
     </Card>
   );
 }

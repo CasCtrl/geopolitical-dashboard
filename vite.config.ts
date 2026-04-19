@@ -18,5 +18,29 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    middlewareMode: false,
+    watch: {
+      usePolling: false,
+      ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**'],
+    },
+  },
+  build: {
+    sourcemap: false,
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks: (id: string) => {
+          if (id.includes('node_modules/react')) {
+            return 'react-vendor';
+          }
+          if (id.includes('node_modules/@radix-ui')) {
+            return 'ui-vendor';
+          }
+        },
+      },
+    },
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router'],
   },
 })

@@ -5,6 +5,105 @@ This document tracks technical issues encountered during the 8-week development 
 
 ---
 
+## Issue #7: Help Modal Not Fitting on Mobile Screens
+
+**Date:** Week 8 - Final Refinements
+**Sprint:** UI Polish
+**Severity:** Medium
+**Status:** Resolved ✅
+
+### Problem
+Help modal displayed all content in fixed size without scrolling, causing overflow on mobile and small screens. Modal height exceeded viewport, making content inaccessible.
+
+### Root Cause
+Modal had `max-w-lg` width and `space-y-3` grid without height constraints or scroll container. Content sections (6 h3/p elements) took too much vertical space.
+
+### Impact
+- Mobile users couldn't access help content
+- Modal cut off on smaller screens
+- Poor user experience on tablets
+
+### Solution
+1. Implemented flexible layout with `flex flex-col`:
+   - Fixed header with border
+   - Scrollable content area with `overflow-y-auto`
+   - Fixed footer button
+
+2. Added responsive sizing:
+   - `max-h-[85vh]` to constrain modal height
+   - Reduced padding on mobile: `p-3 md:p-4`
+   - Smaller fonts: `text-[11px] md:text-xs lg:text-sm`
+   - Reduced spacing: `space-y-2 md:space-y-3`
+
+3. Mobile-first design:
+   - `max-w-md` mobile, `max-w-lg` desktop
+   - Responsive icon sizes: `size-4 md:size-5`
+   - Proper viewport padding: `p-3`
+
+### Result
+Help modal now fits on all screen sizes with smooth scrolling for content sections.
+
+### Lessons Learned
+- Use flexbox for modals to separate header/content/footer
+- Always constrain modal height for small screens
+- Mobile-first design improves responsive layouts
+- Test modal overflow on actual mobile devices
+
+---
+
+## Issue #8: Daily Risk Snapshot Updates Not Implemented
+
+**Date:** Week 8 - Feature Addition
+**Sprint:** Automation & Polish
+**Severity:** Medium
+**Status:** Resolved ✅
+
+### Problem
+Application lacked daily automatic update mechanism for risk scores. No way to track when data was last updated.
+
+### Root Cause
+Daily update logic was not architected into the system. Risk scores were static after initial load.
+
+### Impact
+- Users couldn't know if risk data was current
+- No automatic refresh of geopolitical risk assessments
+- Manual data refresh not possible
+
+### Solution
+1. Created `dailyUpdateManager.ts` service:
+   - Tracks last update timestamp in localStorage
+   - Checks if 24 hours have passed since last update
+   - Provides status information and time remaining
+
+2. Integrated into App startup:
+   ```typescript
+   useEffect(() => {
+     initializeDailyUpdate();
+   }, []);
+   ```
+
+3. Added Update Status Modal:
+   - Shows last update timestamp
+   - Displays time until next automatic update
+   - "Refresh Now" button for manual updates
+   - Refresh icon button in header
+
+4. Added to Help System:
+   - "Daily Updates" section explaining feature
+   - Instructions for accessing update status
+   - How to manually refresh
+
+### Result
+Users now have confidence that risk scores are current, with visibility into update schedule and manual refresh capability.
+
+### Lessons Learned
+- localStorage is simple for timestamp persistence
+- Visual status indicators help user confidence
+- Manual override capability provides user control
+- Help documentation increases feature discoverability
+
+---
+
 ## Issue #1: SQL Server Connection Timeout on First Startup
 
 **Date:** Week 3 - Backend Architecture Setup

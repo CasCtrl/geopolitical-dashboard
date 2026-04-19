@@ -21,46 +21,52 @@ export interface DatasetRecord {
   dependencyReason: string;
 }
 
+// CSV Parsing Cache
+let csvParserWorker: Worker | null = null;
+let csvParseCache: { [key: string]: { datasets: DatasetMetadata[]; assetsByDataset: { [datasetId: string]: Asset[] } } } = {};
+
+function getCSVWorker(): Worker {
+  if (!csvParserWorker) {
+    csvParserWorker = new Worker(new URL('../workers/csvWorker.ts', import.meta.url), { type: 'module' });
+  }
+  return csvParserWorker;
+}
+
 export async function loadDatasetsFromCSV(csvPath: string): Promise<{
   datasets: DatasetMetadata[];
   assetsByDataset: { [datasetId: string]: Asset[] };
 }> {
   try {
+    // Check cache first
+    if (csvParseCache[csvPath]) {
+      return csvParseCache[csvPath];
+    }
+
     const response = await fetch(csvPath);
     if (!response.ok) throw new Error(`Failed to load CSV: ${response.statusText}`);
     
     const csvText = await response.text();
-    const lines = csvText.split("\n").filter((line) => line.trim());
     
-    if (lines.length < 2) throw new Error("CSV is empty or invalid");
-
-    const headers = lines[0].split(",").map((h) => h.trim());
-    const records: DatasetRecord[] = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i]);
-      if (values.length === 0) continue;
-
-      const record: DatasetRecord = {
-        datasetId: values[headerIndex(headers, "datasetId")] || "",
-        datasetName: values[headerIndex(headers, "datasetName")] || "",
-        datasetDescription: values[headerIndex(headers, "datasetDescription")] || "",
-        ticker: values[headerIndex(headers, "ticker")] || "",
-        assetName: values[headerIndex(headers, "assetName")] || "",
-        weight: parseFloat(values[headerIndex(headers, "weight")]) || 0,
-        value: parseFloat(values[headerIndex(headers, "value")]) || 0,
-        sector: values[headerIndex(headers, "sector")] || "",
-        country: values[headerIndex(headers, "country")] || "",
-        dependencyWeight: parseFloat(values[headerIndex(headers, "dependencyWeight")]) || 0,
-        dependencyType: (values[headerIndex(headers, "dependencyType")] || "direct") as
-          | "direct"
-          | "indirect"
-          | "macro",
-        dependencyReason: values[headerIndex(headers, "dependencyReason")] || "",
+    // Use Web Worker to parse CSV off the main thread
+    const records = await new Promise<DatasetRecord[]>((resolve, reject) => {
+      const worker = getCSVWorker();
+      const timeout = setTimeout(() => {
+        reject(new Error('CSV parsing timeout'));
+      }, 30000);
+      
+      const handleMessage = (event: MessageEvent) => {
+        clearTimeout(timeout);
+        worker.removeEventListener('message', handleMessage);
+        if (event.data.error) {
+          reject(new Error(event.data.error));
+        } else {
+          resolve(event.data.records);
+        }
       };
-
-      records.push(record);
-    }
+      
+      worker.addEventListener('message', handleMessage);
+      worker.postMessage({ type: 'parse', csvText });
+    });
 
     // Group records by dataset and build assets
     const datasetMap = new Map<string, DatasetMetadata>();
@@ -108,7 +114,12 @@ export async function loadDatasetsFromCSV(csvPath: string): Promise<{
     });
 
     const datasets = Array.from(datasetMap.values());
-    return { datasets, assetsByDataset };
+    const result = { datasets, assetsByDataset };
+    
+    // Cache the result
+    csvParseCache[csvPath] = result;
+    
+    return result;
   } catch (error) {
     console.error("Error loading datasets from CSV:", error);
     throw error;
