@@ -723,3 +723,15 @@ Example:
 ## Conclusion
 
 The risk algorithms provide a comprehensive, quantitative framework for assessing geopolitical exposure. By combining five independent risk dimensions with flexible weighting and portfolio aggregation, the dashboard enables evidence-based portfolio management in an uncertain geopolitical environment. Understanding the underlying formulas and assumptions is critical for interpreting results and making informed investment decisions.
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- Core risk formulas and scoring logic are unchanged in v1.1.
+- v1.1 adds presentation and operational improvements for how risk outputs are exported and monitored.
+- Map-based risk outputs can now be captured as PNG snapshots for analyst reporting.
+- Daily update freshness indicators improve interpretation of risk output recency.

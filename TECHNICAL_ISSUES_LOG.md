@@ -624,6 +624,8 @@ Access to XMLHttpRequest at 'http://localhost:5000/api/portfolio/1'
 from origin 'http://localhost:5173' has been blocked
 ```
 
+Note: This endpoint is from a historical log entry before the API was moved to port 5001.
+
 ### Root Cause
 Backend API did not include CORS headers in responses.
 
@@ -754,3 +756,15 @@ Database connections were not being properly closed after queries, exhausting th
 9. **Stakeholder Feedback Loops:** Weekly reviews in Weeks 1-2 prevented scope creep. Maintain this cadence for future projects.
 
 10. **Technical Debt Tracking:** Reserve Sprint 4 time for technical debt resolution, not just new features. This enabled production-ready code by Week 8.
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- Resolved operational blockers with improved DB bootstrap behavior and dataset insertion reliability.
+- Added user-facing operational feedback (snapshot toasts and refresh freshness indicators).
+- Current local runtime baseline is backend API on port 5001.
+- Remaining tracked non-blocking issue: CSS import-order warning surfaced by PostCSS in dev.

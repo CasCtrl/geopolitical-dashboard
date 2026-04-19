@@ -162,3 +162,14 @@ NVDA	15%	U.S. / Taiwan	semiconductor dependency	7.29
 XOM	15%	U.S. / Middle East	energy volatility	4.95
 TSLA	15%	U.S. / China	manufacturing dependency	4.86
 BTC	15%	Global	macro/regulatory instability	5.40
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- Product direction now includes one-click map snapshot export from the Global Risk Heat Map card.
+- Dashboard status language now includes explicit daily-update recency indicators.
+- Help-system copy now reflects exports, refresh logic, and expanded tooling options.
+- Local integration assumptions are updated for backend API on port 5001.

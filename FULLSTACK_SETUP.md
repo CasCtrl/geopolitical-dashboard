@@ -35,7 +35,7 @@ The server will:
 - Connect to SQL Server
 - Create the database schema
 - Load data from `public/datasets.csv`
-- Start the API on `http://localhost:5000`
+- Start the API on `http://localhost:5001`
 
 **Expected output:**
 ```
@@ -47,7 +47,7 @@ Inserting X sectors...
 Inserting X datasets...
 [... data loading ...]
 ✓ CSV data loaded successfully
-✓ Server running on http://localhost:5000
+✓ Server running on http://localhost:5001
 ```
 
 ### 4. Start the Frontend (in another terminal)
@@ -80,7 +80,7 @@ This runs the backend and frontend concurrently.
 Edit `server/.env` to change:
 - `DB_SERVER` - SQL Server host (default: localhost)
 - `DB_PASSWORD` - SQL Server password (default: YourPassword123!)
-- `SERVER_PORT` - Backend port (default: 5000)
+- `SERVER_PORT` - Backend port (default: 5001)
 
 ## Stopping Services
 
@@ -106,7 +106,7 @@ Stop the servers:
 
 ### Frontend Doesn't Show Data
 - Check browser console for CORS errors
-- Ensure backend is running on port 5000
+- Ensure backend is running on port 5001
 - Check Network tab to see if API calls are succeeding
 
 ## Development Workflow
@@ -124,3 +124,15 @@ For production:
 3. Build frontend: `npm run build`
 4. Deploy `dist/` and `server/` separately or together
 5. Set `NODE_ENV=production` environment variable
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- Local backend/API endpoint references are updated to port 5001.
+- Setup flow reflects improved DB startup with auto-create behavior for missing target database.
+- Runtime notes align with the current map snapshot export and refresh-state UX updates.
+- Known non-blocking dev warning remains: CSS import-order warning in src/styles/index.css.

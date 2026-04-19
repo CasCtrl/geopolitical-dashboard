@@ -45,12 +45,16 @@ import {
   Download,
   Newspaper,
   Check,
+  Settings,
 } from "lucide-react";
 import { Card } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { RiskGaugeCompact } from "./components/RiskGaugeCompact";
 import { convertPortfolioAssetToHolding, getCountriesFromAssets, getSectorsFromAssets, screenAssets } from "./utils/portfolioFilters";
+
+const API_BASE_URL = "http://localhost:5001";
+const TIME_ZONE_STORAGE_KEY = "dashboard.timezone";
 
 export default function App() {
   const [weights, setWeights] = useState(getDefaultWeights());
@@ -59,9 +63,19 @@ export default function App() {
   const [showUpdateStatus, setShowUpdateStatus] = useState(false);
   const [showAlertsWindow, setShowAlertsWindow] = useState(false);
   const [showNewsFeedPanel, setShowNewsFeedPanel] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [newsRefreshToken, setNewsRefreshToken] = useState(0);
   const [newsAlertCount, setNewsAlertCount] = useState(0);
   const [updateStatusTick, setUpdateStatusTick] = useState(0);
+  const [liveDataConnected, setLiveDataConnected] = useState(false);
+
+  const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const [selectedTimeZone, setSelectedTimeZone] = useState(() => {
+    if (typeof window === "undefined") {
+      return "UTC";
+    }
+    return localStorage.getItem(TIME_ZONE_STORAGE_KEY) || (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+  });
 
   const [datasets, setDatasets] = useState<DatasetMetadata[]>([]);
   const [selectedDatasetId, setSelectedDatasetId] = useState("default");
@@ -72,6 +86,26 @@ export default function App() {
   const [dashboardMinRiskFilter, setDashboardMinRiskFilter] = useState(0);
   const [dashboardSectorFilter, setDashboardSectorFilter] = useState("all");
   const [dashboardCountryFilter, setDashboardCountryFilter] = useState("all");
+
+  const availableTimeZones = useMemo(() => {
+    const zones = [
+      detectedTimeZone,
+      "UTC",
+      "America/New_York",
+      "America/Chicago",
+      "America/Denver",
+      "America/Los_Angeles",
+      "America/Toronto",
+      "Europe/London",
+      "Europe/Paris",
+      "Europe/Berlin",
+      "Asia/Tokyo",
+      "Asia/Singapore",
+      "Asia/Hong_Kong",
+      "Australia/Sydney",
+    ];
+    return Array.from(new Set(zones));
+  }, [detectedTimeZone]);
 
   // Get the current portfolio based on selected dataset
   const portfolio = assetsByDataset[selectedDatasetId] || defaultPortfolio;
@@ -117,9 +151,10 @@ export default function App() {
     const loadDatasets = async () => {
       try {
         // Fetch datasets from API
-        const datasetsRes = await fetch("http://localhost:5001/api/datasets");
+        const datasetsRes = await fetch(`${API_BASE_URL}/api/datasets`);
         if (!datasetsRes.ok) throw new Error("Failed to fetch datasets");
         const apiDatasets = await datasetsRes.json();
+        setLiveDataConnected(true);
 
         // Map API datasets to our format
         const mappedDatasets: DatasetMetadata[] = apiDatasets.map(
@@ -139,8 +174,8 @@ export default function App() {
         const promises = apiDatasets.map(async (dataset: any) => {
           try {
             const [assetsRes, depsRes] = await Promise.all([
-              fetch(`http://localhost:5001/api/assets/${dataset.datasetId}`),
-              fetch(`http://localhost:5001/api/dependencies/${dataset.datasetId}`),
+              fetch(`${API_BASE_URL}/api/assets/${dataset.datasetId}`),
+              fetch(`${API_BASE_URL}/api/dependencies/${dataset.datasetId}`),
             ]);
 
             if (!assetsRes.ok) throw new Error(`Failed to fetch assets for ${dataset.datasetId}`);
@@ -195,6 +230,7 @@ export default function App() {
         }
       } catch (error) {
         console.warn("API not available, falling back to CSV:", error);
+        setLiveDataConnected(false);
         // Fall back to CSV loader
         try {
           const { datasets: loadedDatasets, assetsByDataset: loadedAssets } =
@@ -218,6 +254,30 @@ export default function App() {
 
     loadDatasets();
   }, []);
+
+  const checkLiveDataStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/health`);
+      setLiveDataConnected(response.ok);
+    } catch {
+      setLiveDataConnected(false);
+    }
+  }, []);
+
+  // Check backend connectivity periodically to keep live-data status current.
+  useEffect(() => {
+    checkLiveDataStatus();
+    const intervalId = window.setInterval(checkLiveDataStatus, 60000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [checkLiveDataStatus]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(TIME_ZONE_STORAGE_KEY, selectedTimeZone);
+    }
+  }, [selectedTimeZone]);
 
   useEffect(() => {
     setDashboardMinRiskFilter(0);
@@ -444,7 +504,7 @@ export default function App() {
       let baseArticles: any[] = [];
 
       try {
-        const response = await fetch("http://localhost:5001/api/news?limit=40");
+        const response = await fetch(`${API_BASE_URL}/api/news?limit=40`);
         if (response.ok) {
           const payload = await response.json();
           baseArticles = payload.articles || [];
@@ -565,7 +625,14 @@ export default function App() {
               </div>
             </div>
             <div className="overflow-y-auto flex-1 p-4">
-              <div className="space-y-3 text-xs text-zinc-300">
+              <Tabs defaultValue="guide" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 bg-zinc-900/70 border border-zinc-800 h-auto">
+                  <TabsTrigger value="guide" className="text-xs py-2">Guide</TabsTrigger>
+                  <TabsTrigger value="release-notes" className="text-xs py-2">Release Notes</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="guide" className="mt-3">
+                  <div className="space-y-3 text-xs text-zinc-300">
                 <div>
                   <h3 className="font-semibold text-white mb-1">What is this app?</h3>
                   <p className="text-[11px]">
@@ -648,25 +715,163 @@ export default function App() {
                     In the Global Risk Heat Map card, use the download icon in the top-right corner to save a PNG snapshot of the currently rendered map. A toast confirms success or failure after each capture.
                   </p>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-white mb-1">Tools Tab</h3>
-                  <p className="text-[11px] mb-2 font-semibold text-blue-300">Advanced Portfolio Management Features:</p>
-                  <ul className="space-y-1 text-[11px] list-disc list-inside">
-                    <li><span className="font-semibold">Portfolio Manager:</span> Create, edit, and manage custom portfolios. Save multiple portfolio configurations and export them as JSON files for backup or sharing.</li>
-                    <li><span className="font-semibold">CSV Upload:</span> Bulk-import holdings directly from a CSV file. Download a template to get started. The tool validates your data and provides instant feedback on what was imported.</li>
-                    <li><span className="font-semibold">Sector Breakdown:</span> Analyze your portfolio by sector with detailed risk metrics. See total portfolio value, average risk scores, and allocation percentages for each sector. Risk levels are color-coded (green, yellow, red) for quick assessment.</li>
-                    <li><span className="font-semibold">Asset Screener:</span> Filter assets using multiple criteria including risk ranges, specific sectors, countries, and asset value thresholds. Find assets matching your portfolio criteria in seconds.</li>
-                    <li><span className="font-semibold">Advanced Filters:</span> Apply focused country, sector, and risk-threshold filters to quickly isolate exposures and identify concentration risk.</li>
-                    <li><span className="font-semibold">Backtesting:</span> Replay historical stress periods to evaluate how your portfolio profile would have behaved under prior geopolitical shocks.</li>
-                    <li><span className="font-semibold">Correlation & Scenarios:</span> Explore cross-country risk relationships and test custom what-if scenarios before making allocation changes.</li>
-                  </ul>
-                </div>
-              </div>
+                    <div>
+                      <h3 className="font-semibold text-white mb-1">Tools Tab</h3>
+                      <p className="text-[11px] mb-2 font-semibold text-blue-300">Advanced Portfolio Management Features:</p>
+                      <ul className="space-y-1 text-[11px] list-disc list-inside">
+                        <li><span className="font-semibold">Portfolio Manager:</span> Create, edit, and manage custom portfolios. Save multiple portfolio configurations and export them as JSON files for backup or sharing.</li>
+                        <li><span className="font-semibold">CSV Upload:</span> Bulk-import holdings directly from a CSV file. Download a template to get started. The tool validates your data and provides instant feedback on what was imported.</li>
+                        <li><span className="font-semibold">Sector Breakdown:</span> Analyze your portfolio by sector with detailed risk metrics. See total portfolio value, average risk scores, and allocation percentages for each sector. Risk levels are color-coded (green, yellow, red) for quick assessment.</li>
+                        <li><span className="font-semibold">Asset Screener:</span> Filter assets using multiple criteria including risk ranges, specific sectors, countries, and asset value thresholds. Find assets matching your portfolio criteria in seconds.</li>
+                        <li><span className="font-semibold">Advanced Filters:</span> Apply focused country, sector, and risk-threshold filters to quickly isolate exposures and identify concentration risk.</li>
+                        <li><span className="font-semibold">Backtesting:</span> Replay historical stress periods to evaluate how your portfolio profile would have behaved under prior geopolitical shocks.</li>
+                        <li><span className="font-semibold">Correlation & Scenarios:</span> Explore cross-country risk relationships and test custom what-if scenarios before making allocation changes.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="release-notes" className="mt-3">
+                  <div className="space-y-3 text-xs text-zinc-300">
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3">
+                      <h3 className="font-semibold text-white mb-1">Version 1.1 Quick Summary</h3>
+                      <p className="text-[11px] text-zinc-300 mb-2">
+                        <span className="font-semibold text-white">Build:</span> 1.1 | <span className="font-semibold text-white">Last Updated:</span> April 19, 2026
+                      </p>
+                      <ul className="space-y-1 text-[11px] list-disc list-inside">
+                        <li>Added Global Risk Heat Map PNG snapshot download with stronger capture reliability.</li>
+                        <li>Added toast feedback for snapshot success and error states.</li>
+                        <li>Added refresh-status indicators: checkmark for data refreshed within 24 hours, alert when overdue.</li>
+                        <li>Expanded Help content for exports, snapshot flow, daily updates, and advanced tools.</li>
+                        <li>Updated local backend runtime baseline to port 5001 with improved DB bootstrap reliability.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
             <div className="p-4 border-t border-zinc-800 flex-shrink-0">
               <button
                 onClick={() => setShowHelpModal(false)}
                 className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-xs font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
+          <Card className="bg-zinc-950 border-zinc-800 w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-zinc-800 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Settings className="size-4 text-zinc-200" />
+                  Settings
+                </h2>
+                <button
+                  onClick={() => setShowSettingsModal(false)}
+                  className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                >
+                  <X className="size-4 text-zinc-400" />
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-4">
+              <Tabs defaultValue="apis" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 bg-zinc-900/70 border border-zinc-800 h-auto">
+                  <TabsTrigger value="apis" className="text-xs py-2">APIs</TabsTrigger>
+                  <TabsTrigger value="general" className="text-xs py-2">General</TabsTrigger>
+                  <TabsTrigger value="timezone" className="text-xs py-2">Time Zone</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="apis" className="mt-3 space-y-3 text-xs text-zinc-300">
+                  <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                    <h3 className="font-semibold text-white">Current Connected APIs</h3>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] text-white font-medium">Backend Health API</p>
+                        <p className="text-[11px] text-zinc-400">{API_BASE_URL}/api/health</p>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${liveDataConnected ? "bg-emerald-900/30 text-emerald-300 border-emerald-700/40" : "bg-red-900/30 text-red-300 border-red-700/40"}`}>
+                        <span className={`size-1.5 rounded-full ${liveDataConnected ? "bg-emerald-400" : "bg-red-400"}`} />
+                        {liveDataConnected ? "Connected" : "Disconnected"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] text-white font-medium">News API (via backend)</p>
+                        <p className="text-[11px] text-zinc-400">{API_BASE_URL}/api/news</p>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${liveDataConnected ? "bg-emerald-900/30 text-emerald-300 border-emerald-700/40" : "bg-red-900/30 text-red-300 border-red-700/40"}`}>
+                        <span className={`size-1.5 rounded-full ${liveDataConnected ? "bg-emerald-400" : "bg-red-400"}`} />
+                        {liveDataConnected ? "Connected" : "Disconnected"}
+                      </span>
+                    </div>
+                    <button
+                      onClick={checkLiveDataStatus}
+                      className="mt-1 px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded text-white text-[11px] font-medium transition-colors"
+                    >
+                      Recheck API Status
+                    </button>
+                  </div>
+
+                  <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                    <h3 className="font-semibold text-white">Connect Your Own APIs</h3>
+                    <ul className="space-y-1 text-[11px] list-disc list-inside">
+                      <li>Update server connection details in server/.env (DB_SERVER, DB_DATABASE, DB_USER, DB_PASSWORD, SERVER_PORT).</li>
+                      <li>Add or edit backend endpoints in server/routes/*.js for your external data providers.</li>
+                      <li>Point frontend fetch calls to your API base URL and endpoint routes.</li>
+                      <li>Restart backend after changes and use "Recheck API Status" to confirm connectivity.</li>
+                    </ul>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="general" className="mt-3 space-y-3 text-xs text-zinc-300">
+                  <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-1">
+                    <h3 className="font-semibold text-white mb-1">App Information</h3>
+                    <p className="text-[11px]"><span className="text-zinc-400">Version:</span> 1.1</p>
+                    <p className="text-[11px]"><span className="text-zinc-400">Build:</span> 1.1</p>
+                    <p className="text-[11px]"><span className="text-zinc-400">Live Data Mode:</span> {liveDataConnected ? "Connected" : "Offline / Fallback"}</p>
+                    <p className="text-[11px]"><span className="text-zinc-400">Loaded Datasets:</span> {datasets.length}</p>
+                    <p className="text-[11px]"><span className="text-zinc-400">Selected Dataset:</span> {datasets.find((d) => d.id === selectedDatasetId)?.name || "Loading..."}</p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="timezone" className="mt-3 space-y-3 text-xs text-zinc-300">
+                  <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                    <h3 className="font-semibold text-white">Time Zone Selector</h3>
+                    <p className="text-[11px] text-zinc-400">Choose a time zone for status timestamps shown in settings.</p>
+                    <select
+                      value={selectedTimeZone}
+                      onChange={(e) => setSelectedTimeZone(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-[11px] text-zinc-100"
+                    >
+                      {availableTimeZones.map((zone) => (
+                        <option key={zone} value={zone}>{zone}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px]">
+                      <span className="text-zinc-400">Current time in selected zone:</span>{" "}
+                      {new Date().toLocaleString(undefined, {
+                        timeZone: selectedTimeZone,
+                        dateStyle: "full",
+                        timeStyle: "long",
+                      })}
+                    </p>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            <div className="p-4 border-t border-zinc-800 flex-shrink-0">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="w-full px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded text-white text-xs font-medium transition-colors"
               >
                 Close
               </button>
@@ -744,9 +949,26 @@ export default function App() {
           <div className="flex items-center gap-2 md:gap-3">
             <Shield className="size-4 md:size-5 text-zinc-600 flex-shrink-0" />
             <div>
-              <h1 className="text-xs md:text-sm font-semibold text-white mb-0.5 md:mb-1">
-                Geopolitical Risk Dashboard
-              </h1>
+              <div className="flex items-center gap-2 mb-0.5 md:mb-1">
+                <h1 className="text-xs md:text-sm font-semibold text-white">
+                  Geopolitical Risk Dashboard
+                </h1>
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] md:text-[10px] font-medium ${
+                    liveDataConnected
+                      ? "bg-emerald-900/30 text-emerald-300 border-emerald-700/40"
+                      : "bg-red-900/30 text-red-300 border-red-700/40"
+                  }`}
+                  title={liveDataConnected ? "Connected to live data" : "Not connected to live data"}
+                >
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      liveDataConnected ? "bg-emerald-400" : "bg-red-400"
+                    }`}
+                  />
+                  {liveDataConnected ? "Live" : "Offline"}
+                </span>
+              </div>
               <p className="text-[9px] md:text-[10px] text-zinc-600">
                 {datasets.find((d) => d.id === selectedDatasetId)?.description || "Loading..."}
               </p>
@@ -868,6 +1090,13 @@ export default function App() {
                 title="Help"
               >
                 <HelpCircle className="size-5" />
+              </button>
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
+                title="Settings"
+              >
+                <Settings className="size-5" />
               </button>
             </div>
           </div>

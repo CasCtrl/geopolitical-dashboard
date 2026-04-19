@@ -59,3 +59,15 @@ or initiating processes. They communicate interactivity and should have clear, a
   * Visual Style : Text-only with no border, using primary color
   * Usage : For actions that should be available but not emphasized
 -->
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- Interaction guidelines now cover snapshot action feedback and data-freshness status signaling.
+- Visual language guidance includes positive confirmation (check) and warning (alert) states.
+- Help and tools guidance text has been updated to match shipped dashboard behavior.
+- Runtime references are aligned to backend API on port 5001.

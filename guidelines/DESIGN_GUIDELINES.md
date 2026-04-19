@@ -67,3 +67,15 @@ npm run build
 ```bash
 npm run lint
 ```
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- Design guidance now reflects map snapshot export affordance in the heat map card UI.
+- Control-state guidance includes freshness icon semantics (check for current, alert for overdue).
+- UX feedback standards now include toast messaging for snapshot success/failure.
+- Local runtime assumptions in docs are aligned to backend API on port 5001.

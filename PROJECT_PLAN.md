@@ -74,7 +74,7 @@ The Geopolitical Risk Dashboard is a full-stack web application designed to help
 - [x] Implement data validation and error handling
 - [x] Write unit tests for core services
 
-**Deliverables:** Functional API endpoints, working data services, unit tests, API server running on localhost:5000
+**Deliverables:** Functional API endpoints, working data services, unit tests, API server running on localhost:5001
 
 ### Week 5: Sprint 2 - Frontend Core Components
 **Objective:** Build primary UI components and state management
@@ -216,3 +216,15 @@ The Geopolitical Risk Dashboard is a full-stack web application designed to help
 ## Conclusion
 
 The Geopolitical Risk Dashboard project successfully delivered a production-ready application within an 8-week accelerated timeline. By front-loading requirements (Week 1), design (Week 2), and architecture (Week 3), the project achieved rapid iteration in Weeks 4-7 with minimal rework. The structured approach—from user research through sprint-based development to final handoff—demonstrates that focused execution and clear priorities enable complex full-stack applications to ship quickly without sacrificing quality. The comprehensive documentation and test suite ensure maintainability and support for future enhancements.
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- Plan baseline now reflects delivered v1.1 items: map snapshot export and refresh-status signaling.
+- Operational delivery context updated for backend API on localhost:5001 in local development.
+- Documentation workstream updated to include synchronized Help modal and tools guidance.
+- Data reliability objective is now backed by stronger DB bootstrap and dataset loading behavior.

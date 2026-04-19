@@ -330,3 +330,15 @@ Planned improvements to the Global Snapshot feature:
 The Global Risk Snapshot feature bridges the gap between expert geopolitical assessment and individual portfolio management. By providing intelligent defaults while enabling customization, it helps you make informed investment decisions with confidence.
 
 Start with the current snapshot, understand the context, customize when needed, and use the reset button to always return to baseline. This combination of structure and flexibility makes geopolitical risk assessment both powerful and intuitive.
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- Global Risk Heat Map now supports snapshot export to PNG for point-in-time reporting.
+- Snapshot action includes success/failure toast feedback for clearer user flow.
+- Help content around snapshot and daily refresh state was expanded for operator guidance.
+- Daily freshness signaling now distinguishes recently refreshed data from overdue data.

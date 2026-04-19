@@ -214,3 +214,15 @@ Successfully implemented 7 major Tier 1 features adding institutional-grade anal
 **Build Status**: ✅ PASSING (2826 modules, ~500KB gzipped)
 **Test Status**: ✅ PASSING (30/30 tests across 5 suites)
 **Type Status**: ✅ CLEAN (0 TypeScript errors)
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- Tier 1 analytics implementation remains intact; v1.1 primarily adds UX and operational enhancements.
+- Export workflow is improved via map snapshot PNG capture for sharing/reporting.
+- Refresh recency indicators now communicate whether analytics views are current.
+- Environment and docs alignment updated for backend runtime on port 5001.

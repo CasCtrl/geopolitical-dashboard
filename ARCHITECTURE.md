@@ -330,7 +330,7 @@ Database
 │                                          │
 │  ┌──────────────┐    ┌──────────────┐   │
 │  │   Frontend   │    │  Backend API │   │
-│  │  (Port 5173) │───▶│  (Port 5000) │   │
+│  │  (Port 5173) │───▶│  (Port 5001) │   │
 │  │              │    │              │   │
 │  └──────────────┘    └──────────────┘   │
 │                            │             │
@@ -374,3 +374,15 @@ Database
 ## Conclusion
 
 The architecture is designed for maintainability, scalability, and performance. Clear separation of concerns enables independent testing and deployment of components. The containerized deployment ensures consistency across environments. This architecture was intentionally designed in Week 3 to enable parallel development during Weeks 4-7 coding sprints, with backend and frontend teams working independently against documented API contracts.
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- UI architecture now includes map snapshot export (SVG-to-canvas with fallback) and toast feedback.
+- Header interaction architecture now includes refresh-status badges for fresh vs overdue states.
+- Local runtime architecture is aligned to backend API on port 5001.
+- Data bootstrap architecture now includes target DB auto-create before schema and seed initialization.

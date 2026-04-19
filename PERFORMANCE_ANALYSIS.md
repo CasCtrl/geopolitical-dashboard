@@ -153,7 +153,7 @@ const [countries, setCountries] = useState(() => {
 useEffect(() => {
   const loadDatasets = async () => {
     try {
-      const datasetsRes = await fetch("http://localhost:5000/api/datasets");
+      const datasetsRes = await fetch("http://localhost:5001/api/datasets");
       if (!datasetsRes.ok) throw new Error("Failed to fetch datasets");
       const apiDatasets = await datasetsRes.json();
       
@@ -433,3 +433,15 @@ Potentially unused packages that increase bundle size:
 ## Detailed Recommendation
 
 Start with the **Critical** issues as they directly cause freezing/crashing. The WorldMap component and CSV parsing are the most likely culprits for the freezing behavior you're experiencing.
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- Performance analysis examples and API references are aligned to backend port 5001.
+- v1.1 introduces UX improvements (snapshot export and refresh-state visibility) without known blocking regressions.
+- CSS import-order warning remains a non-blocking dev-time warning in current builds.
+- Current optimization priorities remain centered on map/rendering and heavy data processing paths.

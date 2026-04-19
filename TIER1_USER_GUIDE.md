@@ -247,3 +247,15 @@ For detailed methodology, see `TIER1_IMPLEMENTATION.md` and source code in:
 - `src/app/data/advancedMetrics.ts`
 - `src/app/data/backtestingEngine.ts`
 - `src/app/data/realtimeUpdateManager.ts`
+
+
+
+## Version 1.1 Update (April 19, 2026)
+
+- Latest Version: 1.1
+- Build: 1.1
+- Last Updated: April 19, 2026
+- You can now capture the Global Risk Heat Map as a PNG snapshot from the map card.
+- Refresh control shows a check state for recent updates and an alert state when updates are overdue.
+- Help guidance now covers snapshot/export flow and refresh-state behavior.
+- Local API usage examples align with backend service on port 5001.
