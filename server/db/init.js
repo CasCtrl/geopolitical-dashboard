@@ -176,11 +176,16 @@ async function loadDataFromCSV(conn) {
         return request.query(queryText);
       };
 
-      // Check if data already exists to avoid reloading on every startup
+      // Always refresh reference portfolio data from CSV so source updates are reflected
+      // (for example, replacing stale region-level dependencies with country-level values).
       const result = await conn.query('SELECT COUNT(*) as count FROM Datasets');
       if (result.recordset[0].count > 0) {
-        console.log('✓ Database already populated, skipping CSV load');
-        return resolve();
+        await conn.query('DELETE FROM CountryDependencies');
+        await conn.query('DELETE FROM Assets');
+        await conn.query('DELETE FROM Datasets');
+        await conn.query('DELETE FROM Countries');
+        await conn.query('DELETE FROM Sectors');
+        console.log('✓ Existing reference data cleared, reloading from CSV');
       }
 
       const datasetMap = new Map();

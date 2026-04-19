@@ -15,7 +15,7 @@ import {
   getTimeUntilNextUpdate,
   forceUpdate 
 } from "./data/dailyUpdateManager";
-import { recordSnapshot, getLatestSnapshot, initializeHistoricalData, getPortfolioRiskTrend, getSnapshotsByDateRange } from "./data/historicalSnapshotManager";
+import { recordSnapshot, getLatestSnapshot, initializeHistoricalData, getPortfolioRiskTrend, getSnapshotsByDateRange, SeedHistoryPoint } from "./data/historicalSnapshotManager";
 import { checkThresholds } from "./data/alertsManager";
 import { RiskMetricsPanel } from "./components/RiskMetricsPanel";
 import { generateMockNews, parseNewsForRisk, newsToRiskEvent } from "./data/newsIntegration";
@@ -293,6 +293,8 @@ export default function App() {
   const [assetsByDataset, setAssetsByDataset] = useState<{
     [datasetId: string]: Asset[];
   }>({});
+  const [datasetHistorySeed, setDatasetHistorySeed] = useState<Record<string, SeedHistoryPoint[]>>({});
+  const [datasetHistorySeedLoaded, setDatasetHistorySeedLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRiskHorizon, setSelectedRiskHorizon] = useState<RiskHorizon>("daily");
   const initialSelectedDatasetId = useRef(selectedDatasetId);
@@ -344,7 +346,7 @@ export default function App() {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - horizonDays + 1);
 
-    const snapshots = getSnapshotsByDateRange(startDate, endDate);
+    const snapshots = getSnapshotsByDateRange(startDate, endDate, selectedDatasetId);
     if (snapshots.length === 0) {
       return riskData;
     }
@@ -374,7 +376,7 @@ export default function App() {
     });
 
     return aggregated;
-  }, [horizonDays, riskData, weights]);
+  }, [horizonDays, riskData, selectedDatasetId, weights]);
 
   const portfolioAnalysis = useMemo(() => {
     return calculatePortfolioRisk(portfolio, riskData);
@@ -385,6 +387,154 @@ export default function App() {
   const dashboardPortfolioAnalysis = useMemo(() => {
     return calculatePortfolioRisk(dashboardPortfolio, dashboardRiskData);
   }, [dashboardPortfolio, dashboardRiskData]);
+
+  useEffect(() => {
+    const loadDatasetHistorySeed = async () => {
+      try {
+        const response = await fetch("/dataset-history-90d.csv");
+        if (!response.ok) {
+          setDatasetHistorySeedLoaded(true);
+          return;
+        }
+
+        const csvText = await response.text();
+        const lines = csvText.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
+        if (lines.length < 2) {
+          setDatasetHistorySeedLoaded(true);
+          return;
+        }
+
+        const headers = lines[0].split(",").map((header) => header.trim().toLowerCase());
+        const datasetIdIndex = headers.indexOf("datasetid");
+        const dateIndex = headers.indexOf("date");
+        const portfolioRiskIndex = headers.indexOf("portfoliorisk");
+        const averageCountryRiskIndex = headers.indexOf("averagecountryrisk");
+        const riskOffsetIndex = headers.indexOf("riskoffset");
+
+        if (datasetIdIndex < 0 || dateIndex < 0 || portfolioRiskIndex < 0) {
+          setDatasetHistorySeedLoaded(true);
+          return;
+        }
+
+        const parsed: Record<string, SeedHistoryPoint[]> = {};
+
+        lines.slice(1).forEach((line) => {
+          const values = line.split(",").map((value) => value.trim());
+          const datasetId = values[datasetIdIndex];
+          const date = values[dateIndex];
+          const portfolioRisk = Number(values[portfolioRiskIndex]);
+          const averageCountryRisk =
+            averageCountryRiskIndex >= 0 ? Number(values[averageCountryRiskIndex]) : undefined;
+          const riskOffset = riskOffsetIndex >= 0 ? Number(values[riskOffsetIndex]) : undefined;
+
+          if (!datasetId || !date || Number.isNaN(portfolioRisk)) {
+            return;
+          }
+
+          if (!parsed[datasetId]) {
+            parsed[datasetId] = [];
+          }
+
+          parsed[datasetId].push({
+            date,
+            portfolioRisk,
+            averageCountryRisk: typeof averageCountryRisk === "number" && !Number.isNaN(averageCountryRisk)
+              ? averageCountryRisk
+              : undefined,
+            riskOffset: typeof riskOffset === "number" && !Number.isNaN(riskOffset) ? riskOffset : undefined,
+          });
+        });
+
+        Object.keys(parsed).forEach((datasetId) => {
+          parsed[datasetId].sort((a, b) => a.date.localeCompare(b.date));
+        });
+
+        setDatasetHistorySeed(parsed);
+      } catch (error) {
+        console.warn("Failed to load dataset history seed CSV:", error);
+      } finally {
+        setDatasetHistorySeedLoaded(true);
+      }
+    };
+
+    loadDatasetHistorySeed();
+  }, []);
+
+  const getRegionFromCountry = useCallback((country: string): string => {
+    if (
+      country.includes("United States") ||
+      country.includes("Canada") ||
+      country.includes("Mexico") ||
+      country.includes("Brazil") ||
+      country.includes("Argentina") ||
+      country.includes("Chile")
+    ) {
+      return "Americas";
+    }
+
+    if (
+      country.includes("China") ||
+      country.includes("India") ||
+      country.includes("Japan") ||
+      country.includes("South Korea") ||
+      country.includes("Taiwan") ||
+      country.includes("Singapore")
+    ) {
+      return "Asia";
+    }
+
+    if (
+      country.includes("Germany") ||
+      country.includes("France") ||
+      country.includes("UK") ||
+      country.includes("Europe")
+    ) {
+      return "Europe";
+    }
+
+    if (country.includes("Middle East")) {
+      return "Middle East";
+    }
+
+    return "Africa";
+  }, []);
+
+  useEffect(() => {
+    if (!datasetHistorySeedLoaded || datasets.length === 0 || Object.keys(riskData).length === 0) {
+      return;
+    }
+
+    const countries = Object.keys(riskData);
+
+    datasets.forEach((dataset) => {
+      const datasetPortfolio = assetsByDataset[dataset.id] || [];
+      if (datasetPortfolio.length === 0) {
+        return;
+      }
+
+      const datasetAnalysis = calculatePortfolioRisk(datasetPortfolio, riskData);
+      const exposureByRegion: { [region: string]: number } = {};
+
+      datasetAnalysis.countryExposures.forEach((exposure) => {
+        const region = getRegionFromCountry(exposure.country);
+        exposureByRegion[region] = (exposureByRegion[region] || 0) + exposure.riskContribution;
+      });
+
+      initializeHistoricalData(
+        countries,
+        riskData,
+        dataset.id,
+        90,
+        datasetAnalysis.totalRiskScore,
+        exposureByRegion,
+        datasetAnalysis.topRiskCountries.map((country) => ({
+          country,
+          risk: riskData[country] || 50,
+        })),
+        datasetHistorySeed[dataset.id]
+      );
+    });
+  }, [assetsByDataset, datasetHistorySeed, datasetHistorySeedLoaded, datasets, getRegionFromCountry, riskData]);
 
   // Load datasets from API on mount with paralleled requests
   useEffect(() => {
@@ -728,10 +878,6 @@ export default function App() {
   // Record historical snapshots and check alert thresholds
   useEffect(() => {
     if (portfolioAnalysis && Object.keys(riskData).length > 0) {
-      // Initialize historical data on first load (generates 7+ days of sample data)
-      const countries = Object.keys(riskData);
-      initializeHistoricalData(countries, riskData);
-
       // Convert riskData to CountryRisk format for snapshot
       const countryRisks: Record<string, typeof DEFAULT_COUNTRY_RISK> = {};
       Object.keys(riskData).forEach((country) => {
@@ -741,34 +887,12 @@ export default function App() {
       // Calculate region exposures
       const exposureByRegion: { [region: string]: number } = {};
       portfolioAnalysis.countryExposures.forEach((exposure) => {
-        const region =
-          exposure.country.includes("United States") ||
-          exposure.country.includes("Canada") ||
-          exposure.country.includes("Mexico") ||
-          exposure.country.includes("Brazil") ||
-          exposure.country.includes("Argentina") ||
-          exposure.country.includes("Chile")
-            ? "Americas"
-            : exposure.country.includes("China") ||
-              exposure.country.includes("India") ||
-              exposure.country.includes("Japan") ||
-              exposure.country.includes("South Korea") ||
-              exposure.country.includes("Taiwan") ||
-              exposure.country.includes("Singapore")
-            ? "Asia"
-            : exposure.country.includes("Germany") ||
-              exposure.country.includes("France") ||
-              exposure.country.includes("UK") ||
-              exposure.country.includes("Europe")
-            ? "Europe"
-            : exposure.country.includes("Middle East")
-            ? "Middle East"
-            : "Africa";
+        const region = getRegionFromCountry(exposure.country);
         exposureByRegion[region] = (exposureByRegion[region] || 0) + exposure.riskContribution;
       });
 
       // Record snapshot monthly (to avoid excessive storage)
-      const lastSnapshot = getLatestSnapshot();
+      const lastSnapshot = getLatestSnapshot(selectedDatasetId);
       const now = new Date();
       const shouldRecord =
         !lastSnapshot ||
@@ -782,7 +906,8 @@ export default function App() {
           portfolioAnalysis.topRiskCountries.map((c) => ({
             country: c,
             risk: riskData[c] || 50,
-          }))
+          })),
+          selectedDatasetId
         );
       }
 
@@ -795,7 +920,7 @@ export default function App() {
         checkThresholds(exposure.country, countryRisk, "country");
       });
     }
-  }, [portfolioAnalysis, riskData]);
+  }, [getRegionFromCountry, portfolioAnalysis, riskData, selectedDatasetId]);
 
   const updateWeight = useCallback((category: keyof typeof weights, value: number) => {
     setWeights((prev) => ({ ...prev, [category]: value }));
@@ -2081,7 +2206,7 @@ export default function App() {
             {portfolioAnalysis.countryExposures.length > 0 && (
               <>
                 <RiskMetricsPanel
-                  trendData={getPortfolioRiskTrend(30)}
+                  trendData={getPortfolioRiskTrend(30, selectedDatasetId)}
                   countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
                     acc[country] = riskData[country] || 50;
                     return acc;
@@ -2110,6 +2235,7 @@ export default function App() {
                 availableCountries={Object.keys(baseRiskData)}
                 portfolio={portfolio}
                 riskData={riskData}
+                datasetId={selectedDatasetId}
               />
             </Suspense>
           </div>
@@ -2195,7 +2321,7 @@ export default function App() {
                   <Suspense fallback={tabLoadingFallback}>
                     <MonteCarloPanel
                       currentRisk={portfolioAnalysis.totalRiskScore}
-                      trendData={getPortfolioRiskTrend(90)}
+                      trendData={getPortfolioRiskTrend(90, selectedDatasetId)}
                       portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
                         country: exp.country,
                         riskContribution: exp.riskContribution,
@@ -2217,7 +2343,7 @@ export default function App() {
                 portfolioSummary={portfolioAnalysis}
                 countryRisks={riskData}
                 holdings={portfolio}
-                trends={getPortfolioRiskTrend(90)}
+                trends={getPortfolioRiskTrend(90, selectedDatasetId)}
                 weights={weights}
               />
             </Suspense>

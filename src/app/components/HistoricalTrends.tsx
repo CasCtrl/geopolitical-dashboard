@@ -20,6 +20,7 @@ interface HistoricalTrendsProps {
   onSelectCountry?: (country: string) => void;
   portfolio?: Asset[];
   riskData?: { [country: string]: number };
+  datasetId?: string;
 }
 
 export function HistoricalTrends({
@@ -27,25 +28,26 @@ export function HistoricalTrends({
   onSelectCountry,
   portfolio = [],
   riskData = {},
+  datasetId,
 }: HistoricalTrendsProps) {
   const [selectedCountry, setSelectedCountry] = useState<string>(availableCountries[0] || '');
   const [timeRange, setTimeRange] = useState<number>(7); // days
 
   const portfolioTrend = useMemo(() => {
-    return getPortfolioRiskTrend(timeRange);
-  }, [timeRange]);
+    return getPortfolioRiskTrend(timeRange, datasetId);
+  }, [datasetId, timeRange]);
 
   const countryTrends = useMemo(() => {
     if (!selectedCountry) return [];
-    const trend = getCountryTrend(selectedCountry, timeRange);
+    const trend = getCountryTrend(selectedCountry, timeRange, datasetId);
     return trend ? [trend] : [];
-  }, [selectedCountry, timeRange]);
+  }, [datasetId, selectedCountry, timeRange]);
 
   const comparison = useMemo(() => {
-    const latest = getLatestSnapshot();
-    const previous = getPreviousSnapshot(latest || undefined);
+    const latest = getLatestSnapshot(datasetId);
+    const previous = getPreviousSnapshot(latest || undefined, datasetId);
     return latest && previous ? compareSnapshots(previous, latest) : null;
-  }, []);
+  }, [datasetId]);
 
   const singlePointFailures = useMemo(() => findSinglePointFailures(portfolio), [portfolio]);
 

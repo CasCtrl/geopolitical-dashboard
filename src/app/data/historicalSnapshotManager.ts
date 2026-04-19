@@ -7,6 +7,7 @@
 import { CountryRisk } from "./countryRiskData";
 
 export interface RiskSnapshot {
+  datasetId?: string; // Dataset identifier for dataset-scoped trends
   timestamp: string; // ISO date string
   date: Date; // Parsed date
   countryRisks: { [country: string]: CountryRisk };
@@ -31,8 +32,15 @@ export interface CountryTrend {
   trend: "improving" | "declining" | "stable";
 }
 
+export interface SeedHistoryPoint {
+  date: string; // YYYY-MM-DD
+  portfolioRisk: number;
+  averageCountryRisk?: number;
+  riskOffset?: number;
+}
+
 const STORAGE_KEY = "geopolitical_risk_snapshots";
-const MAX_SNAPSHOTS = 365; // Keep 1 year of daily snapshots
+const MAX_SNAPSHOTS = 5000; // Keep enough history for multiple datasets
 
 /**
  * Store a new risk snapshot
@@ -41,7 +49,8 @@ export function recordSnapshot(
   countryRisks: { [country: string]: CountryRisk },
   portfolioRisk: number,
   exposureByRegion: { [region: string]: number },
-  topRiskCountries: { country: string; risk: number }[]
+  topRiskCountries: { country: string; risk: number }[],
+  datasetId: string = "default"
 ): RiskSnapshot {
   const timestamp = new Date().toISOString();
   const snapshots = getAllSnapshots();
@@ -54,6 +63,7 @@ export function recordSnapshot(
     allRisks.length > 0 ? allRisks.reduce((a, b) => a + b) / allRisks.length : 0;
 
   const snapshot: RiskSnapshot = {
+    datasetId,
     timestamp,
     date: new Date(timestamp),
     countryRisks,
@@ -71,7 +81,7 @@ export function recordSnapshot(
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshots));
-    console.log(`[Snapshot] Recorded risk snapshot at ${timestamp}`);
+    console.log(`[Snapshot] Recorded risk snapshot at ${timestamp} for dataset ${datasetId}`);
   } catch (error) {
     console.error("[Snapshot] Failed to save snapshot:", error);
   }
@@ -103,9 +113,10 @@ export function getAllSnapshots(): RiskSnapshot[] {
  */
 export function getSnapshotsByDateRange(
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  datasetId?: string
 ): RiskSnapshot[] {
-  const snapshots = getAllSnapshots();
+  const snapshots = getAllSnapshots().filter((s) => (datasetId ? s.datasetId === datasetId : true));
   return snapshots.filter(
     (s) => s.date >= startDate && s.date <= endDate
   );
@@ -114,8 +125,8 @@ export function getSnapshotsByDateRange(
 /**
  * Get the latest snapshot
  */
-export function getLatestSnapshot(): RiskSnapshot | null {
-  const snapshots = getAllSnapshots();
+export function getLatestSnapshot(datasetId?: string): RiskSnapshot | null {
+  const snapshots = getAllSnapshots().filter((s) => (datasetId ? s.datasetId === datasetId : true));
   return snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
 }
 
@@ -123,9 +134,10 @@ export function getLatestSnapshot(): RiskSnapshot | null {
  * Get the previous snapshot (for comparison)
  */
 export function getPreviousSnapshot(
-  currentSnapshot?: RiskSnapshot
+  currentSnapshot?: RiskSnapshot,
+  datasetId?: string
 ): RiskSnapshot | null {
-  const snapshots = getAllSnapshots();
+  const snapshots = getAllSnapshots().filter((s) => (datasetId ? s.datasetId === datasetId : true));
   if (snapshots.length < 2) return null;
 
   if (!currentSnapshot) {
@@ -143,9 +155,10 @@ export function getPreviousSnapshot(
  */
 export function getCountryTrend(
   country: string,
-  days: number = 30
+  days: number = 30,
+  datasetId?: string
 ): CountryTrend | null {
-  const snapshots = getAllSnapshots();
+  const snapshots = getAllSnapshots().filter((s) => (datasetId ? s.datasetId === datasetId : true));
   if (snapshots.length === 0) return null;
 
   const startDate = new Date();
@@ -214,8 +227,8 @@ export function getCountryTrend(
 /**
  * Get portfolio risk trend
  */
-export function getPortfolioRiskTrend(days: number = 30): TrendDataPoint[] {
-  const snapshots = getAllSnapshots();
+export function getPortfolioRiskTrend(days: number = 30, datasetId?: string): TrendDataPoint[] {
+  const snapshots = getAllSnapshots().filter((s) => (datasetId ? s.datasetId === datasetId : true));
   if (snapshots.length === 0) return [];
 
   const startDate = new Date();
@@ -316,30 +329,124 @@ export function clearAllSnapshots(): void {
 
 /**
  * Initialize historical snapshot data for trends
- * Generates 7-9 days of sample data with realistic variations
- * Only creates data if there are fewer than 3 snapshots
+ * Ensures each dataset has at least targetDays of historical snapshots
  */
 export function initializeHistoricalData(
   baseCountries: string[],
-  baseRiskData: { [country: string]: number }
+  baseRiskData: { [country: string]: number },
+  datasetId: string = "default",
+  targetDays: number = 90,
+  basePortfolioRisk?: number,
+  baseExposureByRegion?: { [region: string]: number },
+  baseTopRiskCountries?: { country: string; risk: number }[],
+  seedPoints?: SeedHistoryPoint[]
 ): void {
   try {
-    const existingSnapshots = getAllSnapshots();
-    
-    // Only initialize if we have very few or no snapshots
-    if (existingSnapshots.length > 2) {
-      console.log("[Snapshot] Historical data already exists, skipping initialization");
+    const allSnapshots = getAllSnapshots();
+    const datasetSnapshots = allSnapshots
+      .filter((snapshot) => snapshot.datasetId === datasetId)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    if (datasetSnapshots.length >= targetDays) {
+      console.log(`[Snapshot] Dataset ${datasetId} already has ${datasetSnapshots.length} snapshots`);
       return;
     }
 
-    console.log("[Snapshot] Initializing historical snapshot data...");
+    console.log(`[Snapshot] Initializing historical snapshot data for dataset ${datasetId}...`);
+    const seededSnapshots: RiskSnapshot[] = [];
+    const existingDateKeys = new Set(datasetSnapshots.map((snapshot) => snapshot.timestamp.slice(0, 10)));
 
-    // Generate 7-9 days of data
-    const numDays = 8; // Generate 8 days of data
+    const normalizedSeedPoints = (seedPoints || [])
+      .filter((point) => point && typeof point.date === "string")
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-targetDays);
+
+    normalizedSeedPoints.forEach((point) => {
+      const dateKey = point.date;
+      if (!dateKey || existingDateKeys.has(dateKey)) {
+        return;
+      }
+
+      const riskOffset = Number.isFinite(point.riskOffset) ? Number(point.riskOffset) : 0;
+      const countryRisks: { [country: string]: CountryRisk } = {};
+
+      baseCountries.forEach((country) => {
+        const baseRisk = baseRiskData[country] || 50;
+        const adjustedRisk = Math.max(0, Math.min(100, baseRisk + riskOffset + (Math.random() - 0.5) * 4));
+        countryRisks[country] = {
+          political: Math.max(0, Math.min(10, (adjustedRisk / 100) * 10 + (Math.random() - 0.5) * 1.5)),
+          economic: Math.max(0, Math.min(10, (adjustedRisk / 100) * 10 + (Math.random() - 0.5) * 1.5)),
+          conflict: Math.max(0, Math.min(10, (adjustedRisk / 100) * 10 + (Math.random() - 0.5) * 1.5)),
+          corruption: Math.max(0, Math.min(10, (adjustedRisk / 100) * 10 + (Math.random() - 0.5) * 1.5)),
+          terrorism: Math.max(0, Math.min(10, (adjustedRisk / 100) * 10 + (Math.random() - 0.5) * 1.5)),
+        };
+      });
+
+      const allRisks = Object.values(countryRisks).map((cr) => {
+        return (cr.political + cr.economic + cr.conflict + cr.corruption + cr.terrorism) / 5;
+      });
+      const calculatedAverageCountryRisk =
+        allRisks.length > 0 ? allRisks.reduce((a, b) => a + b) / allRisks.length : 0;
+
+      const snapshotDate = new Date(`${dateKey}T12:00:00.000Z`);
+      const portfolioRisk = Math.max(0, Math.min(100, Number(point.portfolioRisk) || (basePortfolioRisk || 50)));
+      const averageCountryRisk =
+        typeof point.averageCountryRisk === "number"
+          ? Math.max(0, Math.min(100, point.averageCountryRisk))
+          : calculatedAverageCountryRisk;
+
+      const exposureByRegion: { [region: string]: number } =
+        baseExposureByRegion && Object.keys(baseExposureByRegion).length > 0
+          ? Object.fromEntries(
+              Object.entries(baseExposureByRegion).map(([region, value]) => [
+                region,
+                Math.max(0, Number((value * (0.9 + Math.random() * 0.2)).toFixed(2))),
+              ])
+            )
+          : {
+              Americas: Math.random() * 30,
+              Europe: Math.random() * 25,
+              Asia: Math.random() * 30,
+              "Middle East": Math.random() * 20,
+              Africa: Math.random() * 15,
+            };
+
+      seededSnapshots.push({
+        datasetId,
+        timestamp: snapshotDate.toISOString(),
+        date: snapshotDate,
+        countryRisks,
+        portfolioRisk,
+        averageCountryRisk,
+        exposureByRegion,
+        topRiskCountries:
+          baseTopRiskCountries && baseTopRiskCountries.length > 0
+            ? baseTopRiskCountries
+                .map((entry) => ({
+                  country: entry.country,
+                  risk: Math.max(0, Math.min(100, Math.round(entry.risk + riskOffset))),
+                }))
+                .sort((a, b) => b.risk - a.risk)
+                .slice(0, 5)
+            : baseCountries
+                .map((country) => ({
+                  country,
+                  risk: Math.max(0, Math.min(100, Math.round((baseRiskData[country] || 50) + riskOffset))),
+                }))
+                .sort((a, b) => b.risk - a.risk)
+                .slice(0, 5),
+      });
+
+      existingDateKeys.add(dateKey);
+    });
+
+    const snapshotsNeeded = Math.max(0, targetDays - (datasetSnapshots.length + seededSnapshots.length));
     const now = new Date();
+    const earliestSeedDate = seededSnapshots.length > 0 ? seededSnapshots[0].date : null;
+    const anchorDate = datasetSnapshots.length > 0 ? datasetSnapshots[0].date : earliestSeedDate || now;
 
-    for (let i = numDays - 1; i >= 0; i--) {
-      const snapshotDate = new Date(now);
+    for (let i = snapshotsNeeded; i >= 1; i--) {
+      const snapshotDate = new Date(anchorDate);
       snapshotDate.setDate(snapshotDate.getDate() - i);
       snapshotDate.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60), 0, 0);
 
@@ -363,7 +470,14 @@ export function initializeHistoricalData(
         totalRisk += adjustedRisk;
       });
 
-      const portfolioRisk = Math.round(totalRisk / baseCountries.length);
+      const baselinePortfolioRisk =
+        typeof basePortfolioRisk === "number"
+          ? basePortfolioRisk
+          : Math.round(totalRisk / Math.max(1, baseCountries.length));
+      const portfolioRisk = Math.max(
+        0,
+        Math.min(100, Math.round(baselinePortfolioRisk + (Math.random() - 0.5) * 10))
+      );
 
       // Calculate average country risk
       const allRisks = Object.values(countryRisks).map((cr) => {
@@ -372,39 +486,64 @@ export function initializeHistoricalData(
       const averageCountryRisk =
         allRisks.length > 0 ? allRisks.reduce((a, b) => a + b) / allRisks.length : 0;
 
-      // Generate region exposures
-      const exposureByRegion: { [region: string]: number } = {
-        Americas: Math.random() * 30,
-        Europe: Math.random() * 25,
-        Asia: Math.random() * 30,
-        "Middle East": Math.random() * 20,
-        Africa: Math.random() * 15,
-      };
+      const exposureByRegion: { [region: string]: number } =
+        baseExposureByRegion && Object.keys(baseExposureByRegion).length > 0
+          ? Object.fromEntries(
+              Object.entries(baseExposureByRegion).map(([region, value]) => [
+                region,
+                Math.max(0, Number((value * (0.85 + Math.random() * 0.3)).toFixed(2))),
+              ])
+            )
+          : {
+              Americas: Math.random() * 30,
+              Europe: Math.random() * 25,
+              Asia: Math.random() * 30,
+              "Middle East": Math.random() * 20,
+              Africa: Math.random() * 15,
+            };
 
       // Create the snapshot
       const snapshot: RiskSnapshot = {
+        datasetId,
         timestamp: snapshotDate.toISOString(),
         date: snapshotDate,
         countryRisks,
         portfolioRisk,
         averageCountryRisk,
         exposureByRegion,
-        topRiskCountries: baseCountries
-          .map((country) => ({
-            country,
-            risk: baseRiskData[country] || 50,
-          }))
-          .sort((a, b) => b.risk - a.risk)
-          .slice(0, 5),
+        topRiskCountries:
+          baseTopRiskCountries && baseTopRiskCountries.length > 0
+            ? baseTopRiskCountries
+                .map((entry) => ({
+                  country: entry.country,
+                  risk: Math.max(0, Math.min(100, Math.round(entry.risk + (Math.random() - 0.5) * 6))),
+                }))
+                .sort((a, b) => b.risk - a.risk)
+                .slice(0, 5)
+            : baseCountries
+                .map((country) => ({
+                  country,
+                  risk: baseRiskData[country] || 50,
+                }))
+                .sort((a, b) => b.risk - a.risk)
+                .slice(0, 5),
       };
 
-      // Store in localStorage
-      const allSnapshots = getAllSnapshots();
-      allSnapshots.push(snapshot);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allSnapshots));
+      seededSnapshots.push(snapshot);
     }
 
-    console.log(`[Snapshot] Initialized historical data with ${numDays} days of snapshots`);
+    const mergedSnapshots = [...allSnapshots, ...seededSnapshots].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    const trimmedSnapshots =
+      mergedSnapshots.length > MAX_SNAPSHOTS
+        ? mergedSnapshots.slice(mergedSnapshots.length - MAX_SNAPSHOTS)
+        : mergedSnapshots;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmedSnapshots));
+
+    console.log(
+      `[Snapshot] Initialized historical data for dataset ${datasetId} with ${snapshotsNeeded} seeded days (target ${targetDays})`
+    );
   } catch (error) {
     console.error("[Snapshot] Failed to initialize historical data:", error);
   }
