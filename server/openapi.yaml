@@ -64,6 +64,26 @@ paths:
           description: Active alert list and configured thresholds
         '403':
           description: Forbidden
+        '429':
+          description: Admin abuse protection triggered
+  /api/admin/audit-trail:
+    get:
+      summary: Recent admin/release audit events (admin)
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        '200':
+          description: Recent audit trail entries
+        '403':
+          description: Forbidden
+        '429':
+          description: Admin abuse protection triggered
   /api/datasets:
     get:
       summary: List datasets
@@ -138,6 +158,8 @@ paths:
       responses:
         '200':
           description: News payload
+        '429':
+          description: Expensive endpoint abuse protection triggered
   /api/reports/generate:
     post:
       summary: Generate report metadata
@@ -150,6 +172,8 @@ paths:
       responses:
         '200':
           description: Generation accepted
+        '429':
+          description: Expensive endpoint abuse protection triggered
   /api/reports/email:
     post:
       summary: Queue report email
@@ -162,6 +186,8 @@ paths:
       responses:
         '200':
           description: Email queued
+        '429':
+          description: Expensive endpoint abuse protection triggered
   /api/reports/templates:
     get:
       summary: List report templates
@@ -180,6 +206,8 @@ paths:
       responses:
         '200':
           description: Schedule created
+        '429':
+          description: Expensive endpoint abuse protection triggered
   /api/reports/history:
     get:
       summary: Get report history

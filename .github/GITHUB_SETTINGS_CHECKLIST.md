@@ -21,6 +21,7 @@ Use this checklist after pushing workflow files to enforce merge gates.
 10. Add required checks:
    - CI / validate
    - CI / e2e-smoke
+   - Secret Scan / gitleaks
 11. Enable: Include administrators
 12. Save changes
 
@@ -55,9 +56,17 @@ Open Settings -> Environments:
 1. Confirm GitHub username/team entries in .github/CODEOWNERS are valid.
 2. Open any test PR and verify code owner review is requested.
 
-## 7. Optional Security Gate
+## 7. Security Gate
 
-If you want security scan as a PR gate, update workflow trigger and then add:
-- Security Audit / npm-audit
+1. Ensure PR gate includes:
+   - Secret Scan / gitleaks
+2. Optionally add:
+   - Security Audit / npm-audit
 
-Current default behavior: security audit runs on schedule + manual dispatch.
+Current default behavior: secret scanning runs on push/PR/schedule; security audit runs on schedule + manual dispatch.
+
+## 8. Dependabot Configuration
+
+1. Verify `.github/dependabot.yml` is present on default branch.
+2. Confirm Dependabot alerts are enabled in repository Security settings.
+3. Confirm dependency PR labels and grouping match the project policy.

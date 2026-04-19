@@ -27,6 +27,13 @@ const envSchema = z
       .string()
       .default('http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003'),
     RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(5000).default(300),
+    EXPENSIVE_READ_WINDOW_MS: z.coerce.number().int().min(1000).max(3600000).default(60000),
+    EXPENSIVE_READ_MAX: z.coerce.number().int().min(1).max(1000).default(30),
+    EXPENSIVE_WRITE_WINDOW_MS: z.coerce.number().int().min(1000).max(3600000).default(900000),
+    EXPENSIVE_WRITE_MAX: z.coerce.number().int().min(1).max(1000).default(20),
+    ADMIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).max(3600000).default(60000),
+    ADMIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(1000).default(60),
+    AUDIT_TRAIL_MAX_ENTRIES: z.coerce.number().int().min(10).max(20000).default(1000),
     OBS_MIN_REQUESTS: z.coerce.number().int().min(1).max(100000).default(20),
     OBS_ERROR_RATE_THRESHOLD_PCT: z.coerce.number().min(0).max(100).default(5),
     OBS_P95_LATENCY_THRESHOLD_MS: z.coerce.number().min(1).max(60000).default(800),

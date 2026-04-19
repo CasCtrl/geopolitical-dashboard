@@ -30,4 +30,12 @@ module.exports = {
     'react/no-unescaped-entities': 'off',
     'no-async-promise-executor': 'warn',
   },
+  overrides: [
+    {
+      files: ['server/**/*.cjs', 'server/**/*.test.js'],
+      rules: {
+        '@typescript-eslint/no-require-imports': 'off',
+      },
+    },
+  ],
 }

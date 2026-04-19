@@ -15,6 +15,7 @@ import reportsRoutes from './routes/reports.js';
 import newsRoutes from './routes/news.js';
 import observability from './observability.cjs';
 import adminObservability from './adminObservability.cjs';
+import auditTrailModule from './auditTrail.cjs';
 
 const app = express();
 const PORT = env.SERVER_PORT;
@@ -31,8 +32,10 @@ const {
   getObservabilitySnapshot,
 } = observability;
 const { buildAdminAlertsPayload } = adminObservability;
+const { createAuditTrail } = auditTrailModule;
 
 const requestMetrics = initializeRequestMetrics();
+const auditTrail = createAuditTrail({ maxEntries: env.AUDIT_TRAIL_MAX_ENTRIES });
 
 const allowedOrigins = env.ALLOWED_ORIGINS
   .split(',')
@@ -54,6 +57,79 @@ function logEvent(level, message, meta = {}) {
   }
 
   console.log(serialized);
+}
+
+function maskEmail(value) {
+  if (typeof value !== 'string' || !value.includes('@')) {
+    return value;
+  }
+
+  const [local, domain] = value.split('@');
+  if (!local || !domain) {
+    return value;
+  }
+
+  const visiblePrefix = local.slice(0, 2);
+  return `${visiblePrefix}${'*'.repeat(Math.max(local.length - 2, 0))}@${domain}`;
+}
+
+function classifyAuditableAction(req) {
+  const method = req.method.toUpperCase();
+
+  if (method === 'GET' && req.path === '/api/admin/metrics') {
+    return { action: 'admin.metrics.read', target: 'runtime-metrics', details: {} };
+  }
+
+  if (method === 'GET' && req.path === '/api/admin/observability') {
+    return { action: 'admin.observability.read', target: 'request-observability', details: {} };
+  }
+
+  if (method === 'GET' && req.path === '/api/admin/alerts') {
+    return { action: 'admin.alerts.read', target: 'active-alerts', details: {} };
+  }
+
+  if (method === 'GET' && req.path === '/api/admin/audit-trail') {
+    return {
+      action: 'admin.audit-trail.read',
+      target: 'audit-trail',
+      details: { limit: req.query?.limit ?? undefined },
+    };
+  }
+
+  if (method === 'POST' && req.path === '/api/reports/generate') {
+    return {
+      action: 'release.report.generate',
+      target: 'reporting',
+      details: {
+        format: req.body?.format,
+        includeCharts: req.body?.includeCharts,
+      },
+    };
+  }
+
+  if (method === 'POST' && req.path === '/api/reports/email') {
+    return {
+      action: 'release.report.email',
+      target: 'reporting',
+      details: {
+        recipientEmail: maskEmail(req.body?.recipientEmail),
+      },
+    };
+  }
+
+  if (method === 'POST' && req.path === '/api/reports/schedule') {
+    return {
+      action: 'release.report.schedule',
+      target: 'reporting',
+      details: {
+        format: req.body?.format,
+        frequency: req.body?.frequency,
+        recipientEmail: maskEmail(req.body?.recipientEmail),
+      },
+    };
+  }
+
+  return null;
 }
 
 function getRequestRole(req) {
@@ -106,7 +182,35 @@ function requireRoles(allowedRoles) {
 
 // Middleware
 app.disable('x-powered-by');
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'none'"],
+      baseUri: ["'none'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'none'"],
+      styleSrc: ["'none'"],
+      imgSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'", ...allowedOrigins],
+    },
+  },
+  referrerPolicy: {
+    policy: 'no-referrer',
+  },
+  hsts: env.NODE_ENV === 'production'
+    ? {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    }
+    : false,
+  crossOriginResourcePolicy: {
+    policy: 'same-site',
+  },
+}));
 app.use(cors({
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -141,8 +245,57 @@ const apiLimiter = rateLimit({
   },
 });
 
+const expensiveReadLimiter = rateLimit({
+  windowMs: env.EXPENSIVE_READ_WINDOW_MS,
+  limit: env.EXPENSIVE_READ_MAX,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => {
+    sendApiError(res, {
+      statusCode: 429,
+      code: 'ABUSE_PROTECTION_TRIGGERED',
+      message: 'Too many expensive read requests',
+      requestId: req.requestId,
+    });
+  },
+});
+
+const expensiveWriteLimiter = rateLimit({
+  windowMs: env.EXPENSIVE_WRITE_WINDOW_MS,
+  limit: env.EXPENSIVE_WRITE_MAX,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => {
+    sendApiError(res, {
+      statusCode: 429,
+      code: 'ABUSE_PROTECTION_TRIGGERED',
+      message: 'Too many expensive write requests',
+      requestId: req.requestId,
+    });
+  },
+});
+
+const adminLimiter = rateLimit({
+  windowMs: env.ADMIN_RATE_LIMIT_WINDOW_MS,
+  limit: env.ADMIN_RATE_LIMIT_MAX,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => {
+    sendApiError(res, {
+      statusCode: 429,
+      code: 'ADMIN_RATE_LIMITED',
+      message: 'Too many admin requests',
+      requestId: req.requestId,
+    });
+  },
+});
+
 app.use('/api', apiLimiter);
 app.use(express.json({ limit: '1mb' }));
+app.use('/api/news', expensiveReadLimiter);
+app.use('/api/reports/generate', expensiveWriteLimiter);
+app.use('/api/reports/email', expensiveWriteLimiter);
+app.use('/api/reports/schedule', expensiveWriteLimiter);
 
 app.use((req, res, next) => {
   const startedAt = Date.now();
@@ -171,6 +324,41 @@ app.use((req, res, next) => {
 });
 
 app.use('/api', authMiddleware);
+app.use('/api/admin', adminLimiter);
+
+app.use((req, res, next) => {
+  const action = classifyAuditableAction(req);
+  if (!action) {
+    return next();
+  }
+
+  res.on('finish', () => {
+    const outcome = res.statusCode >= 200 && res.statusCode < 400 ? 'success' : 'failure';
+    const auditEntry = auditTrail.record({
+      requestId: req.requestId,
+      actorRole: req.user?.role || 'viewer',
+      actorAuthMode: req.user?.authMode || 'unknown',
+      actorIp: req.ip,
+      userAgent: req.get('user-agent') || 'unknown',
+      action: action.action,
+      target: action.target,
+      statusCode: res.statusCode,
+      outcome,
+      details: action.details,
+    });
+
+    logEvent('info', 'audit.action', {
+      requestId: auditEntry.requestId,
+      action: auditEntry.action,
+      target: auditEntry.target,
+      actorRole: auditEntry.actorRole,
+      outcome: auditEntry.outcome,
+      statusCode: auditEntry.statusCode,
+    });
+  });
+
+  return next();
+});
 
 // Routes
 app.use('/api', assetsRoutes);
@@ -215,6 +403,17 @@ app.get('/api/admin/alerts', requireRoles([ADMIN_ROLE]), async (req, res) => {
   };
 
   res.json(buildAdminAlertsPayload({ ready, requestMetrics, thresholds }));
+});
+
+app.get('/api/admin/audit-trail', requireRoles([ADMIN_ROLE]), async (req, res) => {
+  const rawLimit = Number.parseInt(String(req.query.limit ?? '100'), 10);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
+
+  res.json({
+    entries: auditTrail.listRecent({ limit }),
+    totalEntries: auditTrail.size(),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Health check

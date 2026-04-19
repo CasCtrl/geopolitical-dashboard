@@ -93,3 +93,35 @@ jobs:
               echo "- Mode: Standard Release"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create release audit record
+        run: |
+          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          mode="standard"
+          if [ -n "${{ github.event.inputs.rollback_to_tag }}" ]; then
+            mode="rollback"
+          fi
+
+          cat > release-audit.json << 'EOF'
+          {
+            "timestamp": "TIMESTAMP_PLACEHOLDER",
+            "actor": "${{ github.actor }}",
+            "environment": "${{ github.event.inputs.environment }}",
+            "releaseRef": "${{ needs.prepare.outputs.release_ref }}",
+            "mode": "MODE_PLACEHOLDER",
+            "workflow": "${{ github.workflow }}",
+            "runId": "${{ github.run_id }}",
+            "runAttempt": "${{ github.run_attempt }}",
+            "repository": "${{ github.repository }}"
+          }
+          EOF
+
+          sed -i "s/TIMESTAMP_PLACEHOLDER/${timestamp}/g" release-audit.json
+          sed -i "s/MODE_PLACEHOLDER/${mode}/g" release-audit.json
+
+      - name: Upload release audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-audit
+          path: release-audit.json
+          retention-days: 90

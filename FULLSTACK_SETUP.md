@@ -73,6 +73,7 @@ If either process exits unexpectedly, the launcher stops the other process and r
 - `GET /api/admin/metrics` - Runtime process + DB metrics (admin role)
 - `GET /api/admin/observability` - Request volume/error/latency aggregates (admin role)
 - `GET /api/admin/alerts` - Active observability-derived alerts (admin role)
+- `GET /api/admin/audit-trail` - Recent admin/release audit events (admin role)
 - `GET /api/datasets` - List all datasets
 - `GET /api/assets/:datasetId` - Get assets for a dataset
 - `GET /api/dependencies/:datasetId` - Get country dependencies
@@ -92,6 +93,17 @@ Additional runtime controls:
 - `DB_CONNECT_STRICT` - when `true`, backend startup fails if DB connection fails.
 - `DB_INIT_ENABLED` - when `true`, schema/data initialization runs during startup.
 - `AUTH_REQUIRED` + `API_TOKEN` - enables token auth on `/api/*` routes.
+- `EXPENSIVE_READ_*` / `EXPENSIVE_WRITE_*` - abuse protection limits for expensive endpoints.
+- `ADMIN_RATE_LIMIT_*` - admin endpoint abuse protection.
+- `AUDIT_TRAIL_MAX_ENTRIES` - retention depth for in-memory audit trail endpoint.
+
+## Security Hardening Controls
+
+- Secret scanning enforcement workflow: `.github/workflows/secret-scan.yml`
+- Dependency audit workflow: `.github/workflows/security-audit.yml`
+- Dependabot policy: `.github/dependabot.yml` + `.github/DEPENDENCY_UPDATE_POLICY.md`
+- Stricter backend security headers/CSP via Helmet policy in `server/server.js`
+- Release workflow emits `release-audit` artifact for each deploy execution
 
 ## Stopping Services
 
