@@ -1,6 +1,7 @@
 import express from 'express';
 import { ApiError } from '../middleware/apiError.js';
 import { z, validateBody } from '../middleware/validate.js';
+import { buildMetadata, sendDataWithMeta } from '../utils/responseMetadata.js';
 
 const router = express.Router();
 
@@ -44,15 +45,24 @@ router.post('/generate', validateBody(generateReportBodySchema), async (req, res
       includeCharts: includeCharts || false,
     };
 
-    res.json({
-      success: true,
-      message: 'Report generation initiated',
-      report: {
-        filename,
-        format,
-        metadata: reportMetadata,
+    sendDataWithMeta(
+      res,
+      {
+        success: true,
+        message: 'Report generation initiated',
+        report: {
+          filename,
+          format,
+          metadata: reportMetadata,
+        },
       },
-    });
+      buildMetadata({
+        source: 'reporting.engine',
+        sourceType: 'generated',
+        freshness: { staleAfterSeconds: 300 },
+        reliability: { score: 0.88, methodologyVersion: 'report-builder-v1' },
+      })
+    );
   } catch {
     next(new ApiError(500, 'REPORT_GENERATE_FAILED', 'Failed to generate report'));
   }
@@ -68,12 +78,21 @@ router.post('/email', validateBody(emailReportBodySchema), async (req, res, next
 
     // In production, integrate with actual email service (SendGrid, AWS SES, etc.)
     // For now, just simulate the request
-    res.json({
-      success: true,
-      message: 'Report email queued for delivery',
-      recipient: recipientEmail,
-      timestamp: new Date().toISOString(),
-    });
+    sendDataWithMeta(
+      res,
+      {
+        success: true,
+        message: 'Report email queued for delivery',
+        recipient: recipientEmail,
+        timestamp: new Date().toISOString(),
+      },
+      buildMetadata({
+        source: 'reporting.email-queue',
+        sourceType: 'generated',
+        freshness: { staleAfterSeconds: 300 },
+        reliability: { score: 0.86, methodologyVersion: 'report-email-v1' },
+      })
+    );
   } catch {
     next(new ApiError(500, 'REPORT_EMAIL_FAILED', 'Failed to send report email'));
   }
@@ -111,10 +130,19 @@ router.get('/templates', (req, res) => {
     },
   ];
 
-  res.json({
-    success: true,
-    templates,
-  });
+  sendDataWithMeta(
+    res,
+    {
+      success: true,
+      templates,
+    },
+    buildMetadata({
+      source: 'reporting.templates',
+      sourceType: 'generated',
+      freshness: { staleAfterSeconds: 86400 },
+      reliability: { score: 0.9, methodologyVersion: 'report-template-v1' },
+    })
+  );
 });
 
 /**
@@ -125,18 +153,27 @@ router.post('/schedule', validateBody(scheduleReportBodySchema), async (req, res
   try {
     const { title, format, frequency, recipientEmail } = req.body;
 
-    res.json({
-      success: true,
-      message: 'Report schedule created',
-      schedule: {
-        id: Math.random().toString(36).substr(2, 9),
-        title,
-        format,
-        frequency,
-        recipientEmail,
-        nextRun: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    sendDataWithMeta(
+      res,
+      {
+        success: true,
+        message: 'Report schedule created',
+        schedule: {
+          id: Math.random().toString(36).substr(2, 9),
+          title,
+          format,
+          frequency,
+          recipientEmail,
+          nextRun: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        },
       },
-    });
+      buildMetadata({
+        source: 'reporting.scheduler',
+        sourceType: 'generated',
+        freshness: { staleAfterSeconds: 300 },
+        reliability: { score: 0.84, methodologyVersion: 'report-schedule-v1' },
+      })
+    );
   } catch {
     next(new ApiError(500, 'REPORT_SCHEDULE_FAILED', 'Failed to schedule report'));
   }
@@ -148,25 +185,34 @@ router.post('/schedule', validateBody(scheduleReportBodySchema), async (req, res
  */
 router.get('/history', (req, res) => {
   // In production, retrieve from database
-  res.json({
-    success: true,
-    reports: [
-      {
-        id: '1',
-        title: 'Portfolio Summary',
-        format: 'pdf',
-        generatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        downloadUrl: '/reports/download/1',
-      },
-      {
-        id: '2',
-        title: 'Country Risk Analysis',
-        format: 'excel',
-        generatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        downloadUrl: '/reports/download/2',
-      },
-    ],
-  });
+  sendDataWithMeta(
+    res,
+    {
+      success: true,
+      reports: [
+        {
+          id: '1',
+          title: 'Portfolio Summary',
+          format: 'pdf',
+          generatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          downloadUrl: '/reports/download/1',
+        },
+        {
+          id: '2',
+          title: 'Country Risk Analysis',
+          format: 'excel',
+          generatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          downloadUrl: '/reports/download/2',
+        },
+      ],
+    },
+    buildMetadata({
+      source: 'reporting.history',
+      sourceType: 'generated',
+      freshness: { staleAfterSeconds: 3600 },
+      reliability: { score: 0.82, methodologyVersion: 'report-history-v1' },
+    })
+  );
 });
 
 export default router;

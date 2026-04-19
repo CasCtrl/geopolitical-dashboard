@@ -15,6 +15,10 @@ type NewsApiPayload = {
   articles?: unknown[];
 };
 
+type NewsApiEnvelope = {
+  data?: NewsApiPayload;
+};
+
 export function NewsFeedPanel({ countryRisks: _countryRisks, portfolioCountries, compact = false, refreshToken = 0 }: NewsFeedPanelProps) {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [riskEvents, setRiskEvents] = useState<NewsRiskEvent[]>([]);
@@ -31,7 +35,10 @@ export function NewsFeedPanel({ countryRisks: _countryRisks, portfolioCountries,
       try {
         const response = await fetch('http://localhost:5001/api/news?limit=40');
         if (response.ok) {
-          const payload = (await response.json()) as NewsApiPayload;
+          const rawPayload = (await response.json()) as NewsApiPayload | NewsApiEnvelope;
+          const payload = 'data' in rawPayload && rawPayload.data
+            ? rawPayload.data
+            : (rawPayload as NewsApiPayload);
           baseArticles = payload.articles || [];
         }
       } catch {

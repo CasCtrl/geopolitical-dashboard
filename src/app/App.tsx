@@ -134,7 +134,13 @@ const DEFAULT_COUNTRY_RISK = {
 };
 
 const parseApiJson = async <T,>(response: Response): Promise<T> => {
-  return (await response.json()) as T;
+  const payload = await response.json();
+
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return (payload as { data: T }).data;
+  }
+
+  return payload as T;
 };
 
 const normalizeDependencyType = (value: string): CountryDependency["type"] => {
@@ -796,7 +802,10 @@ export default function App() {
       try {
         const response = await fetch(`${API_BASE_URL}/api/news?limit=40`);
         if (response.ok) {
-          const payload = await response.json();
+          const rawPayload = await response.json();
+          const payload = rawPayload && typeof rawPayload === 'object' && 'data' in rawPayload
+            ? (rawPayload as { data: { articles?: unknown[] } }).data
+            : (rawPayload as { articles?: unknown[] });
           baseArticles = payload.articles || [];
         }
       } catch {

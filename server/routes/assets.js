@@ -3,6 +3,7 @@ import sql from 'mssql';
 import { getPool } from '../db/config.js';
 import { ApiError } from '../middleware/apiError.js';
 import { z, validateParams } from '../middleware/validate.js';
+import { buildMetadata, sendDataWithMeta } from '../utils/responseMetadata.js';
 
 const router = express.Router();
 const datasetParamsSchema = z.object({ datasetId: z.string().min(1).max(50) });
@@ -13,10 +14,27 @@ router.get('/datasets', async (req, res, next) => {
     const pool = await getPool();
     if (!pool) {
       console.warn('Database not available, returning empty datasets');
-      return res.json([]);
+      return sendDataWithMeta(
+        res,
+        [],
+        buildMetadata({
+          source: 'sqlserver.datasets',
+          sourceType: 'fallback',
+          fallback: { used: true, reason: 'database_unavailable' },
+          reliability: { score: 0.4 },
+          freshness: { isStale: true },
+        })
+      );
     }
     const result = await pool.query('SELECT * FROM Datasets');
-    res.json(result.recordset);
+    sendDataWithMeta(
+      res,
+      result.recordset,
+      buildMetadata({
+        source: 'sqlserver.datasets',
+        sourceType: 'database',
+      })
+    );
   } catch {
     next(new ApiError(500, 'DATASETS_FETCH_FAILED', 'Failed to fetch datasets'));
   }
@@ -28,7 +46,17 @@ router.get('/assets/:datasetId', validateParams(datasetParamsSchema), async (req
     const pool = await getPool();
     if (!pool) {
       console.warn('Database not available, returning empty assets');
-      return res.json([]);
+      return sendDataWithMeta(
+        res,
+        [],
+        buildMetadata({
+          source: 'sqlserver.assets',
+          sourceType: 'fallback',
+          fallback: { used: true, reason: 'database_unavailable' },
+          reliability: { score: 0.4 },
+          freshness: { isStale: true },
+        })
+      );
     }
     const request = pool.request();
     request.input('datasetId', sql.NVarChar(50), req.params.datasetId);
@@ -40,7 +68,14 @@ router.get('/assets/:datasetId', validateParams(datasetParamsSchema), async (req
       ORDER BY a.weight DESC
     `);
 
-    res.json(result.recordset);
+    sendDataWithMeta(
+      res,
+      result.recordset,
+      buildMetadata({
+        source: 'sqlserver.assets',
+        sourceType: 'database',
+      })
+    );
   } catch {
     next(new ApiError(500, 'ASSETS_FETCH_FAILED', 'Failed to fetch assets'));
   }
@@ -52,7 +87,17 @@ router.get('/dependencies/:datasetId', validateParams(datasetParamsSchema), asyn
     const pool = await getPool();
     if (!pool) {
       console.warn('Database not available, returning empty dependencies');
-      return res.json([]);
+      return sendDataWithMeta(
+        res,
+        [],
+        buildMetadata({
+          source: 'sqlserver.dependencies',
+          sourceType: 'fallback',
+          fallback: { used: true, reason: 'database_unavailable' },
+          reliability: { score: 0.4 },
+          freshness: { isStale: true },
+        })
+      );
     }
     const request = pool.request();
     request.input('datasetId', sql.NVarChar(50), req.params.datasetId);
@@ -64,7 +109,14 @@ router.get('/dependencies/:datasetId', validateParams(datasetParamsSchema), asyn
       ORDER BY cd.country, cd.ticker
     `);
 
-    res.json(result.recordset);
+    sendDataWithMeta(
+      res,
+      result.recordset,
+      buildMetadata({
+        source: 'sqlserver.dependencies',
+        sourceType: 'database',
+      })
+    );
   } catch {
     next(new ApiError(500, 'DEPENDENCIES_FETCH_FAILED', 'Failed to fetch dependencies'));
   }
@@ -76,10 +128,27 @@ router.get('/countries', async (req, res, next) => {
     const pool = await getPool();
     if (!pool) {
       console.warn('Database not available, returning empty countries');
-      return res.json([]);
+      return sendDataWithMeta(
+        res,
+        [],
+        buildMetadata({
+          source: 'sqlserver.countries',
+          sourceType: 'fallback',
+          fallback: { used: true, reason: 'database_unavailable' },
+          reliability: { score: 0.4 },
+          freshness: { isStale: true },
+        })
+      );
     }
     const result = await pool.query('SELECT name, baseRiskScore FROM Countries ORDER BY name');
-    res.json(result.recordset);
+    sendDataWithMeta(
+      res,
+      result.recordset,
+      buildMetadata({
+        source: 'sqlserver.countries',
+        sourceType: 'database',
+      })
+    );
   } catch {
     next(new ApiError(500, 'COUNTRIES_FETCH_FAILED', 'Failed to fetch countries'));
   }
@@ -91,14 +160,24 @@ router.get('/portfolio/:datasetId', validateParams(datasetParamsSchema), async (
     const pool = await getPool();
     if (!pool) {
       console.warn('Database not available, returning empty portfolio');
-      return res.json({
+      return sendDataWithMeta(
+        res,
+        {
         dataset: {
           id: req.params.datasetId,
           assets: [],
           dependencies: [],
           countries: [],
         },
-      });
+        },
+        buildMetadata({
+          source: 'sqlserver.portfolio',
+          sourceType: 'fallback',
+          fallback: { used: true, reason: 'database_unavailable' },
+          reliability: { score: 0.4 },
+          freshness: { isStale: true },
+        })
+      );
     }
     const request = pool.request();
     request.input('datasetId', sql.NVarChar(50), req.params.datasetId);
@@ -158,14 +237,21 @@ router.get('/portfolio/:datasetId', validateParams(datasetParamsSchema), async (
       }
     });
 
-    res.json({
-      dataset: {
-        id: req.params.datasetId,
-        assets,
-        dependencies,
-        countries: countriesResult.recordset,
+    sendDataWithMeta(
+      res,
+      {
+        dataset: {
+          id: req.params.datasetId,
+          assets,
+          dependencies,
+          countries: countriesResult.recordset,
+        },
       },
-    });
+      buildMetadata({
+        source: 'sqlserver.portfolio',
+        sourceType: 'database',
+      })
+    );
   } catch {
     next(new ApiError(500, 'PORTFOLIO_FETCH_FAILED', 'Failed to fetch portfolio data'));
   }
@@ -177,7 +263,17 @@ router.get('/assets-with-deps/:datasetId', validateParams(datasetParamsSchema), 
     const pool = await getPool();
     if (!pool) {
       console.warn('Database not available, returning empty assets with deps');
-      return res.json([]);
+      return sendDataWithMeta(
+        res,
+        [],
+        buildMetadata({
+          source: 'sqlserver.assets-with-dependencies',
+          sourceType: 'fallback',
+          fallback: { used: true, reason: 'database_unavailable' },
+          reliability: { score: 0.4 },
+          freshness: { isStale: true },
+        })
+      );
     }
     const request = pool.request();
     request.input('datasetId', sql.NVarChar(50), req.params.datasetId);
@@ -227,7 +323,14 @@ router.get('/assets-with-deps/:datasetId', validateParams(datasetParamsSchema), 
       }
     });
 
-    res.json(Array.from(assetsMap.values()));
+    sendDataWithMeta(
+      res,
+      Array.from(assetsMap.values()),
+      buildMetadata({
+        source: 'sqlserver.assets-with-dependencies',
+        sourceType: 'database',
+      })
+    );
   } catch {
     next(new ApiError(500, 'ASSETS_WITH_DEPENDENCIES_FETCH_FAILED', 'Failed to fetch assets with dependencies'));
   }

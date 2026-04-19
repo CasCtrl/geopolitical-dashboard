@@ -1,6 +1,7 @@
 import express from 'express';
 import { ApiError } from '../middleware/apiError.js';
 import { z, validateQuery } from '../middleware/validate.js';
+import { buildMetadata, sendDataWithMeta } from '../utils/responseMetadata.js';
 
 const router = express.Router();
 const newsQuerySchema = z.object({
@@ -125,12 +126,35 @@ router.get('/news', validateQuery(newsQuerySchema), async (req, res, next) => {
       .map((entry) => entry.article)
       .slice(0, limit);
 
-    res.json({
-      source: 'Bloomberg RSS',
-      count: sorted.length,
-      timestamp: new Date().toISOString(),
-      articles: sorted,
-    });
+    const fallbackUsed = sorted.length === 0;
+    const reliabilityScore = fallbackUsed ? 0.5 : 0.82;
+
+    sendDataWithMeta(
+      res,
+      {
+        source: 'Bloomberg RSS',
+        count: sorted.length,
+        timestamp: new Date().toISOString(),
+        articles: sorted,
+      },
+      buildMetadata({
+        source: 'bloomberg.rss',
+        sourceType: fallbackUsed ? 'fallback' : 'api',
+        fallback: {
+          used: fallbackUsed,
+          reason: fallbackUsed ? 'all_feeds_unavailable_or_empty' : null,
+        },
+        freshness: {
+          staleAfterSeconds: 1800,
+          isStale: fallbackUsed,
+        },
+        reliability: {
+          score: reliabilityScore,
+          sourceQualityScore: 0.82,
+          methodologyVersion: 'rss-world-keyword-v1',
+        },
+      })
+    );
   } catch {
     next(new ApiError(502, 'NEWS_FETCH_FAILED', 'Unable to fetch Bloomberg news feed'));
   }

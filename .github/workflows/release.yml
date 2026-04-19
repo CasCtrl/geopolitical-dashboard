@@ -1,5 +1,8 @@
 name: Release
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -55,7 +58,7 @@ jobs:
 
       - name: Package build artifact
         run: |
-          tar -czf release-artifact.tgz dist package.json package-lock.json
+          tar -czf release-artifact.tgz dist server package.json package-lock.json
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -66,20 +69,143 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     needs: prepare
     environment: ${{ github.event.inputs.environment }}
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      DEPLOY_HEALTHCHECK_URL: ${{ vars.DEPLOY_HEALTHCHECK_URL }}
+      DEPLOY_HEALTHCHECK_HEADER: ${{ secrets.DEPLOY_HEALTHCHECK_HEADER }}
+      DEPLOY_RESTART_COMMAND: ${{ vars.DEPLOY_RESTART_COMMAND || 'systemctl restart geopolitical-dashboard' }}
+      DEPLOY_HEALTH_TIMEOUT_SECONDS: ${{ vars.DEPLOY_HEALTH_TIMEOUT_SECONDS || '120' }}
 
     steps:
+      - name: Validate deploy configuration
+        run: |
+          missing=0
+
+          for value in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_PATH DEPLOY_HEALTHCHECK_URL; do
+            if [ -z "${!value}" ]; then
+              echo "Missing required deploy setting: $value"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -eq 1 ]; then
+            exit 1
+          fi
+
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: release-artifact
 
-      - name: Simulate deployment
+      - name: Publish artifact to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: deploy-${{ github.event.inputs.environment }}-${{ github.run_number }}
+          name: Deploy ${{ github.event.inputs.environment }} #${{ github.run_number }}
+          body: |
+            Environment: ${{ github.event.inputs.environment }}
+            Deployed Ref: ${{ needs.prepare.outputs.release_ref }}
+            Mode: ${{ github.event.inputs.rollback_to_tag != '' && 'Rollback' || 'Standard Release' }}
+          files: release-artifact.tgz
+
+      - name: Prepare SSH key
         run: |
-          echo "Deploying ${{ needs.prepare.outputs.release_ref }} to ${{ github.event.inputs.environment }}"
-          echo "Artifact ready: release-artifact.tgz"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$DEPLOY_PORT" "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload artifact to deploy target
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH/releases' '$DEPLOY_PATH/shared'"
+          scp -i ~/.ssh/id_ed25519 -P "$DEPLOY_PORT" release-artifact.tgz "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/releases/release-${{ github.run_id }}.tgz"
+
+      - name: Deploy and switch release
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" << 'EOF'
+          set -euo pipefail
+          DEPLOY_PATH='${{ env.DEPLOY_PATH }}'
+          RELEASE_ID='${{ github.run_id }}'
+          RELEASE_DIR="$DEPLOY_PATH/releases/$RELEASE_ID"
+          ARTIFACT="$DEPLOY_PATH/releases/release-${RELEASE_ID}.tgz"
+          CURRENT_LINK="$DEPLOY_PATH/current"
+          PREVIOUS_FILE="$DEPLOY_PATH/shared/previous-release-path"
+
+          mkdir -p "$RELEASE_DIR"
+          if [ -L "$CURRENT_LINK" ]; then
+            readlink "$CURRENT_LINK" > "$PREVIOUS_FILE" || true
+          fi
+
+          tar -xzf "$ARTIFACT" -C "$RELEASE_DIR"
+          ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"
+          rm -f "$ARTIFACT"
+
+          cd "$CURRENT_LINK"
+          ${{ env.DEPLOY_RESTART_COMMAND }}
+          EOF
+
+      - name: Post-deploy health verification
+        id: health-check
+        run: |
+          deadline=$((SECONDS + DEPLOY_HEALTH_TIMEOUT_SECONDS))
+          status=1
+
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            if [ -n "$DEPLOY_HEALTHCHECK_HEADER" ]; then
+              code=$(curl -sS -o /tmp/deploy-health.json -w "%{http_code}" -H "$DEPLOY_HEALTHCHECK_HEADER" "$DEPLOY_HEALTHCHECK_URL" || true)
+            else
+              code=$(curl -sS -o /tmp/deploy-health.json -w "%{http_code}" "$DEPLOY_HEALTHCHECK_URL" || true)
+            fi
+
+            if [ "$code" = "200" ]; then
+              status=0
+              break
+            fi
+
+            sleep 5
+          done
+
+          if [ "$status" -ne 0 ]; then
+            echo "health_failed=true" >> "$GITHUB_OUTPUT"
+            echo "Health verification failed for $DEPLOY_HEALTHCHECK_URL"
+            cat /tmp/deploy-health.json || true
+            exit 1
+          fi
+
+          echo "health_failed=false" >> "$GITHUB_OUTPUT"
+
+      - name: Automated rollback on health failure
+        if: failure() && steps.health-check.outputs.health_failed == 'true'
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" << 'EOF'
+          set -euo pipefail
+          DEPLOY_PATH='${{ env.DEPLOY_PATH }}'
+          CURRENT_LINK="$DEPLOY_PATH/current"
+          PREVIOUS_FILE="$DEPLOY_PATH/shared/previous-release-path"
+
+          if [ ! -f "$PREVIOUS_FILE" ]; then
+            echo "No previous release path recorded; cannot rollback"
+            exit 1
+          fi
+
+          PREVIOUS_PATH=$(cat "$PREVIOUS_FILE")
+          if [ -z "$PREVIOUS_PATH" ] || [ ! -d "$PREVIOUS_PATH" ]; then
+            echo "Recorded previous release path invalid: $PREVIOUS_PATH"
+            exit 1
+          fi
+
+          ln -sfn "$PREVIOUS_PATH" "$CURRENT_LINK"
+          cd "$CURRENT_LINK"
+          ${{ env.DEPLOY_RESTART_COMMAND }}
+          EOF
 
       - name: Deployment summary
         run: |
@@ -87,10 +213,17 @@ jobs:
             echo "## Release Summary"
             echo "- Environment: ${{ github.event.inputs.environment }}"
             echo "- Deployed Ref: ${{ needs.prepare.outputs.release_ref }}"
+            echo "- Artifact Published: GitHub Release tag deploy-${{ github.event.inputs.environment }}-${{ github.run_number }}"
+            echo "- Health Check URL: ${{ env.DEPLOY_HEALTHCHECK_URL }}"
             if [ -n "${{ github.event.inputs.rollback_to_tag }}" ]; then
               echo "- Mode: Rollback"
             else
               echo "- Mode: Standard Release"
+            fi
+            if [ "${{ steps.health-check.outputs.health_failed || 'false' }}" = "true" ]; then
+              echo "- Rollback: Triggered"
+            else
+              echo "- Rollback: Not Triggered"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
