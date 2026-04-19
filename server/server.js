@@ -3,6 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { randomUUID } from 'crypto';
+import { readFile } from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import env from './config/env.js';
 import { getPool } from './db/config.js';
 import { initializeDatabase } from './db/init.js';
@@ -17,6 +20,8 @@ const APP_VERSION = env.APP_VERSION;
 const AUTH_REQUIRED = env.AUTH_REQUIRED;
 const API_TOKEN = env.API_TOKEN;
 const ADMIN_ROLE = env.ADMIN_ROLE;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const openApiPath = path.join(__dirname, 'openapi.yaml');
 
 const allowedOrigins = env.ALLOWED_ORIGINS
   .split(',')
@@ -179,6 +184,24 @@ app.get('/health', (req, res) => {
 // Backward-compatible health endpoint used by the frontend settings panel.
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', version: APP_VERSION, timestamp: new Date().toISOString() });
+});
+
+app.get('/api/meta', (req, res) => {
+  res.json({
+    name: 'geopolitical-dashboard-api',
+    version: APP_VERSION,
+    openApiPath: '/api/openapi.yaml',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/openapi.yaml', async (req, res, next) => {
+  try {
+    const spec = await readFile(openApiPath, 'utf8');
+    res.type('application/yaml').send(spec);
+  } catch {
+    next(new ApiError(404, 'OPENAPI_NOT_FOUND', 'OpenAPI specification not found'));
+  }
 });
 
 app.get('/ready', async (req, res) => {

@@ -11,8 +11,13 @@
     "preview": "vite preview",
     "lint": "eslint src server --ext js,cjs,mjs,ts,tsx",
     "test": "jest",
+    "test:ci": "jest --runInBand --ci",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test --reporter=line",
+    "playwright:install": "playwright install --with-deps chromium",
+    "ci": "npm run lint && npm run test:ci && npm run build"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -59,9 +64,9 @@
     "express": "^5.2.1",
     "express-rate-limit": "^7.5.1",
     "figma-js": "^1.16.1-0",
+    "helmet": "^8.1.0",
     "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
-    "helmet": "^8.1.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.487.0",
     "motion": "^12.23.24",
@@ -90,14 +95,15 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
-    "@typescript-eslint/eslint-plugin": "^8.46.1",
-    "@typescript-eslint/parser": "^8.46.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/nodemailer": "^8.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.5.0",
     "concurrently": "^9.2.1",

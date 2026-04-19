@@ -1,0 +1,164 @@
+openapi: 3.0.3
+info:
+  title: Geopolitical Dashboard API
+  version: 1.1.0
+  description: |
+    Core backend API for datasets, portfolio analytics support data, reports, health checks,
+    and news ingestion.
+servers:
+  - url: http://localhost:5001
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Service is alive
+  /ready:
+    get:
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is degraded
+  /api/health:
+    get:
+      summary: API health endpoint
+      responses:
+        '200':
+          description: API health status
+  /api/meta:
+    get:
+      summary: API metadata
+      responses:
+        '200':
+          description: API metadata and OpenAPI location
+  /api/openapi.yaml:
+    get:
+      summary: OpenAPI contract
+      responses:
+        '200':
+          description: YAML OpenAPI specification
+  /api/datasets:
+    get:
+      summary: List datasets
+      responses:
+        '200':
+          description: Dataset list
+  /api/assets/{datasetId}:
+    get:
+      summary: List assets for dataset
+      parameters:
+        - in: path
+          name: datasetId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Asset list
+  /api/dependencies/{datasetId}:
+    get:
+      summary: List country dependencies for dataset
+      parameters:
+        - in: path
+          name: datasetId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dependency list
+  /api/countries:
+    get:
+      summary: List countries with base risk scores
+      responses:
+        '200':
+          description: Country risk baseline list
+  /api/portfolio/{datasetId}:
+    get:
+      summary: Get complete portfolio payload for dataset
+      parameters:
+        - in: path
+          name: datasetId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Portfolio payload
+  /api/assets-with-deps/{datasetId}:
+    get:
+      summary: Get assets with joined dependency details
+      parameters:
+        - in: path
+          name: datasetId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Asset-centric dependency payload
+  /api/news:
+    get:
+      summary: Get filtered world news feed
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: News payload
+  /api/reports/generate:
+    post:
+      summary: Generate report metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Generation accepted
+  /api/reports/email:
+    post:
+      summary: Queue report email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Email queued
+  /api/reports/templates:
+    get:
+      summary: List report templates
+      responses:
+        '200':
+          description: Templates list
+  /api/reports/schedule:
+    post:
+      summary: Schedule recurring report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Schedule created
+  /api/reports/history:
+    get:
+      summary: Get report history
+      responses:
+        '200':
+          description: Report history list

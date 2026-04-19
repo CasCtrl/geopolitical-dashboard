@@ -398,6 +398,17 @@ geopolitical-dashboard/
 - `docker-compose down` - Stop all containers
 - `npm test` - Run Jest test suite
 - `npm test -- --coverage` - Run tests with code coverage report
+- `npm run ci` - Run lint + tests + production build locally
+- `npm run playwright:install` - Install Playwright Chromium browser for e2e tests
+- `npm run test:e2e:ci` - Run Playwright smoke tests in CI mode
+
+## Delivery Guardrails
+
+- **CI pipeline:** GitHub Actions workflow at `.github/workflows/ci.yml` runs lint, tests, and build on push/PR.
+- **API contract:** Backend serves OpenAPI contract at `/api/openapi.yaml` and metadata at `/api/meta`.
+- **Production secret checks:** Server startup validation blocks placeholder secrets in production mode.
+- **Security audit workflow:** `.github/workflows/security-audit.yml` runs scheduled/manual npm audit checks and fails on high/critical vulnerabilities.
+- **Release workflow:** `.github/workflows/release.yml` supports staged deployments (`staging`/`production`) and rollback-style redeploy using `rollback_to_tag`.
 
 ## Testing & Test-Driven Development (TDD)
 

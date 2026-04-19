@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Release environment'
+        required: true
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
+      rollback_to_tag:
+        description: 'Optional tag to rollback/redeploy (example: v1.2.3)'
+        required: false
+        type: string
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      release_ref: ${{ steps.resolve-ref.outputs.release_ref }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release ref
+        id: resolve-ref
+        run: |
+          if [ -n "${{ github.event.inputs.rollback_to_tag }}" ]; then
+            echo "release_ref=${{ github.event.inputs.rollback_to_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_ref=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout release ref
+        run: git checkout "${{ steps.resolve-ref.outputs.release_ref }}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Validate
+        run: npm run ci
+
+      - name: Package build artifact
+        run: |
+          tar -czf release-artifact.tgz dist package.json package-lock.json
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifact
+          path: release-artifact.tgz
+          retention-days: 30
+
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: prepare
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifact
+
+      - name: Simulate deployment
+        run: |
+          echo "Deploying ${{ needs.prepare.outputs.release_ref }} to ${{ github.event.inputs.environment }}"
+          echo "Artifact ready: release-artifact.tgz"
+
+      - name: Deployment summary
+        run: |
+          {
+            echo "## Release Summary"
+            echo "- Environment: ${{ github.event.inputs.environment }}"
+            echo "- Deployed Ref: ${{ needs.prepare.outputs.release_ref }}"
+            if [ -n "${{ github.event.inputs.rollback_to_tag }}" ]; then
+              echo "- Mode: Rollback"
+            else
+              echo "- Mode: Standard Release"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

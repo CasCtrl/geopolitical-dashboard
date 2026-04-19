@@ -29,10 +29,28 @@ const envSchema = z
     RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(5000).default(300),
   })
   .superRefine((env, ctx) => {
+    const insecureDefaultPassword = 'YourPassword123!';
+
     if (env.AUTH_REQUIRED && !env.API_TOKEN) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'API_TOKEN is required when AUTH_REQUIRED=true',
+        path: ['API_TOKEN'],
+      });
+    }
+
+    if (env.NODE_ENV === 'production' && env.DB_PASSWORD === insecureDefaultPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'DB_PASSWORD must be overridden in production',
+        path: ['DB_PASSWORD'],
+      });
+    }
+
+    if (env.NODE_ENV === 'production' && env.API_TOKEN === 'change-me') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'API_TOKEN must not use the placeholder value in production',
         path: ['API_TOKEN'],
       });
     }
