@@ -1,5 +1,4 @@
 import { Suspense, lazy, useState, useMemo, useEffect, useCallback, useRef } from "react";
-import html2canvas from "html2canvas";
 import { Toaster, toast } from "sonner";
 import { WorldMap } from "./components/WorldMap";
 import { RiskSlider } from "./components/RiskSlider";
@@ -765,6 +764,7 @@ export default function App() {
         return;
       }
 
+      const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(mapElement, {
         backgroundColor: "#09090b",
         scale: 2,

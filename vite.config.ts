@@ -27,6 +27,8 @@ export default defineConfig({
   build: {
     sourcemap: false,
     minify: 'terser',
+    manifest: true,
+    modulePreload: false,
     rollupOptions: {
       output: {
         manualChunks: (id: string) => {
@@ -45,6 +47,7 @@ export default defineConfig({
           if (
             id.includes('/@radix-ui/') ||
             id.includes('/@mui/') ||
+            id.includes('/@emotion/') ||
             id.includes('/lucide-react/')
           ) {
             return 'ui-vendor';
@@ -58,12 +61,16 @@ export default defineConfig({
             return 'charts-vendor';
           }
 
-          if (
-            id.includes('/jspdf/') ||
-            id.includes('/html2canvas/') ||
-            id.includes('/xlsx/')
-          ) {
-            return 'export-vendor';
+          if (id.includes('/jspdf/')) {
+            return 'pdf-vendor';
+          }
+
+          if (id.includes('/xlsx/')) {
+            return 'xlsx-vendor';
+          }
+
+          if (id.includes('/html2canvas/')) {
+            return 'capture-vendor';
           }
 
           if (
@@ -73,6 +80,18 @@ export default defineConfig({
             id.includes('/tailwind-merge/')
           ) {
             return 'utils-vendor';
+          }
+
+          if (id.includes('/motion/')) {
+            return 'motion-vendor';
+          }
+
+          if (id.includes('/react-router/')) {
+            return 'router-vendor';
+          }
+
+          if (id.includes('/sonner/')) {
+            return 'toast-vendor';
           }
 
           return 'misc-vendor';
