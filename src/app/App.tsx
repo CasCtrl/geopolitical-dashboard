@@ -15,7 +15,7 @@ import {
   getTimeUntilNextUpdate,
   forceUpdate 
 } from "./data/dailyUpdateManager";
-import { recordSnapshot, getLatestSnapshot, initializeHistoricalData, getPortfolioRiskTrend } from "./data/historicalSnapshotManager";
+import { recordSnapshot, getLatestSnapshot, initializeHistoricalData, getPortfolioRiskTrend, getSnapshotsByDateRange } from "./data/historicalSnapshotManager";
 import { checkThresholds } from "./data/alertsManager";
 import { RiskMetricsPanel } from "./components/RiskMetricsPanel";
 import { generateMockNews, parseNewsForRisk, newsToRiskEvent } from "./data/newsIntegration";
@@ -42,7 +42,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { RiskGaugeCompact } from "./components/RiskGaugeCompact";
 import { RiskScoreInfo } from "./components/RiskScoreInfo";
 import { RiskLegend } from "./components/RiskLegend";
-import { convertPortfolioAssetToHolding, getCountriesFromAssets, getSectorsFromAssets, screenAssets } from "./utils/portfolioFilters";
 import { putWorkspaceState } from "./data/workspaceStateApi";
 
 const API_BASE_URL = "http://localhost:5001";
@@ -53,8 +52,47 @@ const TIME_ZONE_STORAGE_KEY = "dashboard.timezone";
 const WEIGHTS_STORAGE_KEY = "dashboard.weights";
 const TAB_STORAGE_KEY = "dashboard.currentTab";
 const DATASET_STORAGE_KEY = "dashboard.datasetId";
-const DASHBOARD_FILTERS_STORAGE_KEY = "dashboard.filters";
 const ADVANCED_PREFS_VERSION_KEY = "dashboard.advancedPrefsVersion";
+
+type RiskHorizon = "daily" | "7d" | "30d" | "90d";
+
+type CountryExposureRiskClasses = {
+  card: string;
+  countryName: string;
+  contributingAssets: string;
+  riskScore: string;
+  impactWeight: string;
+};
+
+const getCountryExposureRiskClasses = (riskScore: number): CountryExposureRiskClasses => {
+  if (riskScore >= CRITICAL_RISK_SCORE_THRESHOLD) {
+    return {
+      card: "bg-red-950/30 border-red-900/50",
+      countryName: "text-red-300",
+      contributingAssets: "text-red-400/80",
+      riskScore: "text-red-300",
+      impactWeight: "text-red-400",
+    };
+  }
+
+  if (riskScore >= HIGH_RISK_SCORE_THRESHOLD) {
+    return {
+      card: "bg-orange-950/30 border-orange-900/50",
+      countryName: "text-orange-300",
+      contributingAssets: "text-orange-400/80",
+      riskScore: "text-orange-300",
+      impactWeight: "text-orange-400",
+    };
+  }
+
+  return {
+    card: "bg-zinc-900/80 border-zinc-800",
+    countryName: "text-white",
+    contributingAssets: "text-zinc-500",
+    riskScore: "text-white",
+    impactWeight: "text-zinc-500",
+  };
+};
 
 const getAdvancedPrefsVersion = (): number | undefined => {
   if (typeof window === "undefined") {
@@ -256,16 +294,7 @@ export default function App() {
     [datasetId: string]: Asset[];
   }>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [dashboardMinRiskFilter, setDashboardMinRiskFilter] = useState(() =>
-    readStorage(DASHBOARD_FILTERS_STORAGE_KEY, { minRisk: 0, sector: "all", country: "all" }).minRisk
-  );
-  const [dashboardSectorFilter, setDashboardSectorFilter] = useState(() =>
-    readStorage(DASHBOARD_FILTERS_STORAGE_KEY, { minRisk: 0, sector: "all", country: "all" }).sector
-  );
-  const [dashboardCountryFilter, setDashboardCountryFilter] = useState(() =>
-    readStorage(DASHBOARD_FILTERS_STORAGE_KEY, { minRisk: 0, sector: "all", country: "all" }).country
-  );
-  const hasInitializedDatasetFilters = useRef(false);
+  const [selectedRiskHorizon, setSelectedRiskHorizon] = useState<RiskHorizon>("daily");
   const initialSelectedDatasetId = useRef(selectedDatasetId);
 
   const availableTimeZones = useMemo(() => {
@@ -299,33 +328,63 @@ export default function App() {
     return data;
   }, [weights]);
 
+  const horizonDays = useMemo(() => {
+    if (selectedRiskHorizon === "7d") return 7;
+    if (selectedRiskHorizon === "30d") return 30;
+    if (selectedRiskHorizon === "90d") return 90;
+    return null;
+  }, [selectedRiskHorizon]);
+
+  const dashboardRiskData = useMemo(() => {
+    if (horizonDays === null) {
+      return riskData;
+    }
+
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - horizonDays + 1);
+
+    const snapshots = getSnapshotsByDateRange(startDate, endDate);
+    if (snapshots.length === 0) {
+      return riskData;
+    }
+
+    const aggregated: { [key: string]: number } = {};
+
+    Object.keys(riskData).forEach((country) => {
+      const values = snapshots
+        .map((snapshot) => snapshot.countryRisks[country])
+        .filter((countryRisk) => Boolean(countryRisk))
+        .map((countryRisk) => {
+          return (
+            (countryRisk.political * weights.political +
+              countryRisk.economic * weights.economic +
+              countryRisk.conflict * weights.conflict +
+              countryRisk.corruption * weights.corruption +
+              countryRisk.terrorism * weights.terrorism) /
+            500
+          );
+        });
+
+      if (values.length > 0) {
+        aggregated[country] = Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+      } else {
+        aggregated[country] = riskData[country];
+      }
+    });
+
+    return aggregated;
+  }, [horizonDays, riskData, weights]);
+
   const portfolioAnalysis = useMemo(() => {
     return calculatePortfolioRisk(portfolio, riskData);
   }, [portfolio, riskData]);
 
-  const dashboardHoldingAssets = useMemo(() => {
-    return portfolio.map(convertPortfolioAssetToHolding);
-  }, [portfolio]);
-
-  const dashboardSectors = useMemo(() => getSectorsFromAssets(dashboardHoldingAssets), [dashboardHoldingAssets]);
-  const dashboardCountries = useMemo(() => getCountriesFromAssets(dashboardHoldingAssets), [dashboardHoldingAssets]);
-
-  const screenedDashboardAssets = useMemo(() => {
-    return screenAssets(dashboardHoldingAssets, riskData, {
-      minRisk: dashboardMinRiskFilter > 0 ? dashboardMinRiskFilter : undefined,
-      sectors: dashboardSectorFilter !== "all" ? [dashboardSectorFilter] : undefined,
-      countries: dashboardCountryFilter !== "all" ? [dashboardCountryFilter] : undefined,
-    });
-  }, [dashboardHoldingAssets, riskData, dashboardMinRiskFilter, dashboardSectorFilter, dashboardCountryFilter]);
-
-  const dashboardPortfolio = useMemo(() => {
-    const screenedTickerSet = new Set(screenedDashboardAssets.map((asset) => asset.symbol));
-    return portfolio.filter((asset) => screenedTickerSet.has(asset.ticker));
-  }, [portfolio, screenedDashboardAssets]);
+  const dashboardPortfolio = portfolio;
 
   const dashboardPortfolioAnalysis = useMemo(() => {
-    return calculatePortfolioRisk(dashboardPortfolio, riskData);
-  }, [dashboardPortfolio, riskData]);
+    return calculatePortfolioRisk(dashboardPortfolio, dashboardRiskData);
+  }, [dashboardPortfolio, dashboardRiskData]);
 
   // Load datasets from API on mount with paralleled requests
   useEffect(() => {
@@ -582,29 +641,20 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const filters = {
-        minRisk: dashboardMinRiskFilter,
-        sector: dashboardSectorFilter,
-        country: dashboardCountryFilter,
-      };
-
-      localStorage.setItem(DASHBOARD_FILTERS_STORAGE_KEY, JSON.stringify(filters));
       void putWorkspaceState("advancedPrefs", "dashboard", {
         selectedTimeZone,
         weights,
         currentTab,
         selectedDatasetId,
-        filters,
+        selectedRiskHorizon,
       }, getAdvancedPrefsVersion()).then(setAdvancedPrefsVersion);
     }
   }, [
-    dashboardMinRiskFilter,
-    dashboardSectorFilter,
-    dashboardCountryFilter,
     selectedTimeZone,
     weights,
     currentTab,
     selectedDatasetId,
+    selectedRiskHorizon,
   ]);
 
   useEffect(() => {
@@ -614,17 +664,6 @@ export default function App() {
     const intervalId = window.setInterval(checkBasicHealthMetrics, 60000);
     return () => window.clearInterval(intervalId);
   }, [showSettingsModal, checkBasicHealthMetrics]);
-
-  useEffect(() => {
-    if (!hasInitializedDatasetFilters.current) {
-      hasInitializedDatasetFilters.current = true;
-      return;
-    }
-
-    setDashboardMinRiskFilter(0);
-    setDashboardSectorFilter("all");
-    setDashboardCountryFilter("all");
-  }, [selectedDatasetId]);
 
   useEffect(() => {
     const postCrash = (payload: Record<string, unknown>) => {
@@ -776,14 +815,14 @@ export default function App() {
   }, [riskData]);
 
   const activeRiskAlerts = useMemo(() => {
-    return portfolioAnalysis.countryExposures
+    return dashboardPortfolioAnalysis.countryExposures
       .map((exposure) => ({
         ...exposure,
-        riskScore: riskData[exposure.country] || 50,
+        riskScore: dashboardRiskData[exposure.country] || 50,
       }))
       .filter((exposure) => exposure.riskScore > MIN_ALERT_RISK_SCORE)
       .sort((a, b) => b.riskContribution - a.riskContribution);
-  }, [portfolioAnalysis, riskData]);
+  }, [dashboardPortfolioAnalysis, dashboardRiskData]);
 
   const alertCount = activeRiskAlerts.length;
 
@@ -982,7 +1021,7 @@ export default function App() {
             <div className="overflow-y-auto flex-1 p-4">
               <Tabs defaultValue="guide" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 bg-zinc-900/70 border border-zinc-800 h-auto">
-                  <TabsTrigger value="guide" className="text-xs py-2">Guide</TabsTrigger>
+                  <TabsTrigger value="guide" className="text-xs py-2">User Guide</TabsTrigger>
                   <TabsTrigger value="release-notes" className="text-xs py-2">Release Notes</TabsTrigger>
                 </TabsList>
 
@@ -1650,11 +1689,11 @@ export default function App() {
 
           <button
             onClick={() => setCurrentTab("exports")}
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors flex items-center justify-center gap-2 shrink-0"
+            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors flex items-center justify-center gap-2 shrink-0"
             title="Open export reports"
           >
             <Download className="size-4" />
-            Export Reports
+            Export
           </button>
         </div>
 
@@ -1752,70 +1791,6 @@ export default function App() {
               <div className="text-[8px] text-zinc-600 mt-3 pt-2 border-t border-zinc-800 px-1">
                 <span className="text-zinc-500">Source:</span> Global Geopolitical Snapshot (April 2026)
               </div>
-
-              {currentTab === "dashboard" && (
-                <div className="mt-3 pt-3 border-t border-zinc-800 px-1 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-[10px] text-zinc-400 uppercase tracking-wide">Holdings Filter</h4>
-                    <button
-                      onClick={() => {
-                        setDashboardMinRiskFilter(0);
-                        setDashboardSectorFilter("all");
-                        setDashboardCountryFilter("all");
-                      }}
-                      className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors"
-                    >
-                      Reset
-                    </button>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between text-[9px] text-zinc-500 mb-1">
-                      <span>Min Country Risk</span>
-                      <span>{dashboardMinRiskFilter}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={dashboardMinRiskFilter}
-                      onChange={(e) => setDashboardMinRiskFilter(Number(e.target.value))}
-                      className="w-full h-1 accent-blue-500"
-                    />
-                  </div>
-
-                  <select
-                    value={dashboardSectorFilter}
-                    onChange={(e) => setDashboardSectorFilter(e.target.value)}
-                    className="w-full h-7 bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 px-2"
-                  >
-                    <option value="all">All sectors</option>
-                    {dashboardSectors.map((sector) => (
-                      <option key={sector} value={sector}>
-                        {sector}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={dashboardCountryFilter}
-                    onChange={(e) => setDashboardCountryFilter(e.target.value)}
-                    className="w-full h-7 bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 px-2"
-                  >
-                    <option value="all">All countries</option>
-                    {dashboardCountries.map((country) => (
-                      <option key={country} value={country}>
-                        {country}
-                      </option>
-                    ))}
-                  </select>
-
-                  <p className="text-[9px] text-zinc-500">
-                    Showing {dashboardPortfolio.length} of {portfolio.length} assets
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </aside>
@@ -1831,19 +1806,42 @@ export default function App() {
                   <h2 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
                     Global Risk Heat Map
                   </h2>
-                  <button
-                    type="button"
-                    onClick={() => downloadMapSnapshot("global-risk-map-mobile")}
-                    className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-                    title="Download map snapshot"
-                    aria-label="Download mobile map snapshot"
-                  >
-                    <Download className="size-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex rounded border border-zinc-800 overflow-hidden">
+                      {[
+                        { key: "daily", label: "Daily" },
+                        { key: "7d", label: "7D" },
+                        { key: "30d", label: "30D" },
+                        { key: "90d", label: "90D" },
+                      ].map((option) => (
+                        <button
+                          key={`mobile-${option.key}`}
+                          type="button"
+                          onClick={() => setSelectedRiskHorizon(option.key as RiskHorizon)}
+                          className={`px-2 py-1 text-[10px] border-r last:border-r-0 border-zinc-800 transition-colors ${
+                            selectedRiskHorizon === option.key
+                              ? "bg-zinc-700 text-white"
+                              : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => downloadMapSnapshot("global-risk-map-mobile")}
+                      className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                      title="Download map snapshot"
+                      aria-label="Download mobile map snapshot"
+                    >
+                      <Download className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <div id="global-risk-map-mobile">
                   <WorldMap
-                    riskData={riskData}
+                    riskData={dashboardRiskData}
                     countryExposures={dashboardPortfolioAnalysis.countryExposures}
                     dataFreshnessLabel={corePanelFreshnessLabel}
                     isStaleData={refreshNeedsAttention}
@@ -1858,57 +1856,43 @@ export default function App() {
               {/* Left Column - Map and Country Exposures */}
               <div className="lg:col-span-4 space-y-3">
                 {/* Country Exposures - Above Map */}
-                <Card className="p-3 bg-zinc-950 border-zinc-900">
-                  <h3 className="text-xs mb-2 text-zinc-400 uppercase tracking-wide font-medium">
-                    Top Country Exposures
+                <Card className="p-2 bg-zinc-950 border-zinc-900">
+                  <h3 className="text-xs mb-0.5 text-zinc-400 uppercase tracking-wide font-medium">
+                    Portfolio Exposure
                   </h3>
-                  <p className="text-[10px] text-zinc-500 mb-2">
-                    Uses one score metric throughout: Risk Score (0-100). Impact Weight is separate and shows portfolio influence.
-                  </p>
                   {dashboardPortfolioAnalysis.countryExposures.length === 0 ? (
                     <div className="rounded border border-zinc-800 bg-zinc-900/40 p-4 text-center" role="status" aria-live="polite">
                       <p className="text-sm text-zinc-300">No country exposures available for this selection.</p>
                       <p className="text-xs text-zinc-500 mt-1">Try changing dataset or clearing dashboard filters.</p>
                     </div>
                   ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {dashboardPortfolioAnalysis.countryExposures.slice(0, 6).map((exposure) => {
-                      const risk = riskData[exposure.country] || 50;
-                      const isHighRisk = exposure.riskContribution > 0 && risk > 60;
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                    {dashboardPortfolioAnalysis.countryExposures
+                    .slice(0, 6)
+                    .map((exposure) => {
+                      const risk = dashboardRiskData[exposure.country] || 50;
+                      const riskClasses = getCountryExposureRiskClasses(risk);
                       return (
                         <div
                           key={exposure.country}
-                          className={`p-2 border ${
-                            isHighRisk
-                              ? "bg-red-950/30 border-red-900/50"
-                              : "bg-zinc-900/80 border-zinc-800"
-                          }`}
+                          className={`p-1.5 border ${riskClasses.card}`}
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className={`text-xs ${isHighRisk ? "text-red-300" : "text-white"}`}>
+                              <div className="mb-0.5">
+                                <p className={`text-xs ${riskClasses.countryName}`}>
                                   {exposure.country}
                                 </p>
-                                <span
-                                  className={`text-[10px] px-1 py-0.5 ${
-                                    isHighRisk
-                                      ? "bg-red-900/50 text-red-200"
-                                      : "bg-zinc-800 text-zinc-400"
-                                  }`}
-                                >
-                                  {exposure.exposureType}
-                                </span>
                               </div>
-                              <p className={`text-[10px] ${isHighRisk ? "text-red-400/80" : "text-zinc-500"}`}>
+                              <p className={`text-[10px] ${riskClasses.contributingAssets}`}>
                                 {exposure.contributingAssets.join(", ")}
                               </p>
                             </div>
                             <div className="text-right ml-2">
-                              <p className={`text-xs ${isHighRisk ? "text-red-300" : "text-white"}`}>
+                              <p className={`text-xs ${riskClasses.riskScore}`}>
                                 {risk.toFixed(0)}
                               </p>
-                              <p className={`text-[10px] ${isHighRisk ? "text-red-400" : "text-zinc-500"}`}>
+                              <p className={`text-[10px] ${riskClasses.impactWeight}`}>
                                 Impact Weight: {exposure.riskContribution.toFixed(1)}%
                               </p>
                             </div>
@@ -1926,19 +1910,42 @@ export default function App() {
                     <h2 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
                       Global Risk Heat Map
                     </h2>
-                    <button
-                      type="button"
-                      onClick={() => downloadMapSnapshot("global-risk-map-desktop")}
-                      className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-                      title="Download map snapshot"
-                      aria-label="Download desktop map snapshot"
-                    >
-                      <Download className="size-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <div className="inline-flex rounded border border-zinc-800 overflow-hidden">
+                        {[
+                          { key: "daily", label: "Daily" },
+                          { key: "7d", label: "7D" },
+                          { key: "30d", label: "30D" },
+                          { key: "90d", label: "90D" },
+                        ].map((option) => (
+                          <button
+                            key={`desktop-${option.key}`}
+                            type="button"
+                            onClick={() => setSelectedRiskHorizon(option.key as RiskHorizon)}
+                            className={`px-2 py-1 text-[10px] border-r last:border-r-0 border-zinc-800 transition-colors ${
+                              selectedRiskHorizon === option.key
+                                ? "bg-zinc-700 text-white"
+                                : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => downloadMapSnapshot("global-risk-map-desktop")}
+                        className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                        title="Download map snapshot"
+                        aria-label="Download desktop map snapshot"
+                      >
+                        <Download className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <div id="global-risk-map-desktop">
                     <WorldMap
-                      riskData={riskData}
+                      riskData={dashboardRiskData}
                       countryExposures={dashboardPortfolioAnalysis.countryExposures}
                       dataFreshnessLabel={corePanelFreshnessLabel}
                       isStaleData={refreshNeedsAttention}
@@ -2048,7 +2055,7 @@ export default function App() {
               assetContributions={dashboardPortfolioAnalysis.assetContributions}
               dataFreshnessLabel={corePanelFreshnessLabel}
               isStaleData={refreshNeedsAttention}
-              countryRisks={riskData}
+              countryRisks={dashboardRiskData}
               weights={weights}
             />
           </div>
