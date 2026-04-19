@@ -114,7 +114,7 @@ jobs:
           --health-retries 15
 
     env:
-      DB_SERVER: 127.0.0.1
+      DB_SERVER: localhost
       DB_DATABASE: master
       DB_USER: sa
       DB_PASSWORD: YourPassword123!

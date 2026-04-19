@@ -415,6 +415,9 @@ geopolitical-dashboard/
 - **Security audit workflow:** `.github/workflows/security-audit.yml` runs scheduled/manual npm audit checks and fails on high/critical vulnerabilities.
 - **Release workflow:** `.github/workflows/release.yml` publishes deploy artifacts to GitHub Releases, deploys to remote targets, runs post-deploy health verification, and automatically rolls back on failed health checks.
 - **Deploy wiring:** Configure GitHub Environment `secrets` (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, optional `DEPLOY_HEALTHCHECK_HEADER`) and `vars` (`DEPLOY_PATH`, `DEPLOY_HEALTHCHECK_URL`, optional `DEPLOY_PORT`, `DEPLOY_RESTART_COMMAND`, `DEPLOY_HEALTH_TIMEOUT_SECONDS`).
+- **Deploy setup automation:** Use `.github/deploy/deploy.env.example` + `scripts/configure-deploy-environment.sh` to apply all required secrets/vars with GitHub CLI:
+   - `cp .github/deploy/deploy.env.example .github/deploy/deploy.staging.env`
+   - `./scripts/configure-deploy-environment.sh .github/deploy/deploy.staging.env`
 - **Branch protection runbook:** `.github/BRANCH_PROTECTION.md` includes exact required check names and merge policy recommendations.
 - **Code owner enforcement:** `.github/CODEOWNERS` and `.github/pull_request_template.md` enforce review accountability and PR validation discipline.
 - **Settings quick-start:** `.github/GITHUB_SETTINGS_CHECKLIST.md` gives click-by-click GitHub UI setup for branch protection, required checks, environments, and merge rules.

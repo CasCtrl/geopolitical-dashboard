@@ -164,7 +164,7 @@ describeIfDb('DB-backed backend route integration', () => {
   const testDatasetId = `integration_${Date.now()}`;
 
   const dbConfig = {
-    server: process.env.DB_SERVER || '127.0.0.1',
+    server: process.env.DB_SERVER || 'localhost',
     database: process.env.DB_DATABASE || 'geopolitical_dashboard',
     user: process.env.DB_USER || 'sa',
     password: process.env.DB_PASSWORD || 'YourPassword123!',
