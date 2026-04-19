@@ -66,6 +66,7 @@ npm run dev:full
 
 This uses a supervised launcher that starts the API first, waits for `http://localhost:5001/health`, then starts the frontend.
 If either process exits unexpectedly, the launcher stops the other process and returns a non-zero exit code.
+If the API is already running on port 5001, the launcher reuses it and only starts the frontend.
 
 ## API Endpoints
 
@@ -96,6 +97,16 @@ Additional runtime controls:
 - `EXPENSIVE_READ_*` / `EXPENSIVE_WRITE_*` - abuse protection limits for expensive endpoints.
 - `ADMIN_RATE_LIMIT_*` - admin endpoint abuse protection.
 - `AUDIT_TRAIL_MAX_ENTRIES` - retention depth for in-memory audit trail endpoint.
+
+Integration runtime wiring:
+- `INTEGRATION_WEBHOOK_URL` - optional outbound webhook sink for integration events.
+- `BLOOMBERG_PORTFOLIO_API_URL` - optional portfolio source endpoint.
+- `BLOOMBERG_API_TOKEN` - optional bearer token for Bloomberg source.
+- `PIPELINE_SOURCE_URLS` - comma-separated upstream pipeline source URLs.
+- `PIPELINE_SOURCE_AUTH_TOKEN` - optional bearer token for upstream pipeline calls.
+
+Pipeline sync workflow wiring (GitHub Actions):
+- Set repository/environment secrets `PIPELINE_SYNC_URL` and `PIPELINE_SYNC_API_KEY` for `.github/workflows/pipeline-sync.yml`.
 
 ## Security Hardening Controls
 
@@ -138,6 +149,10 @@ Stop the servers:
 - Check browser console for CORS errors
 - Ensure backend is running on port 5001
 - Check Network tab to see if API calls are succeeding
+
+Development CORS note:
+- In development mode, localhost and 127.0.0.1 origins are allowed across ports.
+- In production, keep `ALLOWED_ORIGINS` explicit and restrictive.
 
 ## Development Workflow
 

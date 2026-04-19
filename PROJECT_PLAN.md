@@ -215,7 +215,7 @@ The Geopolitical Risk Dashboard is a full-stack web application designed to help
 
 ## Conclusion
 
-The Geopolitical Risk Dashboard project successfully delivered a production-ready application within an 8-week accelerated timeline. By front-loading requirements (Week 1), design (Week 2), and architecture (Week 3), the project achieved rapid iteration in Weeks 4-7 with minimal rework. The structured approach—from user research through sprint-based development to final handoff—demonstrates that focused execution and clear priorities enable complex full-stack applications to ship quickly without sacrificing quality. The comprehensive documentation and test suite ensure maintainability and support for future enhancements.
+The Geopolitical Risk Dashboard project successfully delivered a production-ready application within an 8-week accelerated timeline. By front-loading requirements (Week 1), design (Week 2), and architecture (Week 3), the project achieved rapid iteration in Weeks 4-7 with minimal rework. The structured approach—from user research through sprint-based development to final handoff—demonstrates that focused execution and clear priorities enable complex full-stack applications to ship quickly without sacrificing quality. The comprehensive documentation and test suite provide maintainability and operational continuity for the current v1.1 baseline.
 
 
 

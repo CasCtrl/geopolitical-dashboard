@@ -193,10 +193,10 @@ These Tier 1 features were implemented WITHOUT:
 - Detailed audit logging
 
 ### Tier 4 Features
-- Multi-user authentication
-- Role-based access control
 - Advanced reporting/export formats
 - Real-time market data feeds
+
+Note: Multi-user authentication and collaboration capabilities are intentionally out of scope for the current capstone baseline.
 
 ## 🎉 Summary
 

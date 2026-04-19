@@ -312,16 +312,14 @@ Global snapshots are informed by:
 
 ---
 
-## Future Enhancements
+## Next Iterations (In Scope)
 
-Planned improvements to the Global Snapshot feature:
+Planned improvements to the Global Snapshot feature within the current single-user baseline:
 
-1. **Saved Weight Profiles** - Store your custom weight distributions
+1. **Saved Weight Profiles** - Store and quickly switch custom weight distributions
 2. **Portfolio-Specific Defaults** - Different defaults for different asset classes
-3. **Alerts on Snapshot Changes** - Notify when defaults change significantly
-4. **Peer Comparison** - See how your weights compare to other investors
-5. **Recommended Weights** - AI-generated suggestions based on your portfolio
-6. **Scenario Builder** - Create and save "what if" weight scenarios
+3. **Alerts on Snapshot Changes** - Notify when default baselines shift significantly
+4. **Scenario Builder Refinements** - Better controls and comparison for "what if" weight scenarios
 
 ---
 
