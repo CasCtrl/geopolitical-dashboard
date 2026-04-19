@@ -16,7 +16,11 @@ import {
   type AlertEvent,
 } from '../data/alertsManager';
 
-export function AlertsAndNotifications() {
+interface AlertsAndNotificationsProps {
+  activeAlertCount?: number;
+}
+
+export function AlertsAndNotifications({ activeAlertCount }: AlertsAndNotificationsProps) {
   const [thresholds, setThresholds] = useState<AlertThreshold[]>(getAllThresholds());
   const [alertEvents, setAlertEvents] = useState<AlertEvent[]>(getAllAlertEvents());
   const [showCreateThreshold, setShowCreateThreshold] = useState(false);
@@ -28,6 +32,7 @@ export function AlertsAndNotifications() {
   });
 
   const unreadCount = useMemo(() => getUnreadAlertEvents().length, [alertEvents]);
+  const displayedActiveCount = activeAlertCount ?? unreadCount;
 
   const handleCreateThreshold = () => {
     if (newThresholdData.name && newThresholdData.target) {
@@ -83,7 +88,7 @@ export function AlertsAndNotifications() {
             <div>
               <p className="text-xs font-semibold text-zinc-300">Active Alerts</p>
               <p className="text-lg font-bold text-orange-400">
-                {unreadCount} {unreadCount === 1 ? 'notification' : 'notifications'}
+                {displayedActiveCount} {displayedActiveCount === 1 ? 'alert' : 'alerts'}
               </p>
             </div>
           </div>

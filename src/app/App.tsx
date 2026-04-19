@@ -591,7 +591,7 @@ export default function App() {
               
               {/* Alerts and Notifications */}
               <div className="border-t border-zinc-800 pt-4">
-                <AlertsAndNotifications />
+                <AlertsAndNotifications activeAlertCount={alertCount} />
               </div>
             </div>
             <div className="p-4 border-t border-zinc-800 flex-shrink-0">
@@ -975,7 +975,7 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-end gap-2 w-full md:w-auto justify-end">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {!isLoading && datasets.length > 0 && (
                 <DatasetSelector
                   datasets={datasets}
@@ -986,7 +986,7 @@ export default function App() {
               <div className="relative">
                 <button
                   onClick={() => setShowNewsFeedPanel((prev) => !prev)}
-                  className={`relative p-2 rounded-lg transition-colors ${
+                  className={`relative h-9 w-9 flex items-center justify-center rounded-lg transition-colors ${
                     showNewsFeedPanel
                       ? "bg-zinc-800 text-zinc-100"
                       : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
@@ -1051,7 +1051,7 @@ export default function App() {
               </div>
               <button
                 onClick={() => setShowAlertsWindow(true)}
-                className="relative p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
+                className="relative h-9 w-9 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
                 title="Alerts & Updates"
               >
                 <AlertTriangle className="size-5" />
@@ -1063,7 +1063,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setShowUpdateStatus(!showUpdateStatus)}
-                className={`relative p-2 rounded-lg transition-colors ${
+                className={`relative h-9 w-9 flex items-center justify-center rounded-lg transition-colors ${
                   refreshNeedsAttention
                     ? "text-amber-400 hover:bg-zinc-800 hover:text-amber-300"
                     : refreshIsCurrent
@@ -1086,14 +1086,14 @@ export default function App() {
               </button>
               <button
                 onClick={() => setShowHelpModal(true)}
-                className="p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
+                className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
                 title="Help"
               >
                 <HelpCircle className="size-5" />
               </button>
               <button
                 onClick={() => setShowSettingsModal(true)}
-                className="p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
+                className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
                 title="Settings"
               >
                 <Settings className="size-5" />
