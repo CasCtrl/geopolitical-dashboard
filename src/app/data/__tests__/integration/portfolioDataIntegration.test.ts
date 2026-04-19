@@ -272,8 +272,9 @@ describe('Portfolio Data Integration Tests', () => {
     expect(validAssets.length).toBe(2);
 
     // Calculate risks for known countries only
+    const knownCountries = Object.keys(baseRiskData);
     const knownAssets = validAssets.filter(a => 
-      baseRiskData.countries.find(c => c.name === a.country)
+      knownCountries.includes(a.country)
     );
     
     expect(knownAssets.length).toBeGreaterThanOrEqual(1);

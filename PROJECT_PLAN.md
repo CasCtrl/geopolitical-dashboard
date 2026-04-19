@@ -130,8 +130,14 @@ The Geopolitical Risk Dashboard is a full-stack web application designed to help
 - [x] Implement portfolio report download functionality
 - [x] Add interactive update status modal with manual refresh
 - [x] Integrate daily updates into help documentation
+- [x] Implement historical trends analysis with time-series data
+- [x] Create alerts and thresholds management system
+- [x] Build scenario analysis and crisis testing engine
+- [x] Add three new dashboard tabs (Trends, Alerts, Scenarios)
+- [x] Integrate snapshot recording and auto-checking thresholds
+- [x] Create rebalancing suggestion engine
 
-**Deliverables:** Production release on Git, deployment guide, user documentation, setup instructions, daily update system, responsive UI components, project handoff
+**Deliverables:** Production release on Git, deployment guide, user documentation, setup instructions, daily update system, responsive UI components, historical trends analytics, alerts system, scenario analysis engine, project handoff
 
 ## Key Deliverables
 

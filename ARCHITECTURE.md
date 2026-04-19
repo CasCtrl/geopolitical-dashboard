@@ -24,6 +24,9 @@ The Geopolitical Risk Dashboard follows a modern three-tier architecture with a 
 │  │  │  - Country Risk Service                              │ │ │
 │  │  │  - Risk Calculation Service                          │ │ │
 │  │  │  - Daily Update Manager                              │ │ │
+│  │  │  - Historical Snapshot Manager                       │ │ │
+│  │  │  - Alerts & Thresholds Manager                       │ │ │
+│  │  │  - Scenario Analysis Manager                         │ │ │
 │  │  └──────────────────────────────────────────────────────┘ │ │
 │  └────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
@@ -114,18 +117,50 @@ User Sees Updated Dashboard
 App (Main Container)
 ├── Header
 │   └── DatasetSelector
-├── MainContent
-│   ├── PortfolioPanel
-│   │   ├── RiskGauge
-│   │   ├── RiskSummaryCard
-│   │   └── RiskLegend
-│   ├── WorldMap
-│   │   └── Country Risk Visualization
-│   ├── ExposureCharts
-│   │   ├── RegionalExposureChart
-│   │   └── SectorExposureChart
-│   └── HoldingsTable
-│       └── Individual Asset Risk Details
+├── MainContent (Tabbed Interface)
+│   ├── Dashboard Tab
+│   │   ├── PortfolioPanel
+│   │   │   ├── RiskGauge
+│   │   │   ├── RiskSummaryCard
+│   │   │   └── RiskLegend
+│   │   ├── WorldMap
+│   │   │   └── Country Risk Visualization
+│   │   ├── ExposureCharts
+│   │   │   ├── RegionalExposureChart
+│   │   │   └── SectorExposureChart
+│   │   └── HoldingsTable
+│   │       └── Individual Asset Risk Details
+│   ├── Summary Tab
+│   │   └── Summary (Insights & Recommendations)
+│   ├── Trends Tab
+│   │   ├── HistoricalTrends
+│   │   │   ├── Portfolio Risk Trend Chart
+│   │   │   ├── Country Risk Trend Charts
+│   │   │   └── Recent Changes Summary
+│   │   └── Time Range Selector (7/30/90 days)
+│   ├── Alerts Tab
+│   │   ├── AlertsAndNotifications
+│   │   │   ├── Alert Summary (Unread Count)
+│   │   │   ├── Recent Activity Feed
+│   │   │   ├── Risk Threshold Manager
+│   │   │   └── Create New Threshold Form
+│   │   └── Alert Event History
+│   └── Scenarios Tab
+│       ├── ScenarioAnalysis
+│       │   ├── Saved Scenarios List
+│       │   ├── Crisis Scenario Templates
+│       │   ├── Quick Asset Tests
+│       │   ├── Scenario Comparison View
+│       │   └── Rebalancing Suggestions
+│       └── What-If Testing Controls
+├── Sidebar
+│   ├── Portfolio Stats
+│   ├── Risk Factor Weights
+│   └── Reset Weights Button
+├── Help Modal
+│   └── Interactive Help System
+├── Daily Update Status Modal
+│   └── Update Information & Manual Refresh
 └── Footer
     └── Information & Links
 ```

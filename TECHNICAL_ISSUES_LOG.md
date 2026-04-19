@@ -104,6 +104,183 @@ Users now have confidence that risk scores are current, with visibility into upd
 
 ---
 
+## Issue #9: Historical Data Tracking Not Available
+
+**Date:** Week 8 - Advanced Features
+**Sprint:** Analytics Expansion
+**Severity:** Medium
+**Status:** Resolved ✅
+
+### Problem
+Users had no way to track risk changes over time or compare historical snapshots. Analysis was limited to current moment.
+
+### Root Cause
+No historical snapshot storage system existed. Risk data was calculated in-memory without persistence.
+
+### Impact
+- Users couldn't identify trends or pattern changes
+- No baseline for comparing current vs. past risk
+- Inability to analyze impact of major events
+
+### Solution
+1. Created `historicalSnapshotManager.ts` service:
+   - Stores risk snapshots with timestamp, country risks, portfolio risk
+   - Maintains up to 365 snapshots (1 year daily data)
+   - localStorage persistence with automatic cleanup
+
+2. Implemented advanced analytics:
+   - `getCountryTrend()` - 30/90/365 day trend analysis per country
+   - `getPortfolioRiskTrend()` - Portfolio risk history with change tracking
+   - `compareSnapshots()` - Compare two snapshots for directional changes
+   - Trend detection: "improving", "declining", "stable"
+
+3. Auto-recording in App.tsx:
+   - Records snapshots monthly to avoid excessive storage
+   - Calculates region exposures and top-risk countries
+   - Integrated into portfolio analysis useEffect
+
+4. Created HistoricalTrends UI component:
+   - Recharts line/area charts for visualization
+   - Multiple time range options (7/30/90 days)
+   - Country trend selection and comparison
+   - Recent changes summary
+
+### Result
+Users can now track geopolitical risk trends over time with detailed historical analysis.
+
+### Lessons Learned
+- Monthly snapshots reduce storage while maintaining useful history
+- Chart libraries (Recharts) provide excellent visualization
+- Time-series analysis reveals patterns not visible in current data
+- UI component separation makes complex features maintainable
+
+---
+
+## Issue #10: No Alert System for Risk Breaches
+
+**Date:** Week 8 - Advanced Features
+**Sprint:** Risk Management
+**Severity:** Medium
+**Status:** Resolved ✅
+
+### Problem
+Users had no way to set risk thresholds or receive notifications when risk exceeded acceptable levels.
+
+### Root Cause
+No alert/threshold system was architected. Risk monitoring was manual and reactive.
+
+### Impact
+- Users might miss critical risk escalations
+- No proactive risk management capability
+- Reactive rather than preventive risk handling
+
+### Solution
+1. Created `alertsManager.ts` service:
+   - `createThreshold()` - Set risk thresholds for countries/portfolio/sectors
+   - `checkThresholds()` - Automatically check if current risk exceeds thresholds
+   - Event tracking with breach/recovery transitions
+   - 100 event history with automatic cleanup
+
+2. Threshold management:
+   - Enable/disable thresholds on demand
+   - Track "triggered" state per threshold
+   - Store lastTriggeredAt timestamp
+   - Support for country, portfolio, and sector types
+
+3. Alert events:
+   - Auto-create AlertEvent when threshold breached
+   - Auto-create recovery event when risk falls below threshold
+   - Mark as read/unread for user notification
+   - Filter by date range and threshold
+
+4. Integrated into App.tsx:
+   - Auto-check thresholds when portfolio/weights change
+   - Checks top 5 country exposures
+   - Checks portfolio-level threshold
+   - No user intervention needed
+
+5. Created AlertsAndNotifications UI:
+   - Dashboard summary with unread count
+   - Create new thresholds with inline form
+   - List all thresholds with on/off toggles
+   - Recent activity feed with breach/recovery events
+   - Easy delete functionality
+
+### Result
+Users can set custom risk alerts and receive real-time notifications of threshold breaches.
+
+### Lessons Learned
+- Event-driven architecture scales well for alerts
+- State tracking (triggered/untriggered) prevents duplicate events
+- UI toggle patterns work well for enabling/disabling
+- Help tips improve feature discoverability
+
+---
+
+## Issue #11: No Scenario Testing for Portfolio Changes
+
+**Date:** Week 8 - Advanced Features
+**Sprint:** Risk Management
+**Severity:** Medium
+**Status:** Resolved ✅
+
+### Problem
+Users couldn't test "what-if" scenarios to understand impact of portfolio changes or geopolitical crises.
+
+### Root Cause
+No scenario analysis engine existed. Users had no way to simulate alternative portfolios.
+
+### Impact
+- Users couldn't plan rebalancing strategies
+- No way to test crisis impact
+- Unable to evaluate new investments before adding
+- Limited decision-making tools
+
+### Solution
+1. Created `scenarioAnalysisManager.ts` service:
+   - `createScenario()` - Custom scenario from modified portfolio
+   - `applyCrisisScenario()` - Apply predefined crisis to portfolio
+   - `testRemoveAsset()` - Simulate removing specific asset
+   - `testAddAsset()` - Simulate adding new asset
+   - `getRebalancingSuggestions()` - AI-like recommendations
+
+2. Crisis templates included:
+   - Taiwan Conflict (2.0x risk multiplier)
+   - Energy Crisis (1.8x multiplier)
+   - Financial Crisis (2.5x multiplier)
+   - Cyber Warfare (1.6x multiplier)
+   - Global Pandemic (1.7x multiplier)
+
+3. Impact calculation:
+   - Compare baseline vs. scenario risk
+   - Track country-by-country exposure changes
+   - Calculate percentage risk reduction/increase
+   - Identify impacted countries/sectors
+
+4. Smart recommendations:
+   - Analyze high-risk assets
+   - Suggest removals with potential risk reduction %
+   - Identify best scenario for desired reduction
+   - Sort by impact magnitude
+
+5. Created ScenarioAnalysis UI:
+   - Three tabs: Scenarios, Crisis, Suggestions
+   - Quick asset removal buttons
+   - Saved scenarios with comparison view
+   - Crisis template library with instant testing
+   - Rebalancing recommendations with action buttons
+
+### Result
+Users can now test portfolio changes and crisis scenarios with detailed impact analysis and recommendations.
+
+### Lessons Learned
+- Scenario analysis provides confidence for portfolio decisions
+- Predefined templates speed up common use cases
+- Visual comparison (before/after) makes impact clear
+- Recommendation engine guides users toward better decisions
+
+---
+
 ## Issue #1: SQL Server Connection Timeout on First Startup
 
 **Date:** Week 3 - Backend Architecture Setup

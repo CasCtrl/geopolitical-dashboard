@@ -14,6 +14,20 @@ import {
   getTimeUntilNextUpdate,
   forceUpdate 
 } from "./data/dailyUpdateManager";
+import { recordSnapshot, getLatestSnapshot, initializeHistoricalData, getPortfolioRiskTrend } from "./data/historicalSnapshotManager";
+import { checkThresholds } from "./data/alertsManager";
+import { HistoricalTrends } from "./components/HistoricalTrends";
+import { AlertsAndNotifications } from "./components/AlertsAndNotifications";
+import { ExportReports } from "./components/ExportReports";
+import { AdvancedFilters } from "./components/AdvancedFilters";
+import { RiskMetricsPanel } from "./components/RiskMetricsPanel";
+import { BacktestPanel } from "./components/BacktestPanel";
+import { RealtimeStatusPanel } from "./components/RealtimeStatusPanel";
+import { CorrelationAnalysisPanel } from "./components/CorrelationAnalysisPanel";
+import { CustomScenarioBuilderPanel } from "./components/CustomScenarioBuilderPanel";
+import { MonteCarloPanel } from "./components/MonteCarloPanel";
+import { NewsFeedPanel } from "./components/NewsFeedPanel";
+import { initializeRealtimeUpdates, stopRealtimeUpdates } from "./data/realtimeUpdateManager";
 import {
   AlertTriangle,
   TrendingDown,
@@ -36,6 +50,7 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState("dashboard");
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showUpdateStatus, setShowUpdateStatus] = useState(false);
+  const [showAlertsWindow, setShowAlertsWindow] = useState(false);
 
   const [datasets, setDatasets] = useState<DatasetMetadata[]>([]);
   const [selectedDatasetId, setSelectedDatasetId] = useState("default");
@@ -43,6 +58,21 @@ export default function App() {
     [datasetId: string]: Asset[];
   }>({});
   const [isLoading, setIsLoading] = useState(true);
+
+  // Get the current portfolio based on selected dataset
+  const portfolio = assetsByDataset[selectedDatasetId] || defaultPortfolio;
+
+  const riskData = useMemo(() => {
+    const data: { [key: string]: number } = {};
+    Object.keys(baseRiskData).forEach((country) => {
+      data[country] = calculateRiskIndex(country, weights);
+    });
+    return data;
+  }, [weights]);
+
+  const portfolioAnalysis = useMemo(() => {
+    return calculatePortfolioRisk(portfolio, riskData);
+  }, [portfolio, riskData]);
 
   // Load datasets from API on mount with paralleled requests
   useEffect(() => {
@@ -151,7 +181,7 @@ export default function App() {
     loadDatasets();
   }, []);
 
-  // Initialize daily update of risk snapshot scores on app startup
+  // Initialize daily update and real-time updates on app startup
   useEffect(() => {
     const checkAndUpdate = async () => {
       try {
@@ -162,22 +192,89 @@ export default function App() {
     };
 
     checkAndUpdate();
+    initializeRealtimeUpdates();
+
+    // Cleanup real-time updates on unmount
+    return () => stopRealtimeUpdates();
   }, []);
 
-  // Get the current portfolio based on selected dataset
-  const portfolio = assetsByDataset[selectedDatasetId] || defaultPortfolio;
+  // Record historical snapshots and check alert thresholds
+  useEffect(() => {
+    if (portfolioAnalysis && Object.keys(riskData).length > 0) {
+      // Initialize historical data on first load (generates 7+ days of sample data)
+      const countries = Object.keys(riskData);
+      initializeHistoricalData(countries, riskData);
 
-  const riskData = useMemo(() => {
-    const data: { [key: string]: number } = {};
-    Object.keys(baseRiskData).forEach((country) => {
-      data[country] = calculateRiskIndex(country, weights);
-    });
-    return data;
-  }, [weights]);
+      // Convert riskData to CountryRisk format for snapshot
+      const countryRisks: { [country: string]: any } = {};
+      Object.keys(riskData).forEach((country) => {
+        countryRisks[country] = baseRiskData[country] || {
+          political: 0,
+          economic: 0,
+          conflict: 0,
+          corruption: 0,
+          terrorism: 0,
+        };
+      });
 
-  const portfolioAnalysis = useMemo(() => {
-    return calculatePortfolioRisk(portfolio, riskData);
-  }, [portfolio, riskData]);
+      // Calculate region exposures
+      const exposureByRegion: { [region: string]: number } = {};
+      portfolioAnalysis.countryExposures.forEach((exposure) => {
+        const region =
+          exposure.country.includes("United States") ||
+          exposure.country.includes("Canada") ||
+          exposure.country.includes("Mexico") ||
+          exposure.country.includes("Brazil") ||
+          exposure.country.includes("Argentina") ||
+          exposure.country.includes("Chile")
+            ? "Americas"
+            : exposure.country.includes("China") ||
+              exposure.country.includes("India") ||
+              exposure.country.includes("Japan") ||
+              exposure.country.includes("South Korea") ||
+              exposure.country.includes("Taiwan") ||
+              exposure.country.includes("Singapore")
+            ? "Asia"
+            : exposure.country.includes("Germany") ||
+              exposure.country.includes("France") ||
+              exposure.country.includes("UK") ||
+              exposure.country.includes("Europe")
+            ? "Europe"
+            : exposure.country.includes("Middle East")
+            ? "Middle East"
+            : "Africa";
+        exposureByRegion[region] = (exposureByRegion[region] || 0) + exposure.riskContribution;
+      });
+
+      // Record snapshot monthly (to avoid excessive storage)
+      const lastSnapshot = getLatestSnapshot();
+      const now = new Date();
+      const shouldRecord =
+        !lastSnapshot ||
+        now.getTime() - new Date(lastSnapshot.timestamp).getTime() > 30 * 24 * 60 * 60 * 1000; // 30 days
+
+      if (shouldRecord) {
+        recordSnapshot(
+          countryRisks,
+          portfolioAnalysis.totalRiskScore,
+          exposureByRegion,
+          portfolioAnalysis.topRiskCountries.map((c) => ({
+            country: c,
+            risk: riskData[c] || 50,
+          }))
+        );
+      }
+
+      // Check alert thresholds for portfolio
+      checkThresholds("portfolio", portfolioAnalysis.totalRiskScore, "portfolio");
+
+      // Check alert thresholds for top country exposures
+      portfolioAnalysis.countryExposures.slice(0, 5).forEach((exposure) => {
+        const countryRisk = riskData[exposure.country] || 50;
+        checkThresholds(exposure.country, countryRisk, "country");
+      });
+    }
+  }, [portfolioAnalysis, riskData]);
 
   const updateWeight = useCallback((category: keyof typeof weights, value: number) => {
     setWeights((prev) => ({ ...prev, [category]: value }));
@@ -209,6 +306,45 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-black">
+      {/* Alerts Window Modal */}
+      {showAlertsWindow && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
+          <Card className="bg-zinc-950 border-zinc-800 w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-zinc-800 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <AlertTriangle className="size-4 text-orange-400" />
+                  Alerts & Updates
+                </h2>
+                <button
+                  onClick={() => setShowAlertsWindow(false)}
+                  className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                >
+                  <X className="size-4 text-zinc-400" />
+                </button>
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 space-y-4">
+              {/* Real-Time Status Panel */}
+              <RealtimeStatusPanel />
+              
+              {/* Alerts and Notifications */}
+              <div className="border-t border-zinc-800 pt-4">
+                <AlertsAndNotifications />
+              </div>
+            </div>
+            <div className="p-4 border-t border-zinc-800 flex-shrink-0">
+              <button
+                onClick={() => setShowAlertsWindow(false)}
+                className="w-full px-3 py-2 bg-orange-600 hover:bg-orange-700 rounded text-white text-xs font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Help Modal */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
@@ -258,7 +394,27 @@ export default function App() {
                 <div>
                   <h3 className="font-semibold text-white mb-1">Summary Tab</h3>
                   <p className="text-[11px]">
-                    Get actionable insights and recommendations for managing your portfolio's geopolitical risks, including specific suggestions for rebalancing and diversification.
+                    Get actionable insights and recommendations for managing your portfolio's geopolitical risks, including specific suggestions for rebalancing and diversification. Also includes:
+                  </p>
+                  <ul className="space-y-0.5 list-disc list-inside text-[11px] mt-1">
+                    <li><span className="font-semibold">Correlation Analysis:</span> Analyze how different countries' risks move together. Identify strong correlations and regional cohesion patterns to find better diversification opportunities.</li>
+                    <li><span className="font-semibold">Custom Scenarios:</span> Build custom crisis scenarios to test your portfolio's resilience. Test how specific geopolitical events would impact your holdings with real-time risk projections.</li>
+                    <li><span className="font-semibold">Monte Carlo Simulation:</span> Run thousands of possible risk scenarios using historical volatility. See probability distributions, worst-case outcomes, and risk metrics (VaR, CVaR).</li>
+                    <li><span className="font-semibold">News Feed:</span> Real-time geopolitical news filtered by risk level and portfolio impact. Automatically categorizes events and estimates their effect on your holdings.</li>
+                    <li><span className="font-semibold">Backtesting:</span> Test how your portfolio would have performed during historical crisis events. Understand the actual impact of major geopolitical disruptions.</li>
+                    <li><span className="font-semibold">Risk Metrics:</span> Advanced risk calculations including concentration analysis and diversification metrics.</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white mb-1">Trends Tab</h3>
+                  <p className="text-[11px]">
+                    Track historical risk trends over time with interactive charts. View how your overall portfolio risk, country exposures, and individual assets have evolved. Identify emerging patterns and make data-driven decisions based on risk trajectory.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white mb-1">Alerts Tab</h3>
+                  <p className="text-[11px]">
+                    Monitor active alerts for your portfolio in real-time. Receive notifications when assets exceed risk thresholds, countries experience significant changes, or portfolio risk metrics cross critical levels. Dismiss individual alerts or clear all once reviewed.
                   </p>
                 </div>
                 <div>
@@ -272,6 +428,16 @@ export default function App() {
                   <p className="text-[11px]">
                     Risk scores automatically update daily to reflect the latest geopolitical conditions. Click the refresh icon in the header to view your last update timestamp and time until the next automatic update. You can also manually refresh data anytime by clicking "Refresh Now" in the update status panel.
                   </p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white mb-1">Tools Tab</h3>
+                  <p className="text-[11px] mb-2 font-semibold text-blue-300">Advanced Portfolio Management Features:</p>
+                  <ul className="space-y-1 text-[11px] list-disc list-inside">
+                    <li><span className="font-semibold">Portfolio Manager:</span> Create, edit, and manage custom portfolios. Save multiple portfolio configurations and export them as JSON files for backup or sharing.</li>
+                    <li><span className="font-semibold">CSV Upload:</span> Bulk-import holdings directly from a CSV file. Download a template to get started. The tool validates your data and provides instant feedback on what was imported.</li>
+                    <li><span className="font-semibold">Sector Breakdown:</span> Analyze your portfolio by sector with detailed risk metrics. See total portfolio value, average risk scores, and allocation percentages for each sector. Risk levels are color-coded (green, yellow, red) for quick assessment.</li>
+                    <li><span className="font-semibold">Asset Screener:</span> Filter assets using multiple criteria including risk ranges, specific sectors, countries, and asset value thresholds. Find assets matching your portfolio criteria in seconds.</li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -375,6 +541,13 @@ export default function App() {
               <RefreshCw className="size-5" />
             </button>
             <button
+              onClick={() => setShowAlertsWindow(true)}
+              className="p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
+              title="Alerts & Updates"
+            >
+              <AlertTriangle className="size-5" />
+            </button>
+            <button
               onClick={() => setShowHelpModal(true)}
               className="p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
               title="Help"
@@ -386,12 +559,21 @@ export default function App() {
 
         {/* Tabs */}
         <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
-          <TabsList className="grid w-full max-w-xs grid-cols-2 bg-zinc-900 border border-zinc-800">
+          <TabsList className="grid w-full max-w-2xl grid-cols-5 bg-zinc-900 border border-zinc-800">
             <TabsTrigger value="dashboard" className="text-xs md:text-sm">
               Dashboard
             </TabsTrigger>
             <TabsTrigger value="summary" className="text-xs md:text-sm">
               Summary
+            </TabsTrigger>
+            <TabsTrigger value="trends" className="text-xs md:text-sm">
+              Trends
+            </TabsTrigger>
+            <TabsTrigger value="exports" className="text-xs md:text-sm">
+              Exports
+            </TabsTrigger>
+            <TabsTrigger value="tools" className="text-xs md:text-sm">
+              Tools
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -644,19 +826,147 @@ export default function App() {
             />
           </div>
         </main>
-        ) : (
+        ) : currentTab === "summary" ? (
         /* Summary Tab Content */
         <main className="flex-1 p-3">
-          <div className="max-w-[1600px] mx-auto">
+          <div className="max-w-[1600px] mx-auto space-y-4">
             <Summary
               portfolioAnalysis={portfolioAnalysis}
               riskData={riskData}
               weights={weights}
               portfolio={portfolio}
             />
+            
+            {/* Advanced Metrics Panel */}
+            {portfolioAnalysis.countryExposures.length > 0 && (
+              <>
+                <div className="border-t border-zinc-800 pt-4">
+                  <RiskMetricsPanel
+                    trendData={getPortfolioRiskTrend(30)}
+                    countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                      acc[country] = riskData[country] || 50;
+                      return acc;
+                    }, {} as { [country: string]: number })}
+                    weights={weights}
+                    portfolioRisk={portfolioAnalysis.totalRiskScore}
+                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
+                      country: exp.country,
+                      riskContribution: exp.riskContribution,
+                      name: exp.country
+                    }))}
+                  />
+                </div>
+                
+                {/* Backtesting Panel */}
+                <div className="border-t border-zinc-800 pt-4">
+                  <BacktestPanel
+                    baselineCountryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                      acc[country] = riskData[country] || 50;
+                      return acc;
+                    }, {} as { [country: string]: number })}
+                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
+                      country: exp.country,
+                      riskContribution: exp.riskContribution,
+                      name: exp.country
+                    }))}
+                    currentRisk={portfolioAnalysis.totalRiskScore}
+                  />
+                </div>
+
+                {/* Correlation Analysis Panel */}
+                <div className="border-t border-zinc-800 pt-4">
+                  <CorrelationAnalysisPanel
+                    countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                      acc[country] = riskData[country] || 50;
+                      return acc;
+                    }, {} as { [country: string]: number })}
+                    trendData={Object.keys(baseRiskData).reduce((acc, country) => {
+                      // Create mock trend data from current risk scores
+                      acc[country] = Array(30).fill(riskData[country] || 50);
+                      return acc;
+                    }, {} as { [country: string]: number[] })}
+                    weights={portfolioAnalysis.countryExposures.reduce((acc, exp) => {
+                      acc[exp.country] = exp.riskContribution;
+                      return acc;
+                    }, {} as { [country: string]: number })}
+                    currentPortfolioCountries={portfolioAnalysis.countryExposures.map(exp => exp.country)}
+                  />
+                </div>
+
+                {/* Custom Scenario Builder Panel */}
+                <div className="border-t border-zinc-800 pt-4">
+                  <CustomScenarioBuilderPanel
+                    baselineCountryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                      acc[country] = riskData[country] || 50;
+                      return acc;
+                    }, {} as { [country: string]: number })}
+                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
+                      country: exp.country,
+                      riskContribution: exp.riskContribution,
+                      name: exp.country
+                    }))}
+                    currentRisk={portfolioAnalysis.totalRiskScore}
+                  />
+                </div>
+
+                {/* Monte Carlo Simulation Panel */}
+                <div className="border-t border-zinc-800 pt-4">
+                  <MonteCarloPanel
+                    currentRisk={portfolioAnalysis.totalRiskScore}
+                    trendData={getPortfolioRiskTrend(90)}
+                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
+                      country: exp.country,
+                      riskContribution: exp.riskContribution,
+                      name: exp.country
+                    }))}
+                  />
+                </div>
+
+                {/* News Feed Panel */}
+                <div className="border-t border-zinc-800 pt-4">
+                  <NewsFeedPanel
+                    countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                      acc[country] = riskData[country] || 50;
+                      return acc;
+                    }, {} as { [country: string]: number })}
+                    portfolioCountries={portfolioAnalysis.countryExposures.map(exp => exp.country)}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </main>
-        )}
+        ) : currentTab === "trends" ? (
+        /* Historical Trends Tab Content */
+        <main className="flex-1 p-3">
+          <div className="max-w-[1600px] mx-auto">
+            <HistoricalTrends
+              availableCountries={Object.keys(baseRiskData)}
+            />
+          </div>
+        </main>
+        ) : currentTab === "exports" ? (
+        /* Exports Tab Content */
+        <main className="flex-1 p-3">
+          <div className="max-w-[1600px] mx-auto">
+            <ExportReports
+              portfolioSummary={portfolioAnalysis}
+              countryRisks={riskData}
+              holdings={portfolio}
+            />
+          </div>
+        </main>
+        ) : currentTab === "tools" ? (
+        /* Advanced Tools Tab Content */
+        <main className="flex-1 p-3">
+          <div className="max-w-[1600px] mx-auto">
+            <AdvancedFilters
+              countryRisks={riskData}
+              defaultAssets={portfolio}
+            />
+          </div>
+        </main>
+        ) : null}
       </div>
     </div>
   );

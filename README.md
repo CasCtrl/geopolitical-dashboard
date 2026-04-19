@@ -25,6 +25,9 @@ The Geopolitical Risk Dashboard is a capstone project designed to help investors
 - **Daily Risk Updates** - Automatic daily updates to risk snapshot scores with manual refresh capability
 - **Portfolio Report Download** - Generate and download comprehensive risk reports in text format
 - **Summary Insights** - Actionable insights and recommendations for portfolio management
+- **Historical Trends Analysis** - Track risk scores over time with detailed trend charts and comparisons (30/90/365 day views)
+- **Real-Time Alerts & Thresholds** - Set custom risk alerts for portfolio and country exposures with breach notifications
+- **Scenario Analysis** - Test portfolio changes, simulate crisis scenarios, and get rebalancing recommendations
 
 ## Who This Project Is For
 
