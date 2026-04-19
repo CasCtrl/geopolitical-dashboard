@@ -105,7 +105,13 @@ export function HistoricalTrends({ availableCountries = [], onSelectCountry }: H
       {/* Recent Changes */}
       {comparison && (
         <Card className="p-4 bg-zinc-950 border border-zinc-800">
-          <h3 className="text-sm font-semibold mb-3 text-zinc-100">Recent Changes</h3>
+          <div className="mb-3 flex items-center gap-1.5">
+            <h3 className="text-sm font-semibold text-zinc-100">Recent Changes</h3>
+            <RiskScoreInfo
+              meaning="Highlights what changed between the latest two historical snapshots."
+              calculation="Portfolio risk change is latest minus previous snapshot score; country changes are per-country score deltas for the same two snapshots."
+            />
+          </div>
           <div className="space-y-2">
             <div className="flex justify-between items-center text-xs">
               <span className="text-zinc-400">Portfolio Risk Change:</span>
