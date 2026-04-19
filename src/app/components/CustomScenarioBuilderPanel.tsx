@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2, Play, Copy, Settings } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
+import { RiskScoreInfo } from './RiskScoreInfo';
 import {
   createCustomScenario,
   getCustomScenarios,
@@ -117,6 +118,10 @@ export function CustomScenarioBuilderPanel({
           <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
             <Settings size={16} className="text-indigo-400" />
             Custom Scenario Builder
+            <RiskScoreInfo
+              meaning="Create and test portfolio stress scenarios with custom country risk multipliers."
+              calculation="Applies your multiplier inputs to baseline country risks and recomputes stressed portfolio outcomes."
+            />
           </h3>
           <div className="flex gap-2">
             <Button
@@ -269,6 +274,15 @@ export function CustomScenarioBuilderPanel({
 
       {/* Saved Scenarios */}
       <div className="space-y-3">
+        {scenarios.length > 0 && (
+          <div className="flex items-center gap-1 px-1">
+            <p className="text-xs font-semibold text-zinc-300">Saved Scenarios</p>
+            <RiskScoreInfo
+              meaning="Previously created custom stress scenarios available for retesting."
+              calculation="Stored scenario definitions with severity and per-country multipliers."
+            />
+          </div>
+        )}
         {scenarios.length === 0 ? (
           <Card className="p-4 bg-zinc-950 border border-zinc-800 text-center text-xs text-zinc-500">
             No custom scenarios yet. Create one or use a template to get started.
@@ -343,7 +357,13 @@ export function CustomScenarioBuilderPanel({
       {/* Test Results */}
       {testResult && selectedScenario && (
         <Card className="p-4 bg-zinc-950 border border-zinc-800">
-          <h3 className="text-sm font-semibold mb-3 text-zinc-100">Test Results: {selectedScenario.name}</h3>
+          <div className="mb-3 flex items-center gap-1">
+            <h3 className="text-sm font-semibold text-zinc-100">Test Results: {selectedScenario.name}</h3>
+            <RiskScoreInfo
+              meaning="Outcome of applying this custom scenario to your current portfolio profile."
+              calculation="Compares baseline vs stressed risk and flags whether your alert threshold would have triggered."
+            />
+          </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="bg-zinc-900 rounded p-2 border border-zinc-800 text-center text-xs">
@@ -372,7 +392,13 @@ export function CustomScenarioBuilderPanel({
 
           {testResult.affectedHoldings.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-zinc-300 mb-2">Most Affected Holdings</p>
+              <div className="mb-2 flex items-center gap-1">
+                <p className="text-xs font-semibold text-zinc-300">Most Affected Holdings</p>
+                <RiskScoreInfo
+                  meaning="Holdings with the largest risk increase under this custom scenario."
+                  calculation="Ranks holdings by stressed risk minus baseline risk after scenario multipliers are applied."
+                />
+              </div>
               <div className="space-y-1 max-h-32 overflow-y-auto">
                 {testResult.affectedHoldings.slice(0, 5).map((holding, idx: number) => (
                   <div key={idx} className="text-xs p-2 bg-zinc-900 rounded flex justify-between">

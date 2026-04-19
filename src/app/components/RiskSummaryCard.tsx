@@ -1,6 +1,7 @@
 import { Card } from "./ui/card";
 import { AlertTriangle } from "lucide-react";
 import { RiskGaugeCompact } from "./RiskGaugeCompact";
+import { RiskScoreInfo } from "./RiskScoreInfo";
 
 interface RiskSummaryCardProps {
   totalRiskScore: number;
@@ -29,9 +30,13 @@ export function RiskSummaryCard({
       <div className="space-y-6">
         {/* Gauge */}
         <div>
-          <p className="text-sm text-slate-400 mb-4 text-center">
-            Total Portfolio Risk Score
-          </p>
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <p className="text-sm text-slate-400">Total Portfolio Risk Score</p>
+            <RiskScoreInfo
+              meaning="Overall geopolitical exposure of the portfolio on a 0-100 scale."
+              calculation="Weighted average of each asset's country risk dependencies, then aggregated by portfolio allocation and normalized to 0-100."
+            />
+          </div>
           <RiskGaugeCompact value={totalRiskScore} />
           <p className="text-sm text-slate-400 text-center mt-2">
             {getRiskLabel(totalRiskScore)} Risk Level
@@ -40,7 +45,13 @@ export function RiskSummaryCard({
 
         {/* Top Risk Assets */}
         <div className="pt-4 border-t border-slate-800">
-          <p className="text-sm text-slate-400 mb-3">Top Risk Assets</p>
+          <div className="mb-3 flex items-center gap-1">
+            <p className="text-sm text-slate-400">Top Risk Assets</p>
+            <RiskScoreInfo
+              meaning="Assets with the largest contribution to your portfolio's risk score."
+              calculation="Ranked by per-asset contribution from country dependency risk weighted by portfolio allocation."
+            />
+          </div>
           <div className="space-y-2">
             {topRiskAssets.slice(0, 5).map((asset, index) => (
               <div
@@ -56,7 +67,13 @@ export function RiskSummaryCard({
 
         {/* Top Risk Countries */}
         <div className="pt-4 border-t border-slate-800">
-          <p className="text-sm text-slate-400 mb-3">Top Risk Countries</p>
+          <div className="mb-3 flex items-center gap-1">
+            <p className="text-sm text-slate-400">Top Risk Countries</p>
+            <RiskScoreInfo
+              meaning="Countries that contribute most to the portfolio's total geopolitical risk."
+              calculation="Ranked by combined risk contribution from all holdings exposed to each country."
+            />
+          </div>
           <div className="space-y-2">
             {topRiskCountries.slice(0, 5).map((country, index) => (
               <div

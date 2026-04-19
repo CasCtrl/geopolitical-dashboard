@@ -51,6 +51,7 @@ import {
 import { Card } from "./components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { RiskGaugeCompact } from "./components/RiskGaugeCompact";
+import { RiskScoreInfo } from "./components/RiskScoreInfo";
 import { convertPortfolioAssetToHolding, getCountriesFromAssets, getSectorsFromAssets, screenAssets } from "./utils/portfolioFilters";
 
 const API_BASE_URL = "http://localhost:5001";
@@ -1398,7 +1399,13 @@ export default function App() {
                 <p className="text-sm font-bold text-white leading-tight">{portfolio.length}</p>
               </Card>
               <Card className="p-1.5 bg-zinc-900/60 border-zinc-800">
-                <p className="text-[10px] text-zinc-500 leading-none">Avg Global Risk</p>
+                <div className="flex items-center gap-1 leading-none">
+                  <p className="text-[10px] text-zinc-500">Avg Global Risk</p>
+                  <RiskScoreInfo
+                    meaning="Average risk level across all countries in the loaded global risk model."
+                    calculation="Calculated as the mean of the current country risk scores used by the dashboard."
+                  />
+                </div>
                 <p className="text-sm font-bold text-white leading-tight">{averageRisk}</p>
               </Card>
               <Card className="p-1.5 bg-zinc-900/60 border-zinc-800">
@@ -1433,30 +1440,35 @@ export default function App() {
                   value={weights.political}
                   onChange={(value) => updateWeight("political", value)}
                   icon={<AlertTriangle className="size-3" />}
+                  description="Government stability, policy shifts, sanctions, and geopolitical relations affecting markets."
                 />
                 <RiskSlider
                   label="Economic"
                   value={weights.economic}
                   onChange={(value) => updateWeight("economic", value)}
                   icon={<TrendingDown className="size-3" />}
+                  description="Inflation, growth, debt, currency pressure, and macroeconomic stress across key regions."
                 />
                 <RiskSlider
                   label="Conflict"
                   value={weights.conflict}
                   onChange={(value) => updateWeight("conflict", value)}
                   icon={<Swords className="size-3" />}
+                  description="War, military escalation, and regional instability that can disrupt supply chains and operations."
                 />
                 <RiskSlider
                   label="Corruption"
                   value={weights.corruption}
                   onChange={(value) => updateWeight("corruption", value)}
                   icon={<Scale className="size-3" />}
+                  description="Institutional weakness, bribery risk, and governance quality affecting business reliability."
                 />
                 <RiskSlider
                   label="Terrorism"
                   value={weights.terrorism}
                   onChange={(value) => updateWeight("terrorism", value)}
                   icon={<Bomb className="size-3" />}
+                  description="Terror-related disruption risk to infrastructure, logistics, and overall market confidence."
                 />
               </div>
               <div className="text-[8px] text-zinc-600 mt-3 pt-2 border-t border-zinc-800 px-1">
@@ -1647,9 +1659,15 @@ export default function App() {
                 <div className="space-y-4">
                   {/* Gauge */}
                   <div>
-                    <p className="text-[10px] text-zinc-600 mb-2 uppercase tracking-wide font-medium">
-                      Total Portfolio Risk
-                    </p>
+                    <div className="mb-2 flex items-center justify-center gap-1">
+                      <p className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium">
+                        Total Portfolio Risk
+                      </p>
+                      <RiskScoreInfo
+                        meaning="Overall geopolitical risk score for the portfolio shown on a 0-100 gauge."
+                        calculation="Computed from country-risk dependencies per asset, weighted by allocation, and aggregated into a normalized portfolio score."
+                      />
+                    </div>
                     <RiskGaugeCompact value={dashboardPortfolioAnalysis.totalRiskScore} />
                     <p className="text-[10px] text-zinc-600 text-center mt-1 uppercase">
                       {(() => {
@@ -1664,7 +1682,13 @@ export default function App() {
 
                   {/* Top Risk Assets */}
                   <div className="pt-3 border-t border-zinc-900">
-                    <p className="text-[10px] text-zinc-600 mb-2 uppercase tracking-wide font-medium">Top Risk Assets</p>
+                    <div className="mb-2 flex items-center gap-1">
+                      <p className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium">Top Risk Assets</p>
+                      <RiskScoreInfo
+                        meaning="Assets adding the most risk to the current portfolio."
+                        calculation="Ordered by each asset's calculated risk contribution from country exposure and allocation weight."
+                      />
+                    </div>
                     <div className="space-y-1">
                       {dashboardPortfolioAnalysis.topRiskAssets.slice(0, 5).map((asset, index) => (
                         <div
@@ -1680,7 +1704,13 @@ export default function App() {
 
                   {/* Top Risk Countries */}
                   <div className="pt-3 border-t border-zinc-900">
-                    <p className="text-[10px] text-zinc-600 mb-2 uppercase tracking-wide font-medium">Top Risk Countries</p>
+                    <div className="mb-2 flex items-center gap-1">
+                      <p className="text-[10px] text-zinc-600 uppercase tracking-wide font-medium">Top Risk Countries</p>
+                      <RiskScoreInfo
+                        meaning="Countries currently driving the largest share of portfolio geopolitical risk."
+                        calculation="Ordered by aggregated country risk contribution across all holdings exposed to each country."
+                      />
+                    </div>
                     <div className="space-y-1">
                       {dashboardPortfolioAnalysis.topRiskCountries.slice(0, 5).map((country, index) => (
                         <div

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Zap, TrendingDown, Trash2, Play, BarChart3 } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
+import { RiskScoreInfo } from './RiskScoreInfo';
 import { Asset } from '../data/portfolioData';
 import {
   applyCrisisScenario,
@@ -110,7 +111,13 @@ export function ScenarioAnalysis({
         <div className="space-y-3">
           {/* Quick Actions */}
           <Card className="p-3 bg-zinc-950 border-zinc-800">
-            <p className="text-xs font-semibold mb-2">Test Asset Changes</p>
+            <div className="mb-2 flex items-center gap-1">
+              <p className="text-xs font-semibold">Test Asset Changes</p>
+              <RiskScoreInfo
+                meaning="Simulate the effect of removing individual holdings on portfolio risk."
+                calculation="Creates what-if scenarios by excluding a selected asset and recomputing portfolio risk."
+              />
+            </div>
             <div className="space-y-2 max-h-32 overflow-y-auto">
               {portfolio.slice(0, 5).map((asset) => (
                 <Button
@@ -129,7 +136,13 @@ export function ScenarioAnalysis({
           {/* Saved Scenarios */}
           {scenarios.length > 0 && (
             <Card className="p-3 bg-zinc-950 border-zinc-800">
-              <p className="text-xs font-semibold mb-2 text-white">Saved Scenarios ({scenarios.length})</p>
+              <div className="mb-2 flex items-center gap-1">
+                <p className="text-xs font-semibold text-white">Saved Scenarios ({scenarios.length})</p>
+                <RiskScoreInfo
+                  meaning="Scenario runs you've created and can revisit."
+                  calculation="Shows baseline, scenario result, and percentage change for each saved scenario."
+                />
+              </div>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {scenarios.map((scenario) => (
                   <div
@@ -186,7 +199,13 @@ export function ScenarioAnalysis({
                 {/* Risk Comparison */}
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-zinc-900 rounded text-center border border-zinc-800">
-                    <p className="text-xs text-zinc-400">Baseline</p>
+                    <div className="flex items-center justify-center gap-1">
+                      <p className="text-xs text-zinc-400">Baseline</p>
+                      <RiskScoreInfo
+                        meaning="Portfolio risk before applying this scenario."
+                        calculation="Current model score using baseline country risk assumptions."
+                      />
+                    </div>
                     <p className={`text-lg font-bold ${getRiskColor(selectedScenario.baselineRisk)}`}>
                       {Math.round(selectedScenario.baselineRisk)}
                     </p>
@@ -195,7 +214,13 @@ export function ScenarioAnalysis({
                     <TrendingDown size={16} className="text-zinc-500" />
                   </div>
                   <div className="p-2 bg-zinc-900 rounded text-center border border-zinc-800">
-                    <p className="text-xs text-zinc-400">Scenario</p>
+                    <div className="flex items-center justify-center gap-1">
+                      <p className="text-xs text-zinc-400">Scenario</p>
+                      <RiskScoreInfo
+                        meaning="Portfolio risk after this scenario is applied."
+                        calculation="Recomputed score under scenario-adjusted country risk conditions."
+                      />
+                    </div>
                     <p className={`text-lg font-bold ${getRiskColor(selectedScenario.scenarioRisk)}`}>
                       {Math.round(selectedScenario.scenarioRisk)}
                     </p>
@@ -204,7 +229,13 @@ export function ScenarioAnalysis({
 
                 {/* Risk Change */}
                 <div className="p-2 bg-zinc-900 rounded border border-zinc-800">
-                  <p className="text-xs text-zinc-400">Risk Change</p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-zinc-400">Risk Change</p>
+                    <RiskScoreInfo
+                      meaning="Percent difference between scenario risk and baseline risk."
+                      calculation="Computed as ((scenario risk - baseline risk) / baseline risk) x 100."
+                    />
+                  </div>
                   <p
                     className={`text-lg font-bold ${
                       selectedScenario.riskChange > 0 ? 'text-red-500' : 'text-green-500'
@@ -217,7 +248,13 @@ export function ScenarioAnalysis({
                 {/* Impacted Countries */}
                 {selectedScenario.impactedCountries.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold mb-2 text-white">Impacted Countries</p>
+                    <div className="mb-2 flex items-center gap-1">
+                      <p className="text-xs font-semibold text-white">Impacted Countries</p>
+                      <RiskScoreInfo
+                        meaning="Countries whose risk values changed under this scenario."
+                        calculation="Lists impacted countries and the magnitude of risk adjustment for each one."
+                      />
+                    </div>
                     <div className="space-y-1 max-h-28 overflow-y-auto">
                       {selectedScenario.impactedCountries.slice(0, 8).map((country) => (
                         <div key={country.country} className="flex justify-between items-center text-xs">
@@ -245,7 +282,13 @@ export function ScenarioAnalysis({
       {activeTab === 'crisis' && (
         <div className="space-y-3">
           <Card className="p-3 bg-zinc-950 border-zinc-800">
-            <p className="text-xs font-semibold mb-2 text-white">Crisis Scenarios</p>
+            <div className="mb-2 flex items-center gap-1">
+              <p className="text-xs font-semibold text-white">Crisis Scenarios</p>
+              <RiskScoreInfo
+                meaning="Predefined geopolitical shocks for rapid stress testing."
+                calculation="Each template applies a curated set of country risk shocks to estimate portfolio impact."
+              />
+            </div>
             <p className="text-xs text-zinc-400 mb-3">
               Test how your portfolio would perform under major geopolitical crises
             </p>
@@ -272,13 +315,25 @@ export function ScenarioAnalysis({
               <p className="text-xs text-zinc-300 mb-3">{selectedScenario.description}</p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <p className="text-xs text-zinc-400">Current Risk</p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-zinc-400">Current Risk</p>
+                    <RiskScoreInfo
+                      meaning="Present portfolio risk before crisis shock assumptions."
+                      calculation="Current baseline portfolio risk score from active holdings and exposures."
+                    />
+                  </div>
                   <p className="font-bold text-lg text-yellow-500">
                     {Math.round(currentPortfolioRisk)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-400">Crisis Risk</p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-zinc-400">Crisis Risk</p>
+                    <RiskScoreInfo
+                      meaning="Projected portfolio risk under the selected crisis template."
+                      calculation="Risk recomputation after crisis-specific regional and country stress multipliers."
+                    />
+                  </div>
                   <p className="font-bold text-lg text-red-500">
                     {Math.round(selectedScenario.scenarioRisk)}
                   </p>
@@ -295,7 +350,13 @@ export function ScenarioAnalysis({
           {suggestions.suggestions.length > 0 ? (
             <>
               <Card className="p-3 bg-green-950 border-green-900">
-                <p className="text-xs font-semibold text-green-400 mb-2">📊 Rebalancing Recommendations</p>
+                <div className="mb-2 flex items-center gap-1">
+                  <p className="text-xs font-semibold text-green-400">📊 Rebalancing Recommendations</p>
+                  <RiskScoreInfo
+                    meaning="Suggested portfolio changes aimed at lowering geopolitical risk."
+                    calculation="Generated by testing candidate remove/add actions against current country risk exposures."
+                  />
+                </div>
                 <p className="text-xs text-zinc-300">
                   Follow these suggestions to reduce geopolitical risk exposure
                 </p>
@@ -330,20 +391,40 @@ export function ScenarioAnalysis({
 
               {suggestions.bestScenario && (
                 <Card className="p-3 bg-purple-950 border-purple-900">
-                  <p className="text-xs font-semibold text-purple-300 mb-2">Best Outcome</p>
+                  <div className="mb-2 flex items-center gap-1">
+                    <p className="text-xs font-semibold text-purple-300">Best Outcome</p>
+                    <RiskScoreInfo
+                      meaning="Lowest-risk result among generated rebalancing options."
+                      calculation="Selects the suggestion scenario with the smallest projected resulting portfolio risk."
+                    />
+                  </div>
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-xs text-zinc-300">
-                        Current Risk: <span className="font-bold">{Math.round(currentPortfolioRisk)}</span>
-                      </p>
-                      <p className="text-xs text-zinc-300 mt-1">
-                        With Changes: <span className="font-bold text-green-500">
+                      <div className="text-xs text-zinc-300 flex items-center gap-1">
+                        <p>Current Risk: <span className="font-bold">{Math.round(currentPortfolioRisk)}</span></p>
+                        <RiskScoreInfo
+                          meaning="Starting portfolio risk before applying suggested rebalancing actions."
+                          calculation="Current baseline risk used as the comparison anchor for improvement."
+                        />
+                      </div>
+                      <div className="text-xs text-zinc-300 mt-1 flex items-center gap-1">
+                        <p>With Changes: <span className="font-bold text-green-500">
                           {Math.round(suggestions.bestScenario.scenarioRisk)}
-                        </span>
-                      </p>
+                        </span></p>
+                        <RiskScoreInfo
+                          meaning="Projected risk after applying the best suggested changes."
+                          calculation="Scenario risk output from the top-ranked rebalancing recommendation set."
+                        />
+                      </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-zinc-400">Risk Reduction</p>
+                      <div className="text-xs text-zinc-400 flex items-center gap-1 justify-end">
+                        <p>Risk Reduction</p>
+                        <RiskScoreInfo
+                          meaning="Percent improvement versus the current baseline risk."
+                          calculation="((current risk - projected risk) / current risk) x 100."
+                        />
+                      </div>
                       <p className="text-lg font-bold text-green-500">
                         {((currentPortfolioRisk - suggestions.bestScenario.scenarioRisk) / currentPortfolioRisk * 100).toFixed(1)}%
                       </p>

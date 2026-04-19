@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Network, TrendingUp, Lightbulb } from 'lucide-react';
 import { Card } from './ui/card';
+import { RiskScoreInfo } from './RiskScoreInfo';
 import {
   buildCorrelationMatrix,
   analyzeRegionalCorrelations,
@@ -90,32 +91,60 @@ export function CorrelationAnalysisPanel({
         <h3 className="text-sm font-semibold mb-4 text-zinc-100 flex items-center gap-2">
           <Network size={16} className="text-purple-400" />
           Correlation & Diversification Analysis
+          <RiskScoreInfo
+            meaning="Shows how country risks move together and where diversification can reduce portfolio risk."
+            calculation="Built from country trend correlation matrix, portfolio weights, and derived concentration metrics."
+          />
         </h3>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-            <div className="text-xs text-zinc-400 mb-1">Diversification Ratio</div>
+            <div className="mb-1 flex items-center gap-1">
+              <div className="text-xs text-zinc-400">Diversification Ratio</div>
+              <RiskScoreInfo
+                meaning="How much diversification lowers risk versus a concentrated portfolio."
+                calculation="Compares diversified portfolio risk to a concentration-adjusted baseline proxy."
+              />
+            </div>
             <div className={`text-lg font-bold ${riskAnalysis.diversificationRatio > 1.3 ? 'text-green-400' : riskAnalysis.diversificationRatio > 1.1 ? 'text-yellow-400' : 'text-red-400'}`}>
               {riskAnalysis.diversificationRatio.toFixed(2)}x
             </div>
           </div>
 
           <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-            <div className="text-xs text-zinc-400 mb-1">Effective Diversification</div>
+            <div className="mb-1 flex items-center gap-1">
+              <div className="text-xs text-zinc-400">Effective Diversification</div>
+              <RiskScoreInfo
+                meaning="Estimated percent of risk dampened by diversification effects."
+                calculation="Derived from correlation-adjusted portfolio structure and contribution spread."
+              />
+            </div>
             <div className="text-lg font-bold text-zinc-200">
               {riskAnalysis.effectiveDiversification.toFixed(0)}%
             </div>
           </div>
 
           <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-            <div className="text-xs text-zinc-400 mb-1">Risk Concentration</div>
+            <div className="mb-1 flex items-center gap-1">
+              <div className="text-xs text-zinc-400">Risk Concentration</div>
+              <RiskScoreInfo
+                meaning="Share of portfolio risk concentrated in a limited set of correlated exposures."
+                calculation="Computed from weighted country contributions and their co-movement structure."
+              />
+            </div>
             <div className={`text-lg font-bold ${riskAnalysis.riskConcentration < 30 ? 'text-green-400' : riskAnalysis.riskConcentration < 50 ? 'text-yellow-400' : 'text-red-400'}`}>
               {riskAnalysis.riskConcentration.toFixed(0)}%
             </div>
           </div>
 
           <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-            <div className="text-xs text-zinc-400 mb-1">Pair Correlations</div>
+            <div className="mb-1 flex items-center gap-1">
+              <div className="text-xs text-zinc-400">Pair Correlations</div>
+              <RiskScoreInfo
+                meaning="Number of country-pair correlation relationships evaluated."
+                calculation="Count of unique pairwise correlations generated from the trend dataset."
+              />
+            </div>
             <div className="text-lg font-bold text-zinc-200">{correlationMatrix.pairs.length}</div>
           </div>
         </div>
@@ -132,6 +161,10 @@ export function CorrelationAnalysisPanel({
           className="w-full text-left flex items-center justify-between hover:bg-zinc-900/50 p-2 -m-2 rounded"
         >
           <h3 className="text-sm font-semibold text-zinc-100">Strong Correlations</h3>
+          <RiskScoreInfo
+            meaning="Highest correlation country pairs in the current dataset."
+            calculation="Ranks pairs by absolute correlation strength from historical trend series."
+          />
           <span className="text-xs text-zinc-400">{showMatrix ? '▼' : '▶'}</span>
         </button>
 
@@ -179,6 +212,10 @@ export function CorrelationAnalysisPanel({
           <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
             <TrendingUp size={14} />
             Regional Cohesion
+            <RiskScoreInfo
+              meaning="How tightly countries in each region move together over time."
+              calculation="Uses average within-region and cross-region correlations from the matrix."
+            />
           </h3>
           <span className="text-xs text-zinc-400">{showRegions ? '▼' : '▶'}</span>
         </button>
@@ -221,6 +258,10 @@ export function CorrelationAnalysisPanel({
           <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
             <Lightbulb size={14} />
             Diversification Ideas
+            <RiskScoreInfo
+              meaning="Potential countries that may improve diversification."
+              calculation="Identifies lower-correlation candidates relative to your current portfolio countries."
+            />
           </h3>
           <span className="text-xs text-zinc-400">{showDiversification ? '▼' : '▶'}</span>
         </button>
@@ -244,7 +285,13 @@ export function CorrelationAnalysisPanel({
 
       {/* Information */}
       <Card className="p-4 bg-zinc-950 border border-zinc-800">
-        <h3 className="text-sm font-semibold mb-2 text-zinc-100">Understanding These Metrics</h3>
+        <div className="mb-2 flex items-center gap-1">
+          <h3 className="text-sm font-semibold text-zinc-100">Understanding These Metrics</h3>
+          <RiskScoreInfo
+            meaning="Quick definitions for the correlation and diversification indicators used above."
+            calculation="Describes interpretation of ratio, concentration, correlation, and cohesion outputs."
+          />
+        </div>
         <div className="text-xs text-zinc-300 space-y-2">
           <p>
             <strong>Diversification Ratio:</strong> How much risk reduction you get from diversification. &gt;1.3 is

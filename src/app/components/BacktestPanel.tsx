@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Card } from './ui/card';
+import { RiskScoreInfo } from './RiskScoreInfo';
 import {
   runAllBacktests,
   getBacktestSummary,
@@ -53,16 +54,32 @@ export function BacktestPanel({
         <h3 className="text-sm font-semibold mb-4 text-zinc-100 flex items-center gap-2">
           <AlertTriangle size={16} className="text-orange-400" />
           Stress Test Summary
+          <RiskScoreInfo
+            meaning="Overview of how the portfolio performs across historical stress scenarios."
+            calculation="Aggregates all backtest runs into counts and headline metrics like alert frequency and resilience."
+          />
         </h3>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-            <div className="text-xs text-zinc-400 mb-1">Scenarios Tested</div>
+            <div className="mb-1 flex items-center gap-1">
+              <div className="text-xs text-zinc-400">Scenarios Tested</div>
+              <RiskScoreInfo
+                meaning="Number of historical stress scenarios included in this run."
+                calculation="Count of scenario definitions processed by the backtesting engine."
+              />
+            </div>
             <div className="text-xl font-bold text-zinc-100">{summary.totalScenarios}</div>
           </div>
 
           <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-            <div className="text-xs text-zinc-400 mb-1">Would Alert Fire</div>
+            <div className="mb-1 flex items-center gap-1">
+              <div className="text-xs text-zinc-400">Would Alert Fire</div>
+              <RiskScoreInfo
+                meaning="How many scenarios would have crossed your alert threshold."
+                calculation="Counts backtests where stressed risk exceeded configured alert criteria."
+              />
+            </div>
             <div className="flex items-center gap-2">
               <div className="text-xl font-bold text-red-500">{summary.wouldHaveFired}</div>
               <div className="text-xs text-zinc-500">scenarios</div>
@@ -70,14 +87,26 @@ export function BacktestPanel({
           </div>
 
           <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-            <div className="text-xs text-zinc-400 mb-1">Max Risk Increase</div>
+            <div className="mb-1 flex items-center gap-1">
+              <div className="text-xs text-zinc-400">Max Risk Increase</div>
+              <RiskScoreInfo
+                meaning="Largest absolute risk jump observed across all tested scenarios."
+                calculation="Maximum of stressed risk minus baseline risk over all scenario results."
+              />
+            </div>
             <div className={`text-xl font-bold ${getRiskColor(summary.maxRiskIncrease)}`}>
               +{summary.maxRiskIncrease}
             </div>
           </div>
 
           <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-            <div className="text-xs text-zinc-400 mb-1">Portfolio Resilience</div>
+            <div className="mb-1 flex items-center gap-1">
+              <div className="text-xs text-zinc-400">Portfolio Resilience</div>
+              <RiskScoreInfo
+                meaning="Composite score of how well the portfolio resists stress scenarios."
+                calculation="Derived from scenario loss behavior, alert frequency, and relative stress response."
+              />
+            </div>
             <div className={`text-xl font-bold ${getResilienceColor(summary.resilience)}`}>
               {summary.resilience.toFixed(0)}%
             </div>
@@ -87,7 +116,13 @@ export function BacktestPanel({
 
       {/* Scenario Details */}
       <Card className="p-4 bg-zinc-950 border border-zinc-800">
-        <h3 className="text-sm font-semibold mb-4 text-zinc-100">Scenario Analysis</h3>
+        <div className="mb-4 flex items-center gap-1">
+          <h3 className="text-sm font-semibold text-zinc-100">Scenario Analysis</h3>
+          <RiskScoreInfo
+            meaning="Detailed breakdown for a selected historical scenario."
+            calculation="Compares baseline vs stressed risk, computes deltas, and surfaces affected holdings and regions."
+          />
+        </div>
 
         {/* Scenario Selector */}
         <div className="mb-4">
@@ -133,26 +168,50 @@ export function BacktestPanel({
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-                <div className="text-xs text-zinc-400">Baseline Risk</div>
+                <div className="flex items-center gap-1">
+                  <div className="text-xs text-zinc-400">Baseline Risk</div>
+                  <RiskScoreInfo
+                    meaning="Portfolio risk before applying the selected stress scenario."
+                    calculation="Current model output using baseline country risks and present allocations."
+                  />
+                </div>
                 <div className="text-lg font-bold text-zinc-100">{selectedResult.baselineRisk}</div>
               </div>
 
               <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-                <div className="text-xs text-zinc-400">Stressed Risk</div>
+                <div className="flex items-center gap-1">
+                  <div className="text-xs text-zinc-400">Stressed Risk</div>
+                  <RiskScoreInfo
+                    meaning="Portfolio risk after applying the selected scenario shocks."
+                    calculation="Recomputed risk score using stressed country-risk assumptions for this scenario."
+                  />
+                </div>
                 <div className={`text-lg font-bold ${getRiskColor(selectedResult.stressedRisk)}`}>
                   {selectedResult.stressedRisk}
                 </div>
               </div>
 
               <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-                <div className="text-xs text-zinc-400">Risk Increase</div>
+                <div className="flex items-center gap-1">
+                  <div className="text-xs text-zinc-400">Risk Increase</div>
+                  <RiskScoreInfo
+                    meaning="Magnitude of the scenario-induced risk increase."
+                    calculation="Stressed risk minus baseline risk, with percent change relative to baseline."
+                  />
+                </div>
                 <div className="text-lg font-bold text-orange-500">
                   +{selectedResult.riskIncrease} ({selectedResult.percentageIncrease}%)
                 </div>
               </div>
 
               <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-                <div className="text-xs text-zinc-400">Alert Status</div>
+                <div className="flex items-center gap-1">
+                  <div className="text-xs text-zinc-400">Alert Status</div>
+                  <RiskScoreInfo
+                    meaning="Whether this scenario would trigger your monitoring alert."
+                    calculation="Checks stressed result against the alert threshold configured in the backtest logic."
+                  />
+                </div>
                 <div
                   className={`text-lg font-bold ${
                     selectedResult.wouldHaveFired ? 'text-red-500' : 'text-green-500'
@@ -220,6 +279,13 @@ export function BacktestPanel({
         <h3 className="text-sm font-semibold mb-3 text-zinc-100">All Scenarios</h3>
         
         <div className="overflow-x-auto">
+          <div className="mb-2 flex items-center gap-1">
+            <h3 className="text-sm font-semibold text-zinc-100">All Scenarios</h3>
+            <RiskScoreInfo
+              meaning="Tabular comparison of every backtested scenario."
+              calculation="Lists baseline and stressed outcomes per scenario for quick side-by-side review."
+            />
+          </div>
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-zinc-800">

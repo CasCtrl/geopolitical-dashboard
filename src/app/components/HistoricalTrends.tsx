@@ -5,6 +5,7 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { getPortfolioRiskTrend, getCountryTrend, getLatestSnapshot, getPreviousSnapshot, compareSnapshots } from '../data/historicalSnapshotManager';
+import { RiskScoreInfo } from './RiskScoreInfo';
 
 interface HistoricalTrendsProps {
   availableCountries?: string[];
@@ -46,7 +47,13 @@ export function HistoricalTrends({ availableCountries = [], onSelectCountry }: H
       {/* Portfolio Trend */}
       <Card className="p-4 bg-zinc-950 border border-zinc-800">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-zinc-100">Portfolio Risk Trend</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-sm font-semibold text-zinc-100">Portfolio Risk Trend</h3>
+            <RiskScoreInfo
+              meaning="Shows how total portfolio geopolitical risk changed over time."
+              calculation="Each point is a snapshot of portfolio risk score, computed from weighted asset country dependencies at that timestamp."
+            />
+          </div>
           <div className="flex gap-2">
             {[7, 30, 90].map((days) => (
               <Button
@@ -143,7 +150,13 @@ export function HistoricalTrends({ availableCountries = [], onSelectCountry }: H
         <Card className="p-4 bg-zinc-950 border border-zinc-800">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-100">Country Risk Trends</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-zinc-100">Country Risk Trends</h3>
+                <RiskScoreInfo
+                  meaning="Tracks country-level geopolitical risk movements over time."
+                  calculation="Country risk values come from periodic snapshots and represent weighted factor scores (political, economic, conflict, corruption, terrorism) normalized to 0-100."
+                />
+              </div>
               <Select value={selectedCountry} onValueChange={(country) => {
                 setSelectedCountry(country);
                 onSelectCountry?.(country);

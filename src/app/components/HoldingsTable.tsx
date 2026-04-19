@@ -2,6 +2,7 @@ import { Card } from "./ui/card";
 import { Asset } from "../data/portfolioData";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useMemo, useCallback } from "react";
+import { RiskScoreInfo } from "./RiskScoreInfo";
 
 interface HoldingsTableProps {
   assets: Asset[];
@@ -68,7 +69,13 @@ export function HoldingsTable({ assets, assetContributions, countryRisks }: Hold
 
   return (
     <Card className="p-3 md:p-4 bg-zinc-950 border-zinc-900">
-      <h3 className="text-sm md:text-base mb-3 text-white">Holdings Risk Analysis</h3>
+      <div className="mb-3 flex items-center gap-1.5">
+        <h3 className="text-sm md:text-base text-white">Holdings Risk Analysis</h3>
+        <RiskScoreInfo
+          meaning="Each holding is scored by how exposed it is to country-level geopolitical risk."
+          calculation="Asset risk uses weighted country dependencies per asset; sector risk index is the weighted average of asset geo-risk within each sector."
+        />
+      </div>
       <div className="overflow-x-auto -mx-3 md:mx-0">
         <div className="inline-block min-w-full align-middle max-h-96 overflow-y-auto">
           <table className="min-w-full text-left">
@@ -76,10 +83,26 @@ export function HoldingsTable({ assets, assetContributions, countryRisks }: Hold
               <tr className="border-b border-zinc-900">
                 <th className="text-left py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Asset</th>
                 <th className="text-left py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Sector</th>
-                <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Sector Risk Index</th>
+                <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">
+                  <div className="inline-flex items-center gap-1">
+                    <span>Sector Risk Index</span>
+                    <RiskScoreInfo
+                      meaning="Average geopolitical risk level for assets in this sector."
+                      calculation="For each asset, geo-risk is computed from country dependency weights and country risk scores; sector index is the weighted average of those asset geo-risks by portfolio weight."
+                    />
+                  </div>
+                </th>
                 <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Value</th>
                 <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Allocation</th>
-                <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">Risk Score</th>
+                <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">
+                  <div className="inline-flex items-center gap-1">
+                    <span>Risk Score</span>
+                    <RiskScoreInfo
+                      meaning="Per-asset risk contribution to portfolio geopolitical exposure."
+                      calculation="Derived from each asset's country dependency risk profile and adjusted by its portfolio weight."
+                    />
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>

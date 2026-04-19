@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { TrendingUp, AlertTriangle, BarChart3, Play } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
+import { RiskScoreInfo } from './RiskScoreInfo';
 import { runMonteCarloSimulation, getRiskDistribution, getPercentileDistribution, type MonteCarloResults } from '../data/monteCarloEngine';
 import { TrendDataPoint } from '../data/historicalSnapshotManager';
 
@@ -62,6 +63,10 @@ export function MonteCarloPanel({
           <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
             <TrendingUp size={16} className="text-green-400" />
             Monte Carlo Risk Simulation
+            <RiskScoreInfo
+              meaning="Projects a range of possible future portfolio risk outcomes."
+              calculation="Runs many simulated paths using historical risk behavior and summarizes the resulting distribution."
+            />
           </h3>
           <div className="text-xs text-zinc-400">
             {results ? `${results.numPaths.toLocaleString()} paths, ${numDays} days` : 'Not run'}
@@ -119,32 +124,62 @@ export function MonteCarloPanel({
         <>
           {/* Key Metrics */}
           <Card className="p-4 bg-zinc-950 border border-zinc-800">
-            <h3 className="text-sm font-semibold mb-4 text-zinc-100">Simulation Results</h3>
+            <div className="mb-4 flex items-center gap-1">
+              <h3 className="text-sm font-semibold text-zinc-100">Simulation Results</h3>
+              <RiskScoreInfo
+                meaning="Core outcome metrics from the simulation run."
+                calculation="Reports central tendency, dispersion, and risk-threshold statistics across all simulated paths."
+              />
+            </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-                <div className="text-xs text-zinc-400 mb-1">Current Risk</div>
+                <div className="mb-1 flex items-center gap-1">
+                  <div className="text-xs text-zinc-400">Current Risk</div>
+                  <RiskScoreInfo
+                    meaning="Starting risk score before simulation paths evolve."
+                    calculation="Uses the portfolio's current aggregate risk as time-zero input."
+                  />
+                </div>
                 <div className={`text-lg font-bold ${getRiskColor(results.currentRisk)}`}>
                   {results.currentRisk.toFixed(1)}
                 </div>
               </div>
 
               <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-                <div className="text-xs text-zinc-400 mb-1">Mean Ending Risk</div>
+                <div className="mb-1 flex items-center gap-1">
+                  <div className="text-xs text-zinc-400">Mean Ending Risk</div>
+                  <RiskScoreInfo
+                    meaning="Average simulated ending risk across all paths."
+                    calculation="Arithmetic mean of final risk values from every Monte Carlo path."
+                  />
+                </div>
                 <div className={`text-lg font-bold ${getRiskColor(results.meanEndingRisk)}`}>
                   {results.meanEndingRisk.toFixed(1)}
                 </div>
               </div>
 
               <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-                <div className="text-xs text-zinc-400 mb-1">Median Ending Risk</div>
+                <div className="mb-1 flex items-center gap-1">
+                  <div className="text-xs text-zinc-400">Median Ending Risk</div>
+                  <RiskScoreInfo
+                    meaning="Middle simulated ending risk (50th percentile)."
+                    calculation="Final risk value at the midpoint after sorting all ending outcomes."
+                  />
+                </div>
                 <div className={`text-lg font-bold ${getRiskColor(results.medianEndingRisk)}`}>
                   {results.medianEndingRisk.toFixed(1)}
                 </div>
               </div>
 
               <div className="bg-zinc-900 rounded p-3 border border-zinc-800">
-                <div className="text-xs text-zinc-400 mb-1">Std Deviation</div>
+                <div className="mb-1 flex items-center gap-1">
+                  <div className="text-xs text-zinc-400">Std Deviation</div>
+                  <RiskScoreInfo
+                    meaning="Dispersion of ending risk outcomes around the mean."
+                    calculation="Standard deviation of all simulated ending risk values."
+                  />
+                </div>
                 <div className="text-lg font-bold text-blue-400">{results.stdDeviation.toFixed(1)}</div>
               </div>
             </div>
@@ -152,17 +187,35 @@ export function MonteCarloPanel({
             {/* Risk Range */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div className="bg-green-900/20 border border-green-800 rounded p-3">
-                <div className="text-xs text-green-300 mb-1">Best Case</div>
+                <div className="mb-1 flex items-center gap-1">
+                  <div className="text-xs text-green-300">Best Case</div>
+                  <RiskScoreInfo
+                    meaning="Most favorable ending risk observed in simulation paths."
+                    calculation="Minimum (best) final risk value among all simulated outcomes."
+                  />
+                </div>
                 <div className="text-lg font-bold text-green-400">{results.bestCase.toFixed(1)}</div>
               </div>
 
               <div className="bg-yellow-900/20 border border-yellow-800 rounded p-3">
-                <div className="text-xs text-yellow-300 mb-1">Worst Case (1%)</div>
+                <div className="mb-1 flex items-center gap-1">
+                  <div className="text-xs text-yellow-300">Worst Case (1%)</div>
+                  <RiskScoreInfo
+                    meaning="Tail-risk outcome near the worst 1% of simulated paths."
+                    calculation="Approximated from the lower tail percentile of ending risk distribution."
+                  />
+                </div>
                 <div className="text-lg font-bold text-yellow-400">{results.worstCase.toFixed(1)}</div>
               </div>
 
               <div className="bg-orange-900/20 border border-orange-800 rounded p-3">
-                <div className="text-xs text-orange-300 mb-1">VaR 95%</div>
+                <div className="mb-1 flex items-center gap-1">
+                  <div className="text-xs text-orange-300">VaR 95%</div>
+                  <RiskScoreInfo
+                    meaning="Risk threshold exceeded only in the worst 5% of outcomes."
+                    calculation="95th percentile tail cutoff from simulated ending risk values."
+                  />
+                </div>
                 <div className="text-lg font-bold text-orange-400">{results.var95.toFixed(1)}</div>
               </div>
             </div>
@@ -173,12 +226,22 @@ export function MonteCarloPanel({
             <h3 className="text-sm font-semibold mb-3 text-zinc-100 flex items-center gap-2">
               <AlertTriangle size={14} className="text-orange-400" />
               Risk Probabilities
+              <RiskScoreInfo
+                meaning="Probabilities of adverse outcomes under simulated conditions."
+                calculation="Calculates the share of paths where risk rises or exceeds critical thresholds."
+              />
             </h3>
 
             <div className="space-y-3">
               <div className={`p-3 rounded border ${getUrgencyColor(results.riskIncreaseProbability).replace('text-', '').replace('bg-', 'border-')} border-current`}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-zinc-100">Probability Risk Increases</span>
+                  <span className="text-xs font-semibold text-zinc-100 flex items-center gap-1">
+                    Probability Risk Increases
+                    <RiskScoreInfo
+                      meaning="Chance that ending risk is above the current starting risk."
+                      calculation="Percentage of simulated paths with ending risk greater than initial risk."
+                    />
+                  </span>
                   <span className={`text-sm font-bold ${getUrgencyColor(results.riskIncreaseProbability).split(' ')[0]}`}>
                     {results.riskIncreaseProbability.toFixed(1)}%
                   </span>
@@ -193,7 +256,13 @@ export function MonteCarloPanel({
 
               <div className={`p-3 rounded border ${getUrgencyColor(results.criticalRiskProbability).replace('text-', '').replace('bg-', 'border-')} border-current`}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-zinc-100">Probability Risk &gt; 70 (Critical)</span>
+                  <span className="text-xs font-semibold text-zinc-100 flex items-center gap-1">
+                    Probability Risk &gt; 70 (Critical)
+                    <RiskScoreInfo
+                      meaning="Probability that ending risk enters the critical zone above 70."
+                      calculation="Share of simulated paths where ending risk exceeds the 70 threshold."
+                    />
+                  </span>
                   <span className={`text-sm font-bold ${getUrgencyColor(results.criticalRiskProbability).split(' ')[0]}`}>
                     {results.criticalRiskProbability.toFixed(1)}%
                   </span>
@@ -217,6 +286,10 @@ export function MonteCarloPanel({
               <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
                 <BarChart3 size={14} />
                 Risk Distribution (Ending Values)
+                <RiskScoreInfo
+                  meaning="Histogram-style view of where ending risk scores cluster."
+                  calculation="Bins simulated ending risks into ranges and shows count and percent per bin."
+                />
               </h3>
               <span className="text-xs text-zinc-400">{showDistribution ? '▼' : '▶'}</span>
             </button>
@@ -245,7 +318,13 @@ export function MonteCarloPanel({
           {/* Percentiles */}
           {percentiles.length > 0 && (
             <Card className="p-4 bg-zinc-950 border border-zinc-800">
-              <h3 className="text-sm font-semibold mb-3 text-zinc-100">Risk Percentiles</h3>
+              <div className="mb-3 flex items-center gap-1">
+                <h3 className="text-sm font-semibold text-zinc-100">Risk Percentiles</h3>
+                <RiskScoreInfo
+                  meaning="Percentile checkpoints for simulated ending risk values."
+                  calculation="Sorts all paths and reports representative values at key percentile cutoffs."
+                />
+              </div>
               <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
                 {percentiles.map((p, idx) => (
                   <div key={idx} className="text-center p-2 bg-zinc-900 rounded border border-zinc-800">

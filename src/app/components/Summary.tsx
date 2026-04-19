@@ -1,5 +1,6 @@
 import { Card } from "./ui/card";
 import { AlertTriangle, TrendingUp, Target, Shield } from "lucide-react";
+import { RiskScoreInfo } from "./RiskScoreInfo";
 
 interface SummaryProps {
   portfolioAnalysis: {
@@ -152,7 +153,13 @@ export function Summary({
       <Card className="p-4 bg-zinc-950 border-zinc-900">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-sm font-semibold text-white mb-1">Portfolio Snapshot</h2>
+            <div className="mb-1 flex items-center gap-1">
+              <h2 className="text-sm font-semibold text-white">Portfolio Snapshot</h2>
+              <RiskScoreInfo
+                meaning="High-level summary of the portfolio's current geopolitical risk posture."
+                calculation="Combines portfolio risk score, global baseline risk, diversification counts, and active factor weights from current settings."
+              />
+            </div>
             <p className="text-xs text-zinc-500">Risk assessment based on current weights and global conditions</p>
           </div>
           <div className="flex items-center gap-2">
@@ -197,7 +204,13 @@ export function Summary({
               </div>
               <div className="text-center mt-2">
                 <p className="text-2xl font-bold text-white">{riskScore.toFixed(0)}</p>
-                <p className="text-xs text-zinc-500">Portfolio Risk</p>
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-xs text-zinc-500">Portfolio Risk</p>
+                  <RiskScoreInfo
+                    meaning="Overall geopolitical risk level for your current portfolio on a 0-100 scale."
+                    calculation="Computed from country dependency risks per asset, weighted by each asset's portfolio allocation, then normalized to 0-100."
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -205,15 +218,33 @@ export function Summary({
           {/* Key Metrics */}
           <div className="md:col-span-2 grid grid-cols-3 gap-2">
             <div className="bg-zinc-900/50 border border-zinc-800 rounded p-3">
-              <p className="text-xs text-zinc-500 mb-1">Global Avg Risk</p>
+              <div className="mb-1 flex items-center gap-1">
+                <p className="text-xs text-zinc-500">Global Avg Risk</p>
+                <RiskScoreInfo
+                  meaning="Average geopolitical risk across all tracked countries."
+                  calculation="Simple average of country risk scores currently loaded in the dashboard risk dataset."
+                />
+              </div>
               <p className="text-lg font-bold text-white">{averageGlobalRisk}</p>
             </div>
             <div className="bg-zinc-900/50 border border-zinc-800 rounded p-3">
-              <p className="text-xs text-zinc-500 mb-1">Assets</p>
+              <div className="mb-1 flex items-center gap-1">
+                <p className="text-xs text-zinc-500">Assets</p>
+                <RiskScoreInfo
+                  meaning="Count of individual holdings included in this summary view."
+                  calculation="Direct count of assets currently loaded in your portfolio list."
+                />
+              </div>
               <p className="text-lg font-bold text-white">{portfolio.length}</p>
             </div>
             <div className="bg-zinc-900/50 border border-zinc-800 rounded p-3">
-              <p className="text-xs text-zinc-500 mb-1">Countries</p>
+              <div className="mb-1 flex items-center gap-1">
+                <p className="text-xs text-zinc-500">Countries</p>
+                <RiskScoreInfo
+                  meaning="Number of unique countries contributing to portfolio exposure."
+                  calculation="Distinct count of country names found in portfolio country exposure analysis."
+                />
+              </div>
               <p className="text-lg font-bold text-white">{new Set(portfolioAnalysis.countryExposures.map((e) => e.country)).size}</p>
             </div>
           </div>
@@ -221,7 +252,13 @@ export function Summary({
 
         {/* Risk Factor Breakdown */}
         <div className="bg-zinc-900/30 border border-zinc-800 rounded p-3">
-          <p className="text-xs text-zinc-400 uppercase tracking-wide mb-3 font-medium">Active Risk Factors</p>
+          <div className="mb-3 flex items-center gap-1">
+            <p className="text-xs text-zinc-400 uppercase tracking-wide font-medium">Active Risk Factors</p>
+            <RiskScoreInfo
+              meaning="Relative weighting of the geopolitical factors currently driving model sensitivity."
+              calculation="Each factor is normalized as a percent of the total selected factor weights."
+            />
+          </div>
           <div className="grid grid-cols-5 gap-3">
             {normalizedRiskFactors.map((factor) => {
               const scoreValue = factor.normalizedScore;
@@ -250,6 +287,10 @@ export function Summary({
         <div className="flex items-center gap-2 mb-3">
           <Shield className="size-4 text-green-400" />
           <h3 className="text-sm font-semibold text-white">Key Insights</h3>
+          <RiskScoreInfo
+            meaning="Auto-generated interpretation of your portfolio's current geopolitical risk profile."
+            calculation="Built from current risk score, country exposure concentration, and dominant risk-factor weighting."
+          />
         </div>
         <div className="space-y-2 text-xs text-zinc-300">
           {insights.map((insight, idx) => (
@@ -265,6 +306,10 @@ export function Summary({
         <div className="flex items-center gap-2 mb-3">
           <Target className="size-4 text-blue-400" />
           <h3 className="text-sm font-semibold text-white">Recommendations</h3>
+          <RiskScoreInfo
+            meaning="Action-oriented suggestions to reduce risk concentration and improve resilience."
+            calculation="Generated from threshold rules based on total risk score, top-risk countries, and concentration checks."
+          />
         </div>
         <div className="space-y-2 text-xs text-zinc-300">
           {recommendations.map((rec, idx) => (
@@ -282,6 +327,10 @@ export function Summary({
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="size-4 text-orange-400" />
             <h3 className="text-sm font-semibold text-white">Top Risk Assets</h3>
+            <RiskScoreInfo
+              meaning="Assets contributing the most to total portfolio geopolitical risk."
+              calculation="Ranked by each asset's risk contribution score derived from dependency exposure and portfolio weighting."
+            />
           </div>
           <div className="space-y-2">
             {portfolioAnalysis.topRiskAssets.slice(0, 5).map((asset) => {
@@ -301,6 +350,10 @@ export function Summary({
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="size-4 text-red-400" />
             <h3 className="text-sm font-semibold text-white">Top Risk Countries</h3>
+            <RiskScoreInfo
+              meaning="Countries with the highest risk impact on your current holdings."
+              calculation="Ranked by aggregated country risk contribution from all assets with exposure to each country."
+            />
           </div>
           <div className="space-y-2">
             {portfolioAnalysis.topRiskCountries.slice(0, 5).map((country) => {
