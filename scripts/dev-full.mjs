@@ -35,37 +35,47 @@ function killChild(child) {
 async function run() {
   console.log('[dev:full] Starting API server (5001) and Vite client...');
 
-  const serverChild = spawn('node', ['server/server.js'], {
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      NODE_OPTIONS: process.env.NODE_OPTIONS || '--max_old_space_size=2048',
-    },
-    stdio: 'inherit',
-  });
+  let serverChild = null;
+  let managesServerLifecycle = false;
 
-  const serverExitPromise = once(serverChild, 'exit').then(([code, signal]) => ({
-    code,
-    signal,
-  }));
+  // Reuse an already running backend instead of spawning a second server that collides on port 5001.
+  const backendAlreadyRunning = await waitForHealth(API_HEALTH_URL, 1200);
+  if (backendAlreadyRunning) {
+    console.log('[dev:full] Reusing existing healthy API server on port 5001.');
+  } else {
+    managesServerLifecycle = true;
+    serverChild = spawn('node', ['server/server.js'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        NODE_OPTIONS: process.env.NODE_OPTIONS || '--max_old_space_size=2048',
+      },
+      stdio: 'inherit',
+    });
 
-  const serverReadyPromise = waitForHealth(API_HEALTH_URL, SERVER_START_TIMEOUT_MS);
-  const serverReadyOrExit = await Promise.race([
-    serverReadyPromise.then((ready) => ({ type: 'ready', ready })),
-    serverExitPromise.then((exit) => ({ type: 'exit', ...exit })),
-  ]);
+    const serverExitPromise = once(serverChild, 'exit').then(([code, signal]) => ({
+      code,
+      signal,
+    }));
 
-  if (serverReadyOrExit.type === 'exit') {
-    console.error(
-      `[dev:full] API server exited before ready (code=${serverReadyOrExit.code ?? 'null'}, signal=${serverReadyOrExit.signal ?? 'none'}).`
-    );
-    process.exit(typeof serverReadyOrExit.code === 'number' ? serverReadyOrExit.code : 1);
-  }
+    const serverReadyPromise = waitForHealth(API_HEALTH_URL, SERVER_START_TIMEOUT_MS);
+    const serverReadyOrExit = await Promise.race([
+      serverReadyPromise.then((ready) => ({ type: 'ready', ready })),
+      serverExitPromise.then((exit) => ({ type: 'exit', ...exit })),
+    ]);
 
-  if (!serverReadyOrExit.ready) {
-    console.error('[dev:full] API server did not become healthy within timeout.');
-    killChild(serverChild);
-    process.exit(1);
+    if (serverReadyOrExit.type === 'exit') {
+      console.error(
+        `[dev:full] API server exited before ready (code=${serverReadyOrExit.code ?? 'null'}, signal=${serverReadyOrExit.signal ?? 'none'}).`
+      );
+      process.exit(typeof serverReadyOrExit.code === 'number' ? serverReadyOrExit.code : 1);
+    }
+
+    if (!serverReadyOrExit.ready) {
+      console.error('[dev:full] API server did not become healthy within timeout.');
+      killChild(serverChild);
+      process.exit(1);
+    }
   }
 
   console.log('[dev:full] API is healthy. Starting Vite client...');
@@ -82,23 +92,29 @@ async function run() {
   const shutdown = (signal) => {
     console.log(`\n[dev:full] Received ${signal}. Stopping child processes...`);
     killChild(clientChild);
-    killChild(serverChild);
+    if (managesServerLifecycle) {
+      killChild(serverChild);
+    }
   };
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-  serverChild.on('exit', (code, signal) => {
-    if (!clientChild.killed) {
-      console.error(
-        `[dev:full] API server exited unexpectedly (code=${code ?? 'null'}, signal=${signal ?? 'none'}). Stopping client.`
-      );
-      killChild(clientChild);
-    }
-  });
+  if (serverChild) {
+    serverChild.on('exit', (code, signal) => {
+      if (!clientChild.killed) {
+        console.error(
+          `[dev:full] API server exited unexpectedly (code=${code ?? 'null'}, signal=${signal ?? 'none'}). Stopping client.`
+        );
+        killChild(clientChild);
+      }
+    });
+  }
 
   const [clientCode, clientSignal] = await once(clientChild, 'exit');
-  killChild(serverChild);
+  if (managesServerLifecycle) {
+    killChild(serverChild);
+  }
 
   if (typeof clientCode === 'number') {
     process.exit(clientCode);

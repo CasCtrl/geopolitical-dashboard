@@ -83,6 +83,19 @@ const allowedOrigins = env.ALLOWED_ORIGINS
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
+const localhostOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+
+function isAllowedOrigin(origin) {
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  if (env.NODE_ENV === 'development' && localhostOriginPattern.test(origin)) {
+    return true;
+  }
+
+  return false;
+}
 
 function logEvent(level, message, meta = {}) {
   const entry = {
@@ -271,7 +284,7 @@ app.use(helmet({
 }));
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || isAllowedOrigin(origin)) {
       callback(null, true);
       return;
     }
