@@ -1,16 +1,21 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+type ReportRecord = Record<string, unknown>;
+
+const formatSummaryNumber = (value: unknown): string =>
+  typeof value === 'number' ? value.toFixed(2) : 'N/A';
+
 interface ReportOptions {
   title: string;
   includeCharts: boolean;
   dateRange?: string;
-  portfolioSummary?: any;
+  portfolioSummary?: ReportRecord;
   countryRisks?: Record<string, number>;
-  holdings?: Array<Record<string, any>>;
-  trends?: Array<Record<string, any>>;
-  countryExposures?: Array<Record<string, any>>;
-  assetContributions?: Array<Record<string, any>>;
+  holdings?: Array<ReportRecord>;
+  trends?: Array<ReportRecord>;
+  countryExposures?: Array<ReportRecord>;
+  assetContributions?: Array<ReportRecord>;
   topRiskAssets?: Array<string>;
   topRiskCountries?: Array<string>;
   weights?: Record<string, number>;
@@ -74,9 +79,9 @@ export async function generatePDFReport(options: ReportOptions): Promise<void> {
     
     const summaryData = [
       [`Total Assets: ${portfolioSummary.totalAssets || 0}`],
-      [`Portfolio Risk Score: ${portfolioSummary.totalRiskScore?.toFixed(2) || 'N/A'}`],
+      [`Portfolio Risk Score: ${formatSummaryNumber(portfolioSummary.totalRiskScore)}`],
       [`Number of Countries: ${portfolioSummary.numberOfCountries || 0}`],
-      [`Average Risk: ${portfolioSummary.averageRisk?.toFixed(2) || 'N/A'}`],
+      [`Average Risk: ${formatSummaryNumber(portfolioSummary.averageRisk)}`],
     ];
 
     summaryData.forEach((data) => {
@@ -230,10 +235,13 @@ export async function generatePDFReport(options: ReportOptions): Promise<void> {
     pdf.line(chartX + innerPad, chartY + chartH - innerPad, chartX + chartW - innerPad, chartY + chartH - innerPad);
     pdf.line(chartX + innerPad, chartY + innerPad, chartX + innerPad, chartY + chartH - innerPad);
 
-    const normalized = trends.slice(-90).map((point: any, idx: number) => ({
-      x: idx,
-      y: Number(point?.value ?? point?.risk ?? point?.score ?? 0),
-    }));
+    const normalized = trends.slice(-90).map((point, idx: number) => {
+      const pointData = point as Record<string, unknown>;
+      return {
+        x: idx,
+        y: Number(pointData.value ?? pointData.risk ?? pointData.score ?? 0),
+      };
+    });
 
     const minX = 0;
     const maxX = Math.max(1, normalized.length - 1);
@@ -457,9 +465,9 @@ export async function generatePDFReport(options: ReportOptions): Promise<void> {
   }
 
   // Footer
-  const totalPages = (pdf as any).internal.pages.length - 1;
+  const totalPages = pdf.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
-    (pdf as any).setPage(i);
+    pdf.setPage(i);
     pdf.setFont('Helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(150, 150, 150);
@@ -478,7 +486,7 @@ export async function generateDetailedPDFReport(
   title: string,
   sections: Array<{
     heading: string;
-    content: string | Record<string, any>;
+    content: string | Record<string, unknown>;
   }>
 ): Promise<void> {
   const pdf = new jsPDF({

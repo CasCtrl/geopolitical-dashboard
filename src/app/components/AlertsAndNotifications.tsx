@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle, Bell, Plus, Trash2, Eye, CheckCircle2 } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -24,7 +24,12 @@ export function AlertsAndNotifications({ activeAlertCount }: AlertsAndNotificati
   const [thresholds, setThresholds] = useState<AlertThreshold[]>(getAllThresholds());
   const [alertEvents, setAlertEvents] = useState<AlertEvent[]>(getAllAlertEvents());
   const [showCreateThreshold, setShowCreateThreshold] = useState(false);
-  const [newThresholdData, setNewThresholdData] = useState({
+  const [newThresholdData, setNewThresholdData] = useState<{
+    name: string;
+    target: string;
+    threshold: number;
+    type: 'country' | 'portfolio' | 'sector';
+  }>({
     name: '',
     target: '',
     threshold: 60,
@@ -194,7 +199,7 @@ export function AlertsAndNotifications({ activeAlertCount }: AlertsAndNotificati
                   onChange={(e) =>
                     setNewThresholdData({
                       ...newThresholdData,
-                      type: e.target.value as any,
+                      type: e.target.value as 'country' | 'portfolio' | 'sector',
                     })
                   }
                   className="w-full px-2 py-1 text-xs bg-zinc-800 border border-zinc-700 rounded text-white"

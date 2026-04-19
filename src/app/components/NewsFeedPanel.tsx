@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Newspaper, AlertCircle, Loader, ExternalLink, TrendingUp } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Newspaper, Loader, ExternalLink } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { generateMockNews, parseNewsForRisk, newsToRiskEvent, type NewsArticle, type NewsRiskEvent } from '../data/newsIntegration';
@@ -11,7 +11,11 @@ interface NewsFeedPanelProps {
   refreshToken?: number;
 }
 
-export function NewsFeedPanel({ countryRisks, portfolioCountries, compact = false, refreshToken = 0 }: NewsFeedPanelProps) {
+type NewsApiPayload = {
+  articles?: unknown[];
+};
+
+export function NewsFeedPanel({ countryRisks: _countryRisks, portfolioCountries, compact = false, refreshToken = 0 }: NewsFeedPanelProps) {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [riskEvents, setRiskEvents] = useState<NewsRiskEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,15 +26,15 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries, compact = fals
   const loadNews = useCallback(async () => {
     setIsLoading(true);
     try {
-      let baseArticles: any[] = [];
+      let baseArticles: unknown[] = [];
 
       try {
         const response = await fetch('http://localhost:5001/api/news?limit=40');
         if (response.ok) {
-          const payload = await response.json();
+          const payload = (await response.json()) as NewsApiPayload;
           baseArticles = payload.articles || [];
         }
-      } catch (err) {
+      } catch {
         console.warn('[News] Bloomberg API route unavailable, using mock data');
       }
 

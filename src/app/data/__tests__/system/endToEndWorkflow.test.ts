@@ -8,8 +8,7 @@
  * 4. Decision-making scenarios
  */
 
-import { calculateRiskIndex, baseRiskData } from '../../countryRiskData';
-import { getPortfolioRiskMetrics } from '../../portfolioData';
+import { calculateRiskIndex } from '../../countryRiskData';
 
 /**
  * Test Suite: End-to-End System Workflows
@@ -117,13 +116,6 @@ describe('End-to-End System Workflows', () => {
     expect(crisisRisk).toBeGreaterThanOrEqual(0);
 
     // Portfolio with Taiwan exposure should show increased risk
-    const portfolio = {
-      assets: [
-        { country: 'Taiwan', value: 40000, name: 'TSMC' },
-        { country: 'United States', value: 60000, name: 'Apple' }
-      ]
-    };
-
     const normalPortfolioRisk = 
       (calculateRiskIndex('Taiwan', weights) * 40000 + 
        calculateRiskIndex('United States', weights) * 60000) / 100000;
@@ -323,14 +315,6 @@ describe('End-to-End System Workflows', () => {
    * 4. Verify original data unchanged
    */
   test('Workflow 6: Data should remain consistent across session operations', () => {
-    const originalPortfolio = {
-      id: 1,
-      name: 'Portfolio A',
-      assets: [
-        { country: 'United States', value: 100000 }
-      ]
-    };
-
     const weights = {
       political: 25,
       economic: 20,
@@ -343,14 +327,6 @@ describe('End-to-End System Workflows', () => {
     const originalRisk = calculateRiskIndex('United States', weights);
 
     // Switch to different dataset
-    const differentPortfolio = {
-      id: 2,
-      name: 'Portfolio B',
-      assets: [
-        { country: 'China', value: 100000 }
-      ]
-    };
-
     const differentRisk = calculateRiskIndex('China', weights);
 
     // Return to original

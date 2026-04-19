@@ -1,11 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { useMemo, useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { TrendingUp, TrendingDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { getPortfolioRiskTrend, getCountryTrend, getLatestSnapshot, getPreviousSnapshot, compareSnapshots, type CountryTrend } from '../data/historicalSnapshotManager';
+import { getPortfolioRiskTrend, getCountryTrend, getLatestSnapshot, getPreviousSnapshot, compareSnapshots } from '../data/historicalSnapshotManager';
 
 interface HistoricalTrendsProps {
   availableCountries?: string[];
@@ -15,7 +14,6 @@ interface HistoricalTrendsProps {
 export function HistoricalTrends({ availableCountries = [], onSelectCountry }: HistoricalTrendsProps) {
   const [selectedCountry, setSelectedCountry] = useState<string>(availableCountries[0] || '');
   const [timeRange, setTimeRange] = useState<number>(7); // days
-  const [comparisonMode, setComparisonMode] = useState(false);
 
   const portfolioTrend = useMemo(() => {
     return getPortfolioRiskTrend(timeRange);

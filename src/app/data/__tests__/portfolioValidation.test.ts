@@ -1,4 +1,4 @@
-import { defaultPortfolio, Asset } from '../portfolioData';
+import { defaultPortfolio } from '../portfolioData';
 
 describe('Portfolio Data Validation', () => {
   /**

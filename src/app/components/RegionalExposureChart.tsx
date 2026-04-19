@@ -79,7 +79,7 @@ export function RegionalExposureChart({ countryExposures }: RegionalExposureChar
                 borderRadius: "8px",
                 color: "#fff",
               }}
-              formatter={(value: any) => [`${value}%`, "Exposure"]}
+              formatter={(value: number) => [`${value}%`, "Exposure"]}
             />
             <Bar dataKey="exposure" radius={[0, 8, 8, 0]}>
               {data.map((entry, index) => (

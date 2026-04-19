@@ -1,13 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { Zap, TrendingDown, TrendingUp, Trash2, Play, Plus, BarChart3 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Zap, TrendingDown, Trash2, Play, BarChart3 } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Asset } from '../data/portfolioData';
 import {
-  createScenario,
   applyCrisisScenario,
   testRemoveAsset,
-  testAddAsset,
   getAllScenarios,
   deleteScenario,
   getCrisisScenarioTemplates,
@@ -28,7 +26,6 @@ export function ScenarioAnalysis({
 }: ScenarioAnalysisProps) {
   const [scenarios, setScenarios] = useState<PortfolioScenario[]>(getAllScenarios());
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
-  const [showCrisisTemplates, setShowCrisisTemplates] = useState(false);
   const [activeTab, setActiveTab] = useState<'scenarios' | 'crisis' | 'suggestions'>('scenarios');
 
   const crisisTemplates = useMemo(() => getCrisisScenarioTemplates(), []);
@@ -48,7 +45,6 @@ export function ScenarioAnalysis({
       const scenario = applyCrisisScenario(portfolio, crisis, currentCountryRisks);
       setScenarios([...scenarios, scenario]);
       setSelectedScenarioId(scenario.id);
-      setShowCrisisTemplates(false);
     }
   };
 

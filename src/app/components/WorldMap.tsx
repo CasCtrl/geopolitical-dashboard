@@ -20,9 +20,14 @@ interface CountryFeature {
   };
   geometry: {
     type: string;
-    coordinates: any;
+    coordinates: unknown;
   };
 }
+
+type GeoPoint = [number, number];
+type GeoRing = GeoPoint[];
+type GeoPolygon = GeoRing[];
+type GeoMultiPolygon = GeoPolygon[];
 
 // GeoJSON cache to avoid refetching
 let geoJSONCache: { features: CountryFeature[] } | null = null;
@@ -37,22 +42,22 @@ const getColor = (risk: number) => {
 };
 
 // Memoize coordinate path calculation
-const coordinatesToPath = (coordinates: any, type: string): string => {
+const coordinatesToPath = (coordinates: unknown, type: string): string => {
   if (!coordinates) return "";
   
   try {
     if (type === "Polygon") {
-      return coordinates.map((ring: any) => {
-        return ring.map((coord: any, i: number) => {
+      return (coordinates as GeoPolygon).map((ring: GeoRing) => {
+        return ring.map((coord: GeoPoint, i: number) => {
           const x = (coord[0] + 180) * (1000 / 360);
           const y = (90 - coord[1]) * (500 / 180);
           return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
         }).join(' ') + ' Z';
       }).join(' ');
     } else if (type === "MultiPolygon") {
-      return coordinates.map((polygon: any) => {
-        return polygon.map((ring: any) => {
-          return ring.map((coord: any, i: number) => {
+      return (coordinates as GeoMultiPolygon).map((polygon: GeoPolygon) => {
+        return polygon.map((ring: GeoRing) => {
+          return ring.map((coord: GeoPoint, i: number) => {
             const x = (coord[0] + 180) * (1000 / 360);
             const y = (90 - coord[1]) * (500 / 180);
             return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
@@ -74,7 +79,7 @@ interface CountryPathProps {
   index: number;
   riskData: { [key: string]: number };
   countryExposures?: { country: string; riskContribution: number; contributingAssets: string[] }[];
-  weights: any;
+  weights: WorldMapProps['weights'];
   onTooltipChange: (content: string | null, position: { x: number; y: number }) => void;
 }
 

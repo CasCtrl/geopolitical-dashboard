@@ -2,7 +2,7 @@ import sql from 'mssql';
 import fs from 'fs';
 import path from 'path';
 import csv from 'csv-parser';
-import { getPool, config } from './config.js';
+import { config } from './config.js';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -108,14 +108,14 @@ async function initializeDatabase() {
     if (bootstrapConn) {
       try {
         await bootstrapConn.close();
-      } catch (closeErr) {
+      } catch {
         // Ignore close errors
       }
     }
     if (conn) {
       try {
         await conn.close();
-      } catch (closeErr) {
+      } catch {
         // Ignore close errors
       }
     }
@@ -123,7 +123,8 @@ async function initializeDatabase() {
 }
 
 async function loadDataFromCSV(conn) {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
+    const run = async () => {
     try {
       const runQuery = async (queryText, params = {}) => {
         const request = conn.request();
@@ -226,7 +227,7 @@ async function loadDataFromCSV(conn) {
                   `INSERT INTO Countries (name, baseRiskScore) VALUES ${valueClauses}`,
                   params
                 );
-              } catch (err) {
+              } catch {
                 // Countries might already exist, continue
               }
             }
@@ -246,7 +247,7 @@ async function loadDataFromCSV(conn) {
                   `INSERT INTO Sectors (name) VALUES ${valueClauses}`,
                   params
                 );
-              } catch (err) {
+              } catch {
                 // Sectors might already exist, continue
               }
             }
@@ -262,7 +263,7 @@ async function loadDataFromCSV(conn) {
                     desc: { value: dataset.datasetDescription, type: sql.NVarChar(500) },
                   }
                 );
-              } catch (err) {
+              } catch {
                 // Dataset might already exist, skip
               }
             }
@@ -302,7 +303,7 @@ async function loadDataFromCSV(conn) {
                    VALUES ${valueClauses}`,
                   params
                 );
-              } catch (err) {
+              } catch {
                 console.warn('⚠ Some assets already exist, continuing...');
               }
             }
@@ -330,7 +331,7 @@ async function loadDataFromCSV(conn) {
                    VALUES ${valueClauses}`,
                   params
                 );
-              } catch (err) {
+              } catch {
                 console.warn('⚠ Some dependencies already exist, continuing...');
               }
             }
@@ -350,6 +351,9 @@ async function loadDataFromCSV(conn) {
     } catch (err) {
       reject(err);
     }
+    };
+
+    run();
   });
 }
 

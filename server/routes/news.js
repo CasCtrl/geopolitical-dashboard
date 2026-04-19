@@ -1,6 +1,15 @@
 import express from 'express';
+import { ApiError } from '../middleware/apiError.js';
+import { z, validateQuery } from '../middleware/validate.js';
 
 const router = express.Router();
+const newsQuerySchema = z.object({
+  limit: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform(value => Number.parseInt(String(value ?? '30'), 10))
+    .refine(value => Number.isFinite(value) && value > 0 && value <= 100, 'limit must be between 1 and 100'),
+});
 
 const BLOOMBERG_FEEDS = [
   'https://feeds.bloomberg.com/markets/news.rss',
@@ -81,8 +90,8 @@ function scoreWorldRelevance(article) {
   }, 0);
 }
 
-router.get('/news', async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit || '30', 10), 100);
+router.get('/news', validateQuery(newsQuerySchema), async (req, res, next) => {
+  const { limit } = req.query;
 
   try {
     const responses = await Promise.allSettled(
@@ -122,15 +131,8 @@ router.get('/news', async (req, res) => {
       timestamp: new Date().toISOString(),
       articles: sorted,
     });
-  } catch (error) {
-    console.error('Failed to fetch Bloomberg news:', error);
-    res.status(502).json({
-      source: 'Bloomberg RSS',
-      count: 0,
-      timestamp: new Date().toISOString(),
-      articles: [],
-      error: 'Unable to fetch Bloomberg news feed',
-    });
+  } catch {
+    next(new ApiError(502, 'NEWS_FETCH_FAILED', 'Unable to fetch Bloomberg news feed'));
   }
 });
 

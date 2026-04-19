@@ -1,5 +1,4 @@
-import { calculatePortfolioRisk, defaultPortfolio, Asset } from '../portfolioData';
-import { calculateRiskIndex } from '../countryRiskData';
+import { calculatePortfolioRisk, defaultPortfolio } from '../portfolioData';
 
 describe('Portfolio Risk Calculation', () => {
   /**

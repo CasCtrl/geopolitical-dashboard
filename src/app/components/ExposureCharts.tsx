@@ -83,7 +83,7 @@ export function ExposureCharts({
                   borderRadius: "8px",
                   color: "#fff",
                 }}
-                formatter={(value: any, name: string) => {
+                formatter={(value: number, name: string) => {
                   if (name === "exposure") return [`${value}%`, "Exposure"];
                   return [value, name];
                 }}
@@ -135,7 +135,7 @@ export function ExposureCharts({
                     borderRadius: "8px",
                     color: "#fff",
                   }}
-                  formatter={(value: any) => [`${value.toFixed(1)}`, "Risk Score"]}
+                  formatter={(value: number) => [`${value.toFixed(1)}`, "Risk Score"]}
                 />
               </PieChart>
             </ResponsiveContainer>

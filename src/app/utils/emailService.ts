@@ -22,13 +22,20 @@ interface EmailOptions {
   }>;
 }
 
+interface EmailSendResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  timestamp: string;
+}
+
 let transporter: nodemailer.Transporter | null = null;
 
 export function initializeEmailService(config: EmailConfig): void {
   transporter = nodemailer.createTransport(config);
 }
 
-export async function sendReportEmail(options: EmailOptions): Promise<any> {
+export async function sendReportEmail(options: EmailOptions): Promise<EmailSendResult> {
   if (!transporter) {
     throw new Error('Email service not initialized. Call initializeEmailService first.');
   }
@@ -60,7 +67,7 @@ export async function sendReportEmail(options: EmailOptions): Promise<any> {
 export function generateReportEmailHTML(
   reportTitle: string,
   recipientName: string,
-  reportSummary: Record<string, any>
+  reportSummary: Record<string, unknown>
 ): string {
   return `
     <!DOCTYPE html>

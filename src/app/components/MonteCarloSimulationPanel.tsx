@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { TrendingUp, BarChart3, Zap } from 'lucide-react';
 import { Card } from './ui/card';
-import { Button } from './ui/button';
-import { runMonteCarloSimulation, getRiskDistribution, getPercentileDistribution, type MonteCarloResults } from '../data/monteCarloEngine';
+import { runMonteCarloSimulation, getRiskDistribution, getPercentileDistribution } from '../data/monteCarloEngine';
 import { TrendDataPoint } from '../data/historicalSnapshotManager';
 
 interface MonteCarloSimulationPanelProps {

@@ -1,12 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { Network, TrendingUp, AlertCircle, Lightbulb } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Network, TrendingUp, Lightbulb } from 'lucide-react';
 import { Card } from './ui/card';
 import {
   buildCorrelationMatrix,
   analyzeRegionalCorrelations,
   findDiversificationOpportunities,
   analyzeRiskWithCorrelations,
-  type CorrelationMatrix,
 } from '../data/correlationAnalysis';
 
 interface CorrelationAnalysisPanelProps {

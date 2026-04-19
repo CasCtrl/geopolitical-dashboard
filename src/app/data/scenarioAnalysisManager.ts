@@ -374,7 +374,7 @@ export function getScenariosByType(type: "custom" | "crisis" | "rebalance"): Por
 export function getRebalancingSuggestions(
   portfolio: Asset[],
   currentCountryRisks: { [country: string]: number },
-  targetRiskReduction: number = 10 // Target 10% risk reduction
+  _targetRiskReduction: number = 10 // Target 10% risk reduction
 ): {
   suggestions: Array<{
     action: "remove" | "reduce" | "add";

@@ -1,19 +1,16 @@
-import React, { useMemo } from 'react';
-import { TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+import { useMemo } from 'react';
+import { TrendingUp, AlertCircle } from 'lucide-react';
 import { Card } from './ui/card';
 import { 
   calculateAllMetrics, 
   analyzeRiskAttribution, 
   compareToBenchmark,
-  type RiskMetrics,
-  type AttributionAnalysis,
-  type BenchmarkComparison 
 } from '../data/advancedMetrics';
 import { TrendDataPoint } from '../data/historicalSnapshotManager';
 
 interface RiskMetricsPanelProps {
   trendData: TrendDataPoint[];
-  countryRisks: { [country: string]: any };
+  countryRisks: { [country: string]: number };
   weights: {
     political: number;
     economic: number;

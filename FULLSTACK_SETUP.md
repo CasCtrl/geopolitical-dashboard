@@ -82,6 +82,13 @@ Edit `server/.env` to change:
 - `DB_PASSWORD` - SQL Server password (default: YourPassword123!)
 - `SERVER_PORT` - Backend port (default: 5001)
 
+Copy `server/.env.example` to `server/.env` for a complete baseline config.
+
+Additional runtime controls:
+- `DB_CONNECT_STRICT` - when `true`, backend startup fails if DB connection fails.
+- `DB_INIT_ENABLED` - when `true`, schema/data initialization runs during startup.
+- `AUTH_REQUIRED` + `API_TOKEN` - enables token auth on `/api/*` routes.
+
 ## Stopping Services
 
 Stop SQL Server:

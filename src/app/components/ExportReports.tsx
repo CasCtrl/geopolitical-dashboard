@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Download, FileText, Mail, Settings, CheckCircle } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -8,10 +8,16 @@ import { generatePDFReport } from '../utils/pdfGenerator';
 import { exportToExcel, exportToCSV } from '../utils/excelExporter';
 
 interface ExportReportsProps {
-  portfolioSummary?: any;
+  portfolioSummary?: {
+    totalRiskScore?: number;
+    countryExposures?: Array<{ country: string; riskContribution: number; contributingAssets: string[] }>;
+    assetContributions?: Array<{ ticker: string; riskScore: number; mainRisk?: string }>;
+    topRiskAssets?: string[];
+    topRiskCountries?: string[];
+  };
   countryRisks?: Record<string, number>;
-  holdings?: Array<any>;
-  trends?: Array<any>;
+  holdings?: Array<unknown>;
+  trends?: Array<unknown>;
   weights?: {
     political: number;
     economic: number;
@@ -58,9 +64,9 @@ export function ExportReports({
     .sort((a, b) => b[1] - a[1])
     .slice(0, 20);
 
-  const trendPoints = (trends || []).slice(0, 30).map((point: any, index) => ({
+  const trendPoints = (trends || []).slice(0, 30).map((point, index) => ({
     index,
-    value: Number(point?.value ?? point?.risk ?? point?.score ?? 0),
+    value: Number((point as Record<string, unknown>)?.value ?? (point as Record<string, unknown>)?.risk ?? (point as Record<string, unknown>)?.score ?? 0),
   }));
 
   const getHeatColor = (score: number) => {
@@ -109,14 +115,26 @@ export function ExportReports({
                   ? Object.values(countryRisks).reduce((sum, val) => sum + val, 0) / Object.keys(countryRisks).length
                   : undefined,
               totalPortfolioValue:
-                holdings?.reduce((sum, asset) => sum + Number(asset?.value || 0), 0) ?? 0,
+                holdings?.reduce(
+                  (sum: number, asset: unknown) =>
+                    sum + Number((asset as { value?: unknown })?.value || 0),
+                  0
+                ) ?? 0,
             }
           : undefined,
         countryRisks: selectedPages.countryAnalysis ? countryRisks : undefined,
-        holdings: selectedPages.holdings ? holdings : undefined,
-        trends: selectedPages.historicalTrends ? trends : undefined,
-        countryExposures: selectedPages.countryAnalysis ? portfolioSummary?.countryExposures : undefined,
-        assetContributions: selectedPages.portfolioSummary ? portfolioSummary?.assetContributions : undefined,
+        holdings: selectedPages.holdings
+          ? (holdings as Array<Record<string, unknown>>)
+          : undefined,
+        trends: selectedPages.historicalTrends
+          ? (trends as Array<Record<string, unknown>>)
+          : undefined,
+        countryExposures: selectedPages.countryAnalysis
+          ? (portfolioSummary?.countryExposures as Array<Record<string, unknown>> | undefined)
+          : undefined,
+        assetContributions: selectedPages.portfolioSummary
+          ? (portfolioSummary?.assetContributions as Array<Record<string, unknown>> | undefined)
+          : undefined,
         topRiskAssets: selectedPages.portfolioSummary ? portfolioSummary?.topRiskAssets : undefined,
         topRiskCountries: selectedPages.countryAnalysis ? portfolioSummary?.topRiskCountries : undefined,
         weights: selectedPages.portfolioSummary ? weights : undefined,
@@ -262,7 +280,7 @@ export function ExportReports({
                   {['pdf', 'excel', 'csv'].map((format) => (
                     <button
                       key={format}
-                      onClick={() => setSelectedFormat(format as any)}
+                      onClick={() => setSelectedFormat(format as 'pdf' | 'excel' | 'csv')}
                       className={`p-3 rounded-lg border transition ${
                         selectedFormat === format
                           ? 'bg-zinc-700 border-zinc-600 text-zinc-100'

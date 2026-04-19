@@ -1,21 +1,37 @@
 import express from 'express';
+import { ApiError } from '../middleware/apiError.js';
+import { z, validateBody } from '../middleware/validate.js';
 
 const router = express.Router();
+
+const generateReportBodySchema = z.object({
+  format: z.string().min(1),
+  title: z.string().min(1),
+  portfolioData: z.unknown().optional(),
+  countryRisks: z.unknown().optional(),
+  includeCharts: z.boolean().optional(),
+});
+
+const emailReportBodySchema = z.object({
+  recipientEmail: z.string().email(),
+  subject: z.string().min(1),
+  reportData: z.unknown().optional(),
+});
+
+const scheduleReportBodySchema = z.object({
+  title: z.string().min(1),
+  format: z.string().min(1),
+  frequency: z.string().min(1),
+  recipientEmail: z.string().email(),
+});
 
 /**
  * POST /api/reports/generate
  * Generate and download a report
  */
-router.post('/generate', async (req, res) => {
+router.post('/generate', validateBody(generateReportBodySchema), async (req, res, next) => {
   try {
-    const { format, title, portfolioData, countryRisks, includeCharts } = req.body;
-
-    if (!format || !title) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: format, title',
-      });
-    }
+    const { format, title, includeCharts } = req.body;
 
     const timestamp = new Date().toISOString();
     const filename = `${title.replace(/\s+/g, '_')}_${timestamp.split('T')[0]}`;
@@ -37,12 +53,8 @@ router.post('/generate', async (req, res) => {
         metadata: reportMetadata,
       },
     });
-  } catch (error) {
-    console.error('Error generating report:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-    });
+  } catch {
+    next(new ApiError(500, 'REPORT_GENERATE_FAILED', 'Failed to generate report'));
   }
 });
 
@@ -50,25 +62,9 @@ router.post('/generate', async (req, res) => {
  * POST /api/reports/email
  * Send report via email
  */
-router.post('/email', async (req, res) => {
+router.post('/email', validateBody(emailReportBodySchema), async (req, res, next) => {
   try {
-    const { recipientEmail, subject, reportData } = req.body;
-
-    if (!recipientEmail || !subject) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: recipientEmail, subject',
-      });
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(recipientEmail)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid email address',
-      });
-    }
+    const { recipientEmail } = req.body;
 
     // In production, integrate with actual email service (SendGrid, AWS SES, etc.)
     // For now, just simulate the request
@@ -78,12 +74,8 @@ router.post('/email', async (req, res) => {
       recipient: recipientEmail,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('Error sending report email:', error);
-    res.status(500).json({
-      success: false,
-      error: error && error.message ? error.message : 'Unknown error occurred',
-    });
+  } catch {
+    next(new ApiError(500, 'REPORT_EMAIL_FAILED', 'Failed to send report email'));
   }
 });
 
@@ -129,16 +121,9 @@ router.get('/templates', (req, res) => {
  * POST /api/reports/schedule
  * Schedule a report for regular delivery
  */
-router.post('/schedule', async (req, res) => {
+router.post('/schedule', validateBody(scheduleReportBodySchema), async (req, res, next) => {
   try {
     const { title, format, frequency, recipientEmail } = req.body;
-
-    if (!title || !format || !frequency || !recipientEmail) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields',
-      });
-    }
 
     res.json({
       success: true,
@@ -152,12 +137,8 @@ router.post('/schedule', async (req, res) => {
         nextRun: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       },
     });
-  } catch (error) {
-    console.error('Error scheduling report:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-    });
+  } catch {
+    next(new ApiError(500, 'REPORT_SCHEDULE_FAILED', 'Failed to schedule report'));
   }
 });
 

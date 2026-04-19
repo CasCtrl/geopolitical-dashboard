@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { TrendingUp, AlertTriangle, BarChart3, Play } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -14,7 +14,7 @@ interface MonteCarloPanelProps {
 export function MonteCarloPanel({
   currentRisk,
   trendData,
-  portfolioExposures,
+  portfolioExposures: _portfolioExposures,
 }: MonteCarloPanelProps) {
   const [results, setResults] = useState<MonteCarloResults | null>(null);
   const [isRunning, setIsRunning] = useState(false);

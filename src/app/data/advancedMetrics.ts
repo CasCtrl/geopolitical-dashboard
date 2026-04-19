@@ -271,7 +271,7 @@ export function calculateAllMetrics(trendData: TrendDataPoint[]): RiskMetrics {
  * Analyze risk attribution by factor and country
  */
 export function analyzeRiskAttribution(
-  countryRisks: { [country: string]: any },
+  countryRisks: { [country: string]: unknown },
   weights: {
     political: number;
     economic: number;
@@ -294,7 +294,7 @@ export function analyzeRiskAttribution(
     totalTerrorism = 0;
 
   for (const country in countryRisks) {
-    const risk = countryRisks[country] || {};
+    const risk = (countryRisks[country] || {}) as Record<string, unknown>;
     totalPolitical += safeNumber(risk.political) * safeNumber(weights.political);
     totalEconomic += safeNumber(risk.economic) * safeNumber(weights.economic);
     totalConflict += safeNumber(risk.conflict) * safeNumber(weights.conflict);

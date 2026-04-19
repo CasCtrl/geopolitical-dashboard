@@ -1,28 +1,24 @@
-import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { randomUUID } from 'crypto';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import env from './config/env.js';
 import { getPool } from './db/config.js';
 import { initializeDatabase } from './db/init.js';
+import { ApiError, sendApiError } from './middleware/apiError.js';
 import assetsRoutes from './routes/assets.js';
 import reportsRoutes from './routes/reports.js';
 import newsRoutes from './routes/news.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '.env') });
-
 const app = express();
-const PORT = process.env.SERVER_PORT || 5001;
-const APP_VERSION = process.env.APP_VERSION || '1.1';
-const AUTH_REQUIRED = process.env.AUTH_REQUIRED === 'true';
-const API_TOKEN = process.env.API_TOKEN;
-const ADMIN_ROLE = process.env.ADMIN_ROLE || 'admin';
+const PORT = env.SERVER_PORT;
+const APP_VERSION = env.APP_VERSION;
+const AUTH_REQUIRED = env.AUTH_REQUIRED;
+const API_TOKEN = env.API_TOKEN;
+const ADMIN_ROLE = env.ADMIN_ROLE;
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003')
+const allowedOrigins = env.ALLOWED_ORIGINS
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
@@ -65,7 +61,12 @@ function authMiddleware(req, res, next) {
   const providedToken = bearerToken || (typeof apiKey === 'string' ? apiKey.trim() : '');
 
   if (!API_TOKEN || providedToken !== API_TOKEN) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return sendApiError(res, {
+      statusCode: 401,
+      code: 'UNAUTHORIZED',
+      message: 'Unauthorized',
+      requestId: req.requestId,
+    });
   }
 
   req.user = { role: getRequestRole(req), authMode: 'token' };
@@ -76,7 +77,12 @@ function requireRoles(allowedRoles) {
   return (req, res, next) => {
     const role = req.user?.role || 'viewer';
     if (!allowedRoles.includes(role)) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return sendApiError(res, {
+        statusCode: 403,
+        code: 'FORBIDDEN',
+        message: 'Forbidden',
+        requestId: req.requestId,
+      });
     }
     return next();
   };
@@ -92,7 +98,7 @@ app.use(cors({
       return;
     }
 
-    callback(new Error('Not allowed by CORS'));
+    callback(new ApiError(403, 'CORS_ORIGIN_DENIED', 'Not allowed by CORS'));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: false,
@@ -106,13 +112,21 @@ app.use((req, res, next) => {
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: Number.parseInt(process.env.RATE_LIMIT_MAX || '300', 10),
+  limit: env.RATE_LIMIT_MAX,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  handler: (req, res) => {
+    sendApiError(res, {
+      statusCode: 429,
+      code: 'RATE_LIMITED',
+      message: 'Too many requests',
+      requestId: req.requestId,
+    });
+  },
 });
 
 app.use('/api', apiLimiter);
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 app.use((req, res, next) => {
   const startedAt = Date.now();
@@ -162,6 +176,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: APP_VERSION, timestamp: new Date().toISOString() });
 });
 
+// Backward-compatible health endpoint used by the frontend settings panel.
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', version: APP_VERSION, timestamp: new Date().toISOString() });
+});
+
 app.get('/ready', async (req, res) => {
   const dbPool = await getPool();
   const ready = Boolean(dbPool?.connected);
@@ -174,16 +193,27 @@ app.get('/ready', async (req, res) => {
 });
 
 app.use((err, req, res, next) => {
+  void next;
+  const isApiError = err instanceof ApiError;
+  const statusCode = isApiError ? err.statusCode : 500;
+  const code = isApiError ? err.code : 'INTERNAL_ERROR';
+  const message = isApiError ? err.message : 'Internal server error';
+
   logEvent('error', 'request.failed', {
     requestId: req.requestId,
     method: req.method,
     path: req.originalUrl,
-    message: err.message,
+    code,
+    message,
+    details: isApiError ? err.details : undefined,
     stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
   });
 
-  res.status(500).json({
-    error: 'Internal server error',
+  return sendApiError(res, {
+    statusCode,
+    code,
+    message,
+    details: isApiError ? err.details : undefined,
     requestId: req.requestId,
   });
 });
@@ -204,12 +234,33 @@ process.on('uncaughtException', error => {
 // Initialize database and start server
 async function start() {
   try {
-    logEvent('info', 'server.starting', { port: PORT, authRequired: AUTH_REQUIRED });
-    
-    // Initialize database (non-blocking)
-    initializeDatabase().catch(err => {
-      logEvent('error', 'database.init.failed', { message: err.message });
+    logEvent('info', 'server.starting', {
+      port: PORT,
+      authRequired: AUTH_REQUIRED,
+      nodeEnv: env.NODE_ENV,
+      dbConnectStrict: env.DB_CONNECT_STRICT,
+      dbInitEnabled: env.DB_INIT_ENABLED,
     });
+
+    // Try a warm DB connection at startup and continue in degraded mode when unavailable.
+    try {
+      await getPool();
+    } catch (dbErr) {
+      logEvent('error', 'database.connect.failed', {
+        message: dbErr instanceof Error ? dbErr.message : String(dbErr),
+      });
+
+      if (env.DB_CONNECT_STRICT) {
+        throw dbErr;
+      }
+    }
+    
+    // Initialize database schema/data in the background when enabled.
+    if (env.DB_INIT_ENABLED) {
+      initializeDatabase().catch(err => {
+        logEvent('error', 'database.init.failed', { message: err.message });
+      });
+    }
 
     // Start server
     app.listen(PORT, () => {

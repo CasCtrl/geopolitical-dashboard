@@ -1,11 +1,14 @@
 import express from 'express';
 import sql from 'mssql';
 import { getPool } from '../db/config.js';
+import { ApiError } from '../middleware/apiError.js';
+import { z, validateParams } from '../middleware/validate.js';
 
 const router = express.Router();
+const datasetParamsSchema = z.object({ datasetId: z.string().min(1).max(50) });
 
 // Get all datasets
-router.get('/datasets', async (req, res) => {
+router.get('/datasets', async (req, res, next) => {
   try {
     const pool = await getPool();
     if (!pool) {
@@ -14,14 +17,13 @@ router.get('/datasets', async (req, res) => {
     }
     const result = await pool.query('SELECT * FROM Datasets');
     res.json(result.recordset);
-  } catch (err) {
-    console.error('Error fetching datasets:', err);
-    res.status(500).json({ error: err.message });
+  } catch {
+    next(new ApiError(500, 'DATASETS_FETCH_FAILED', 'Failed to fetch datasets'));
   }
 });
 
 // Get assets for a specific dataset
-router.get('/assets/:datasetId', async (req, res) => {
+router.get('/assets/:datasetId', validateParams(datasetParamsSchema), async (req, res, next) => {
   try {
     const pool = await getPool();
     if (!pool) {
@@ -39,14 +41,13 @@ router.get('/assets/:datasetId', async (req, res) => {
     `);
 
     res.json(result.recordset);
-  } catch (err) {
-    console.error('Error fetching assets:', err);
-    res.status(500).json({ error: err.message });
+  } catch {
+    next(new ApiError(500, 'ASSETS_FETCH_FAILED', 'Failed to fetch assets'));
   }
 });
 
 // Get country dependencies for a specific dataset
-router.get('/dependencies/:datasetId', async (req, res) => {
+router.get('/dependencies/:datasetId', validateParams(datasetParamsSchema), async (req, res, next) => {
   try {
     const pool = await getPool();
     if (!pool) {
@@ -64,14 +65,13 @@ router.get('/dependencies/:datasetId', async (req, res) => {
     `);
 
     res.json(result.recordset);
-  } catch (err) {
-    console.error('Error fetching dependencies:', err);
-    res.status(500).json({ error: err.message });
+  } catch {
+    next(new ApiError(500, 'DEPENDENCIES_FETCH_FAILED', 'Failed to fetch dependencies'));
   }
 });
 
 // Get countries with base risk scores
-router.get('/countries', async (req, res) => {
+router.get('/countries', async (req, res, next) => {
   try {
     const pool = await getPool();
     if (!pool) {
@@ -80,14 +80,13 @@ router.get('/countries', async (req, res) => {
     }
     const result = await pool.query('SELECT name, baseRiskScore FROM Countries ORDER BY name');
     res.json(result.recordset);
-  } catch (err) {
-    console.error('Error fetching countries:', err);
-    res.status(500).json({ error: err.message });
+  } catch {
+    next(new ApiError(500, 'COUNTRIES_FETCH_FAILED', 'Failed to fetch countries'));
   }
 });
 
 // Get complete portfolio data for a dataset - OPTIMIZED with JOINs
-router.get('/portfolio/:datasetId', async (req, res) => {
+router.get('/portfolio/:datasetId', validateParams(datasetParamsSchema), async (req, res, next) => {
   try {
     const pool = await getPool();
     if (!pool) {
@@ -167,14 +166,13 @@ router.get('/portfolio/:datasetId', async (req, res) => {
         countries: countriesResult.recordset,
       },
     });
-  } catch (err) {
-    console.error('Error fetching portfolio:', err);
-    res.status(500).json({ error: err.message });
+  } catch {
+    next(new ApiError(500, 'PORTFOLIO_FETCH_FAILED', 'Failed to fetch portfolio data'));
   }
 });
 
 // Optimized endpoint to get assets and dependencies together (for client-side parallel requests)
-router.get('/assets-with-deps/:datasetId', async (req, res) => {
+router.get('/assets-with-deps/:datasetId', validateParams(datasetParamsSchema), async (req, res, next) => {
   try {
     const pool = await getPool();
     if (!pool) {
@@ -230,9 +228,8 @@ router.get('/assets-with-deps/:datasetId', async (req, res) => {
     });
 
     res.json(Array.from(assetsMap.values()));
-  } catch (err) {
-    console.error('Error fetching assets with dependencies:', err);
-    res.status(500).json({ error: err.message });
+  } catch {
+    next(new ApiError(500, 'ASSETS_WITH_DEPENDENCIES_FETCH_FAILED', 'Failed to fetch assets with dependencies'));
   }
 });
 

@@ -97,7 +97,7 @@ export function parseCSVHoldings(csvText: string): HoldingAsset[] {
     const values = lines[i].split(',').map((v) => v.trim());
     if (values.length < headers.length) continue;
 
-    const asset: any = {};
+    const asset: Record<string, string> = {};
     headers.forEach((header, index) => {
       asset[header] = values[index];
     });

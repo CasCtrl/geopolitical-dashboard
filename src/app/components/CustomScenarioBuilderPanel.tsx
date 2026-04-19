@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2, Play, Copy, Settings } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -6,7 +6,6 @@ import {
   createCustomScenario,
   getCustomScenarios,
   deleteCustomScenario,
-  getScenarioById,
   testCustomScenario,
   generateFromTemplate,
   SCENARIO_TEMPLATES,
@@ -18,7 +17,7 @@ interface CustomScenarioBuilderPanelProps {
   baselineCountryRisks: { [country: string]: number };
   portfolioExposures: Array<{ country: string; riskContribution: number; name: string }>;
   currentRisk: number;
-  onScenarioTest?: (result: any) => void;
+  onScenarioTest?: (result: ReturnType<typeof testCustomScenario>) => void;
 }
 
 export function CustomScenarioBuilderPanel({
@@ -31,7 +30,7 @@ export function CustomScenarioBuilderPanel({
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState<CustomScenario | null>(null);
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<ReturnType<typeof testCustomScenario> | null>(null);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -182,7 +181,9 @@ export function CustomScenarioBuilderPanel({
               <label className="text-xs text-zinc-400 mb-1 block">Severity</label>
               <select
                 value={formSeverity}
-                onChange={(e) => setFormSeverity(e.target.value as any)}
+                onChange={(e) =>
+                  setFormSeverity(e.target.value as 'low' | 'medium' | 'high' | 'critical')
+                }
                 className="w-full text-xs bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-zinc-100"
               >
                 <option value="low">Low</option>
@@ -373,7 +374,7 @@ export function CustomScenarioBuilderPanel({
             <div>
               <p className="text-xs font-semibold text-zinc-300 mb-2">Most Affected Holdings</p>
               <div className="space-y-1 max-h-32 overflow-y-auto">
-                {testResult.affectedHoldings.slice(0, 5).map((holding: any, idx: number) => (
+                {testResult.affectedHoldings.slice(0, 5).map((holding, idx: number) => (
                   <div key={idx} className="text-xs p-2 bg-zinc-900 rounded flex justify-between">
                     <span className="text-zinc-300">{holding.name}</span>
                     <span className="text-orange-400">+{holding.stressedRisk - holding.baseRisk}</span>

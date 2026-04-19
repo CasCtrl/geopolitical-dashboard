@@ -9,6 +9,14 @@ interface FileData {
   }
 }
 
+interface FigmaClient {
+  file: (fileId: string) => Promise<unknown>;
+}
+
+type FigmaModule = {
+  Client: (args: { personalAccessToken: string }) => FigmaClient;
+};
+
 /**
  * FigmaIntegration Component
  *
@@ -42,7 +50,7 @@ export default function FigmaIntegration() {
       }
 
       // Initialize Figma client
-      const client = new (Figma as any).Client({ personalAccessToken: token })
+      const client = (Figma as unknown as FigmaModule).Client({ personalAccessToken: token })
 
       // Fetch file data
       const file = await client.file(fileId)

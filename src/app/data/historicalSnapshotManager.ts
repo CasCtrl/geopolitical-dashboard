@@ -4,7 +4,6 @@
  * Supports querying trends by country, date range, and sector
  */
 
-import { Asset, PortfolioExposure } from "./portfolioData";
 import { CountryRisk } from "./countryRiskData";
 
 export interface RiskSnapshot {
@@ -87,9 +86,9 @@ export function getAllSnapshots(): RiskSnapshot[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return [];
-    const snapshots = JSON.parse(stored);
+    const snapshots = JSON.parse(stored) as Array<Omit<RiskSnapshot, 'date'>>;
     // Parse date strings back to Date objects
-    return snapshots.map((s: any) => ({
+    return snapshots.map((s) => ({
       ...s,
       date: new Date(s.timestamp),
     }));
@@ -345,7 +344,7 @@ export function initializeHistoricalData(
       snapshotDate.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60), 0, 0);
 
       // Create country risks with natural variations from base data
-      const countryRisks: { [country: string]: any } = {};
+      const countryRisks: { [country: string]: CountryRisk } = {};
       let totalRisk = 0;
 
       baseCountries.forEach((country) => {

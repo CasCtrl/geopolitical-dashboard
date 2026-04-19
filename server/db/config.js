@@ -1,11 +1,12 @@
 import sql from 'mssql';
+import env from '../config/env.js';
 
 const config = {
-  server: process.env.DB_SERVER || 'localhost',
-  database: process.env.DB_DATABASE || 'geopolitical_dashboard',
-  user: process.env.DB_USER || 'sa',
-  password: process.env.DB_PASSWORD || 'YourPassword123!',
-  port: parseInt(process.env.DB_PORT) || 1433,
+  server: env.DB_SERVER,
+  database: env.DB_DATABASE,
+  user: env.DB_USER,
+  password: env.DB_PASSWORD,
+  port: env.DB_PORT,
   pool: {
     max: 10,
     min: 0,
@@ -26,7 +27,11 @@ async function getPool() {
       console.log('✓ Connected to SQL Server');
     } catch (err) {
       pool = null;
-      console.warn('⚠ SQL Server connection failed:', err.message);
+      if (env.DB_CONNECT_STRICT) {
+        throw err;
+      }
+
+      console.warn('⚠ SQL Server connection failed (continuing in degraded mode):', err.message);
       return null;
     }
   }

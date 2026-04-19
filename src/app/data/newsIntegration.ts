@@ -26,6 +26,16 @@ export interface NewsRiskEvent {
   category: string;
 }
 
+type SourceArticle = {
+  title?: string;
+  description?: string;
+  content?: string;
+  source?: { name?: string };
+  url?: string;
+  urlToImage?: string;
+  publishedAt?: string;
+};
+
 const STORAGE_KEY_NEWS = 'geopolitical_news_cache';
 const NEWS_CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
@@ -95,9 +105,10 @@ const COUNTRY_KEYWORDS: { [key: string]: string[] } = {
 /**
  * Parse news article for risk information
  */
-export function parseNewsForRisk(article: any): NewsArticle | null {
-  const title = article.title || '';
-  const description = article.description || article.content || '';
+export function parseNewsForRisk(article: unknown): NewsArticle | null {
+  const sourceArticle = (article as SourceArticle) || {};
+  const title = sourceArticle.title || '';
+  const description = sourceArticle.description || sourceArticle.content || '';
   const fullText = `${title} ${description}`.toLowerCase();
 
   // Extract countries
@@ -127,7 +138,7 @@ export function parseNewsForRisk(article: any): NewsArticle | null {
       const score = Math.min(100, occurrences * 10);
       if (score > maxScore) {
         maxScore = score;
-        category = cat as any;
+        category = cat as NewsArticle['category'];
       }
     }
   }
@@ -147,10 +158,10 @@ export function parseNewsForRisk(article: any): NewsArticle | null {
     id: `news-${Date.now()}-${Math.random()}`,
     title,
     description: description.substring(0, 200),
-    source: article.source?.name || 'Unknown Source',
-    url: article.url || '',
-    image: article.urlToImage || '',
-    publishedAt: article.publishedAt || new Date().toISOString(),
+    source: sourceArticle.source?.name || 'Unknown Source',
+    url: sourceArticle.url || '',
+    image: sourceArticle.urlToImage || '',
+    publishedAt: sourceArticle.publishedAt || new Date().toISOString(),
     countries,
     riskKeywords,
     riskScore,
@@ -234,7 +245,7 @@ export function generateMockNews(): NewsArticle[] {
     countries: article.countries,
     riskKeywords: ['military', 'trade', 'tension', 'sanctions'].slice(0, Math.floor(Math.random() * 3) + 1),
     riskScore: article.riskScore,
-    category: article.category as any,
+    category: article.category as NewsArticle['category'],
   }));
 }
 
@@ -269,7 +280,7 @@ export async function fetchGeopoliticalNews(useCache: boolean = true): Promise<N
           timestamp: Date.now(),
         })
       );
-    } catch (e) {
+    } catch {
       console.warn('[News] Failed to cache articles');
     }
 

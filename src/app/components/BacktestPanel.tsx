@@ -1,13 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { AlertTriangle, TrendingUp, Check, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { Card } from './ui/card';
-import { Button } from './ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import {
   runAllBacktests,
   getBacktestSummary,
   HISTORICAL_SCENARIOS,
-  type BacktestResult,
 } from '../data/backtestingEngine';
 
 interface BacktestPanelProps {

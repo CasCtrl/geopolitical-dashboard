@@ -227,7 +227,7 @@ export function getTimeUntilNextUpdate(): string {
       const hoursUntil = Math.ceil(minutesUntil / 60);
       return `~${hoursUntil} hour(s)`;
     }
-  } catch (error) {
+  } catch {
     return 'Unknown';
   }
 }

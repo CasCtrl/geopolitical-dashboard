@@ -9,7 +9,6 @@
  */
 
 import { calculateRiskIndex, baseRiskData } from '../../countryRiskData';
-import { getPortfolioRiskMetrics, aggregatePortfolioData } from '../../portfolioData';
 
 /**
  * Test Suite: Portfolio Data Integration
@@ -184,22 +183,10 @@ describe('Portfolio Data Integration Tests', () => {
     const riskChina = calculateRiskIndex('China', weights);
     const riskIran = calculateRiskIndex('Iran', weights);
 
-    const originalPortfolio = {
-      'United States': 20000,  // 20%
-      'China': 50000,          // 50%
-      'Iran': 30000            // 30%
-    };
-
     const originalRisk = 
       (riskUS * 0.2 + riskChina * 0.5 + riskIran * 0.3);
 
     // Rebalanced portfolio: moved away from Iran
-    const rebalancedPortfolio = {
-      'United States': 40000,  // 40%
-      'China': 40000,          // 40%
-      'Iran': 20000            // 20%
-    };
-
     const rebalancedRisk = 
       (riskUS * 0.4 + riskChina * 0.4 + riskIran * 0.2);
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, Zap, Clock, Activity } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -7,7 +7,6 @@ import {
   getRecentUpdates,
   simulateGeopoliticalEvents,
   getTimeUntilNextUpdate,
-  fireEventDrivenUpdate,
   type RealTimeUpdate,
 } from '../data/realtimeUpdateManager';
 

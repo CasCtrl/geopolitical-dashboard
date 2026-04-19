@@ -7,7 +7,7 @@ import { HoldingsTable } from "./components/HoldingsTable";
 import { DatasetSelector } from "./components/DatasetSelector";
 import { Summary } from "./components/Summary";
 import { calculateRiskIndex, baseRiskData } from "./data/countryRiskData";
-import { defaultPortfolio, calculatePortfolioRisk, Asset } from "./data/portfolioData";
+import { defaultPortfolio, calculatePortfolioRisk, Asset, CountryDependency } from "./data/portfolioData";
 import { loadDatasetsFromCSV, DatasetMetadata } from "./data/csvLoader";
 import { getDefaultWeights, getSnapshotDescription, isDefaultWeights } from "./data/globalSnapshot";
 import { 
@@ -49,7 +49,6 @@ import {
   Settings,
 } from "lucide-react";
 import { Card } from "./components/ui/card";
-import { Button } from "./components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { RiskGaugeCompact } from "./components/RiskGaugeCompact";
 import { convertPortfolioAssetToHolding, getCountriesFromAssets, getSectorsFromAssets, screenAssets } from "./utils/portfolioFilters";
@@ -76,6 +75,48 @@ type BasicHealthMetrics = {
     databaseConnected: boolean | null;
     error?: string;
   };
+};
+
+type ApiDataset = {
+  datasetId: string;
+  datasetName: string;
+  datasetDescription: string;
+};
+
+type ApiAsset = {
+  ticker: string;
+  assetName: string;
+  weight: number;
+  value: number;
+  sector: string;
+};
+
+type ApiDependency = {
+  ticker: string;
+  country: string;
+  dependencyWeight: number;
+  dependencyType: string;
+  dependencyReason: string;
+};
+
+const DEFAULT_COUNTRY_RISK = {
+  political: 0,
+  economic: 0,
+  conflict: 0,
+  corruption: 0,
+  terrorism: 0,
+};
+
+const parseApiJson = async <T,>(response: Response): Promise<T> => {
+  return (await response.json()) as T;
+};
+
+const normalizeDependencyType = (value: string): CountryDependency["type"] => {
+  if (value === "direct" || value === "indirect" || value === "macro") {
+    return value;
+  }
+
+  return "indirect";
 };
 
 export default function App() {
@@ -187,12 +228,12 @@ export default function App() {
         // Fetch datasets from API
         const datasetsRes = await fetch(`${API_BASE_URL}/api/datasets`);
         if (!datasetsRes.ok) throw new Error("Failed to fetch datasets");
-        const apiDatasets = await datasetsRes.json();
+        const apiDatasets = await parseApiJson<ApiDataset[]>(datasetsRes);
         setLiveDataConnected(true);
 
         // Map API datasets to our format
         const mappedDatasets: DatasetMetadata[] = apiDatasets.map(
-          (d: any) => ({
+          (d) => ({
             id: d.datasetId,
             name: d.datasetName,
             description: d.datasetDescription,
@@ -205,7 +246,7 @@ export default function App() {
         const assetsByDatasetMap: { [datasetId: string]: Asset[] } = {};
         
         // Fetch all assets and dependencies in parallel
-        const promises = apiDatasets.map(async (dataset: any) => {
+        const promises = apiDatasets.map(async (dataset) => {
           try {
             const [assetsRes, depsRes] = await Promise.all([
               fetch(`${API_BASE_URL}/api/assets/${dataset.datasetId}`),
@@ -216,12 +257,12 @@ export default function App() {
             if (!depsRes.ok) throw new Error(`Failed to fetch dependencies for ${dataset.datasetId}`);
 
             const [assets, deps] = await Promise.all([
-              assetsRes.json(),
-              depsRes.json(),
+              parseApiJson<ApiAsset[]>(assetsRes),
+              parseApiJson<ApiDependency[]>(depsRes),
             ]);
 
             // Map to Asset objects
-            const assetMap = new Map();
+            const assetMap = new Map<string, Asset>();
             for (const asset of assets) {
               assetMap.set(asset.ticker, {
                 ticker: asset.ticker,
@@ -240,7 +281,7 @@ export default function App() {
                 asset.countryDependencies.push({
                   country: dep.country,
                   weight: dep.dependencyWeight,
-                  type: dep.dependencyType as any,
+                  type: normalizeDependencyType(dep.dependencyType),
                   reason: dep.dependencyReason,
                 });
               }
@@ -424,15 +465,9 @@ export default function App() {
       initializeHistoricalData(countries, riskData);
 
       // Convert riskData to CountryRisk format for snapshot
-      const countryRisks: { [country: string]: any } = {};
+      const countryRisks: Record<string, typeof DEFAULT_COUNTRY_RISK> = {};
       Object.keys(riskData).forEach((country) => {
-        countryRisks[country] = baseRiskData[country] || {
-          political: 0,
-          economic: 0,
-          conflict: 0,
-          corruption: 0,
-          terrorism: 0,
-        };
+        countryRisks[country] = baseRiskData[country] || DEFAULT_COUNTRY_RISK;
       });
 
       // Calculate region exposures
@@ -500,10 +535,6 @@ export default function App() {
 
   const resetToDefaults = useCallback(() => {
     setWeights(getDefaultWeights());
-  }, []);
-
-  const handleDatasetChange = useCallback((datasetId: string) => {
-    setSelectedDatasetId(datasetId);
   }, []);
 
   const isUsingDefaults = isDefaultWeights(weights);
@@ -615,7 +646,7 @@ export default function App() {
 
   const loadNewsAlertCount = useCallback(async () => {
     try {
-      let baseArticles: any[] = [];
+      let baseArticles: unknown[] = [];
 
       try {
         const response = await fetch(`${API_BASE_URL}/api/news?limit=40`);

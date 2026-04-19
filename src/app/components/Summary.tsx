@@ -1,6 +1,5 @@
 import { Card } from "./ui/card";
-import { AlertTriangle, TrendingUp, TrendingDown, Target, Shield } from "lucide-react";
-import { RiskGauge } from "./RiskGauge";
+import { AlertTriangle, TrendingUp, Target, Shield } from "lucide-react";
 
 interface SummaryProps {
   portfolioAnalysis: {
@@ -285,7 +284,7 @@ export function Summary({
             <h3 className="text-sm font-semibold text-white">Top Risk Assets</h3>
           </div>
           <div className="space-y-2">
-            {portfolioAnalysis.topRiskAssets.slice(0, 5).map((asset, idx) => {
+            {portfolioAnalysis.topRiskAssets.slice(0, 5).map((asset) => {
               const contrib = portfolioAnalysis.assetContributions.find((a) => a.ticker === asset);
               return (
                 <div key={asset} className="flex items-center justify-between text-xs bg-zinc-900/40 p-2 rounded border border-zinc-800/50">
@@ -304,7 +303,7 @@ export function Summary({
             <h3 className="text-sm font-semibold text-white">Top Risk Countries</h3>
           </div>
           <div className="space-y-2">
-            {portfolioAnalysis.topRiskCountries.slice(0, 5).map((country, idx) => {
+            {portfolioAnalysis.topRiskCountries.slice(0, 5).map((country) => {
               const risk = riskData[country] || 0;
               const exposure = portfolioAnalysis.countryExposures.find((e) => e.country === country);
               return (

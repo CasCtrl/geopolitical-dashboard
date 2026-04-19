@@ -1,12 +1,12 @@
 import * as XLSX from 'xlsx';
 
 interface ExportData {
-  portfolioSummary?: Record<string, any>;
+  portfolioSummary?: Record<string, unknown>;
   countryRisks?: Record<string, number>;
-  holdings?: Array<Record<string, any>>;
-  trends?: Array<Record<string, any>>;
-  countryExposures?: Array<Record<string, any>>;
-  assetContributions?: Array<Record<string, any>>;
+  holdings?: Array<Record<string, unknown>>;
+  trends?: Array<Record<string, unknown>>;
+  countryExposures?: Array<Record<string, unknown>>;
+  assetContributions?: Array<Record<string, unknown>>;
   topRiskAssets?: Array<string>;
   topRiskCountries?: Array<string>;
   weights?: Record<string, number>;
@@ -195,7 +195,7 @@ export function exportToExcel(data: ExportData, filename: string): void {
 }
 
 export function exportTableToExcel(
-  data: Array<Record<string, any>>,
+  data: Array<Record<string, unknown>>,
   sheetName: string,
   filename: string
 ): void {
@@ -215,7 +215,7 @@ export function exportTableToExcel(
 export function exportMultipleSheets(
   sheets: Array<{
     name: string;
-    data: Array<Record<string, any>>;
+    data: Array<Record<string, unknown>>;
   }>,
   filename: string
 ): void {
@@ -239,7 +239,7 @@ function downloadFile(content: string, filename: string, mimeType: string): void
   document.body.removeChild(element);
 }
 
-export function generateReportMetadata(): Record<string, any> {
+export function generateReportMetadata(): Record<string, unknown> {
   return {
     'Generated Date': new Date().toISOString(),
     'Report Type': 'Geopolitical Risk Dashboard',
