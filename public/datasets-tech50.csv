@@ -51,7 +51,7 @@ tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PINS,Pint
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SNAP,Snap Inc.,2,5000,technology,United States,0.8,direct,HQ and development
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SNAP,Snap Inc.,2,5000,technology,India,0.2,indirect,Engineering
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,TWTR,Twitter/X Corp.,2,5000,technology,United States,0.85,direct,HQ and operations
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,TWTR,Twitter/X Corp.,2,5000,technology,United States,0.4,macro,Global regulatory risk
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,TWTR,Twitter/X Corp.,2,5000,technology,United States,0.4,macro,Cross-border regulatory risk
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NFLX,Netflix Inc.,2,5000,technology,United States,0.8,direct,HQ and streaming
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NFLX,Netflix Inc.,2,5000,technology,United States,0.3,indirect,Content licensing
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ROKU,Roku Inc.,2,5000,technology,United States,0.75,direct,HQ
@@ -60,8 +60,8 @@ tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SVHN,Sove
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SVHN,Sovern Holdings,2,5000,technology,India,0.3,indirect,Operations
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DASH,DoorDash Inc.,2,5000,technology,United States,0.8,direct,HQ and delivery
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DASH,DoorDash Inc.,2,5000,technology,India,0.4,indirect,Operations
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase Global,2,5000,technology,United States,0.9,direct,HQ and operations
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase Global,2,5000,technology,United States,0.6,macro,Regulatory risk
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase,2,5000,technology,United States,0.9,direct,HQ and operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase,2,5000,technology,United States,0.6,macro,Regulatory risk
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CRWD,CrowdStrike,2,5000,technology,United States,0.85,direct,HQ and security
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CRWD,CrowdStrike,2,5000,technology,Israel,0.2,indirect,R&D partnership
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,OKTA,Okta Inc.,2,5000,technology,United States,0.8,direct,HQ and development
@@ -81,4 +81,4 @@ tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SPLK,Splu
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MDB,MongoDB Inc.,2,5000,technology,United States,0.8,direct,HQ
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MDB,MongoDB Inc.,2,5000,technology,India,0.2,indirect,Development
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DDOG,Datadog Inc.,2,5000,technology,United States,0.8,direct,HQ and operations
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DDOG,Datadog Inc.,2,5000,technology,France,0.15,indirect,European operations
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DDOG,Datadog Inc.,2,5000,technology,France,0.15,indirect,France operations
