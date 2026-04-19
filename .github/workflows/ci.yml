@@ -32,6 +32,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Bundle size budget
+        run: npm run perf:budget
+
   e2e-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -55,6 +58,9 @@ jobs:
 
       - name: Build app
         run: npm run build
+
+      - name: Bundle size budget
+        run: npm run perf:budget
 
       - name: Run e2e smoke tests
         run: npm run test:e2e:ci

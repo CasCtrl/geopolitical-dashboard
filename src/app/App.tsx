@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { Suspense, lazy, useState, useMemo, useEffect, useCallback, useRef } from "react";
 import html2canvas from "html2canvas";
 import { Toaster, toast } from "sonner";
 import { WorldMap } from "./components/WorldMap";
@@ -18,17 +18,7 @@ import {
 } from "./data/dailyUpdateManager";
 import { recordSnapshot, getLatestSnapshot, initializeHistoricalData, getPortfolioRiskTrend } from "./data/historicalSnapshotManager";
 import { checkThresholds } from "./data/alertsManager";
-import { HistoricalTrends } from "./components/HistoricalTrends";
-import { AlertsAndNotifications } from "./components/AlertsAndNotifications";
-import { ExportReports } from "./components/ExportReports";
-import { AdvancedFilters } from "./components/AdvancedFilters";
 import { RiskMetricsPanel } from "./components/RiskMetricsPanel";
-import { BacktestPanel } from "./components/BacktestPanel";
-import { RealtimeStatusPanel } from "./components/RealtimeStatusPanel";
-import { CorrelationAnalysisPanel } from "./components/CorrelationAnalysisPanel";
-import { CustomScenarioBuilderPanel } from "./components/CustomScenarioBuilderPanel";
-import { MonteCarloPanel } from "./components/MonteCarloPanel";
-import { NewsFeedPanel } from "./components/NewsFeedPanel";
 import { generateMockNews, parseNewsForRisk, newsToRiskEvent } from "./data/newsIntegration";
 import { initializeRealtimeUpdates, stopRealtimeUpdates } from "./data/realtimeUpdateManager";
 import {
@@ -155,6 +145,43 @@ const normalizeDependencyType = (value: string): CountryDependency["type"] => {
 
   return "indirect";
 };
+
+const HistoricalTrends = lazy(() =>
+  import("./components/HistoricalTrends").then((module) => ({ default: module.HistoricalTrends }))
+);
+const AlertsAndNotifications = lazy(() =>
+  import("./components/AlertsAndNotifications").then((module) => ({ default: module.AlertsAndNotifications }))
+);
+const ExportReports = lazy(() =>
+  import("./components/ExportReports").then((module) => ({ default: module.ExportReports }))
+);
+const AdvancedFilters = lazy(() =>
+  import("./components/AdvancedFilters").then((module) => ({ default: module.AdvancedFilters }))
+);
+const BacktestPanel = lazy(() =>
+  import("./components/BacktestPanel").then((module) => ({ default: module.BacktestPanel }))
+);
+const RealtimeStatusPanel = lazy(() =>
+  import("./components/RealtimeStatusPanel").then((module) => ({ default: module.RealtimeStatusPanel }))
+);
+const CorrelationAnalysisPanel = lazy(() =>
+  import("./components/CorrelationAnalysisPanel").then((module) => ({ default: module.CorrelationAnalysisPanel }))
+);
+const CustomScenarioBuilderPanel = lazy(() =>
+  import("./components/CustomScenarioBuilderPanel").then((module) => ({ default: module.CustomScenarioBuilderPanel }))
+);
+const MonteCarloPanel = lazy(() =>
+  import("./components/MonteCarloPanel").then((module) => ({ default: module.MonteCarloPanel }))
+);
+const NewsFeedPanel = lazy(() =>
+  import("./components/NewsFeedPanel").then((module) => ({ default: module.NewsFeedPanel }))
+);
+
+const tabLoadingFallback = (
+  <Card className="p-4 bg-zinc-950 border-zinc-900 text-xs text-zinc-400" role="status" aria-live="polite">
+    Loading panel...
+  </Card>
+);
 
 export default function App() {
   const [weights, setWeights] = useState(() => readStorage(WEIGHTS_STORAGE_KEY, getDefaultWeights()));
@@ -861,11 +888,15 @@ export default function App() {
             </div>
             <div className="overflow-y-auto flex-1 p-4 space-y-4">
               {/* Real-Time Status Panel */}
-              <RealtimeStatusPanel />
+              <Suspense fallback={tabLoadingFallback}>
+                <RealtimeStatusPanel />
+              </Suspense>
               
               {/* Alerts and Notifications */}
               <div className="border-t border-zinc-800 pt-4">
-                <AlertsAndNotifications activeAlertCount={alertCount} />
+                <Suspense fallback={tabLoadingFallback}>
+                  <AlertsAndNotifications activeAlertCount={alertCount} />
+                </Suspense>
               </div>
             </div>
             <div className="p-4 border-t border-zinc-800 flex-shrink-0">
@@ -1412,15 +1443,17 @@ export default function App() {
                       </div>
                     </div>
                     <div className="max-h-[320px] overflow-hidden p-2">
-                      <NewsFeedPanel
-                        countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
-                          acc[country] = riskData[country] || 50;
-                          return acc;
-                        }, {} as { [country: string]: number })}
-                        portfolioCountries={portfolioAnalysis.countryExposures.map((exp) => exp.country)}
-                        compact={true}
-                        refreshToken={newsRefreshToken}
-                      />
+                      <Suspense fallback={tabLoadingFallback}>
+                        <NewsFeedPanel
+                          countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                            acc[country] = riskData[country] || 50;
+                            return acc;
+                          }, {} as { [country: string]: number })}
+                          portfolioCountries={portfolioAnalysis.countryExposures.map((exp) => exp.country)}
+                          compact={true}
+                          refreshToken={newsRefreshToken}
+                        />
+                      </Suspense>
                     </div>
                   </Card>
                 )}
@@ -1944,9 +1977,11 @@ export default function App() {
         /* Historical Trends Tab Content */
         <main className="flex-1 p-3">
           <div className="max-w-[1600px] mx-auto">
-            <HistoricalTrends
-              availableCountries={Object.keys(baseRiskData)}
-            />
+            <Suspense fallback={tabLoadingFallback}>
+              <HistoricalTrends
+                availableCountries={Object.keys(baseRiskData)}
+              />
+            </Suspense>
           </div>
         </main>
         ) : currentTab === "scenarios" ? (
@@ -1970,7 +2005,48 @@ export default function App() {
                 <TabsContent value="analysis" className="mt-0 space-y-4">
                   {/* Backtesting Panel */}
                   <div className="border-t border-zinc-800 pt-4">
-                    <BacktestPanel
+                    <Suspense fallback={tabLoadingFallback}>
+                      <BacktestPanel
+                        baselineCountryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                          acc[country] = riskData[country] || 50;
+                          return acc;
+                        }, {} as { [country: string]: number })}
+                        portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
+                          country: exp.country,
+                          riskContribution: exp.riskContribution,
+                          name: exp.country
+                        }))}
+                        currentRisk={portfolioAnalysis.totalRiskScore}
+                      />
+                    </Suspense>
+                  </div>
+
+                  {/* Correlation Analysis Panel */}
+                  <div className="border-t border-zinc-800 pt-4">
+                    <Suspense fallback={tabLoadingFallback}>
+                      <CorrelationAnalysisPanel
+                        countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                          acc[country] = riskData[country] || 50;
+                          return acc;
+                        }, {} as { [country: string]: number })}
+                        trendData={Object.keys(baseRiskData).reduce((acc, country) => {
+                          acc[country] = Array(30).fill(riskData[country] || 50);
+                          return acc;
+                        }, {} as { [country: string]: number[] })}
+                        weights={portfolioAnalysis.countryExposures.reduce((acc, exp) => {
+                          acc[exp.country] = exp.riskContribution;
+                          return acc;
+                        }, {} as { [country: string]: number })}
+                        currentPortfolioCountries={portfolioAnalysis.countryExposures.map(exp => exp.country)}
+                      />
+                    </Suspense>
+                  </div>
+
+                </TabsContent>
+
+                <TabsContent value="custom-scenario" className="mt-0">
+                  <Suspense fallback={tabLoadingFallback}>
+                    <CustomScenarioBuilderPanel
                       baselineCountryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
                         acc[country] = riskData[country] || 50;
                         return acc;
@@ -1982,54 +2058,21 @@ export default function App() {
                       }))}
                       currentRisk={portfolioAnalysis.totalRiskScore}
                     />
-                  </div>
-
-                  {/* Correlation Analysis Panel */}
-                  <div className="border-t border-zinc-800 pt-4">
-                    <CorrelationAnalysisPanel
-                      countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
-                        acc[country] = riskData[country] || 50;
-                        return acc;
-                      }, {} as { [country: string]: number })}
-                      trendData={Object.keys(baseRiskData).reduce((acc, country) => {
-                        acc[country] = Array(30).fill(riskData[country] || 50);
-                        return acc;
-                      }, {} as { [country: string]: number[] })}
-                      weights={portfolioAnalysis.countryExposures.reduce((acc, exp) => {
-                        acc[exp.country] = exp.riskContribution;
-                        return acc;
-                      }, {} as { [country: string]: number })}
-                      currentPortfolioCountries={portfolioAnalysis.countryExposures.map(exp => exp.country)}
-                    />
-                  </div>
-
-                </TabsContent>
-
-                <TabsContent value="custom-scenario" className="mt-0">
-                  <CustomScenarioBuilderPanel
-                    baselineCountryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
-                      acc[country] = riskData[country] || 50;
-                      return acc;
-                    }, {} as { [country: string]: number })}
-                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
-                      country: exp.country,
-                      riskContribution: exp.riskContribution,
-                      name: exp.country
-                    }))}
-                    currentRisk={portfolioAnalysis.totalRiskScore}
-                  />
+                  </Suspense>
                 </TabsContent>
 
                 <TabsContent value="monte-carlo" className="mt-0">
-                  <MonteCarloPanel
-                    currentRisk={portfolioAnalysis.totalRiskScore}
-                    trendData={getPortfolioRiskTrend(90)}
-                    portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
-                      country: exp.country,
-                      riskContribution: exp.riskContribution,
-                      name: exp.country
-                    }))}
-                  />
+                  <Suspense fallback={tabLoadingFallback}>
+                    <MonteCarloPanel
+                      currentRisk={portfolioAnalysis.totalRiskScore}
+                      trendData={getPortfolioRiskTrend(90)}
+                      portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
+                        country: exp.country,
+                        riskContribution: exp.riskContribution,
+                        name: exp.country
+                      }))}
+                    />
+                  </Suspense>
                 </TabsContent>
               </Tabs>
             )}
@@ -2039,27 +2082,31 @@ export default function App() {
         /* Exports Tab Content */
         <main className="flex-1 p-3">
           <div className="max-w-[1600px] mx-auto">
-            <ExportReports
-              portfolioSummary={portfolioAnalysis}
-              countryRisks={riskData}
-              holdings={portfolio}
-              trends={getPortfolioRiskTrend(90)}
-              weights={weights}
-            />
+            <Suspense fallback={tabLoadingFallback}>
+              <ExportReports
+                portfolioSummary={portfolioAnalysis}
+                countryRisks={riskData}
+                holdings={portfolio}
+                trends={getPortfolioRiskTrend(90)}
+                weights={weights}
+              />
+            </Suspense>
           </div>
         </main>
         ) : currentTab === "tools" ? (
         /* Advanced Tools Tab Content */
         <main className="flex-1 p-3">
           <div className="max-w-[1600px] mx-auto">
-            <AdvancedFilters
-              countryRisks={riskData}
-              defaultAssets={portfolio}
-              showPortfolioTab={true}
-              showUploadTab={true}
-              showSectorsTab={false}
-              showScreeningTab={false}
-            />
+            <Suspense fallback={tabLoadingFallback}>
+              <AdvancedFilters
+                countryRisks={riskData}
+                defaultAssets={portfolio}
+                showPortfolioTab={true}
+                showUploadTab={true}
+                showSectorsTab={false}
+                showScreeningTab={false}
+              />
+            </Suspense>
           </div>
         </main>
         ) : null}

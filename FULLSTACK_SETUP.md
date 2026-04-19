@@ -106,6 +106,12 @@ Additional runtime controls:
 - Release workflow emits `release-audit` artifact for each deploy execution
 - Operational audit sink runbook: `SECURITY_AUDIT_RUNBOOK.md`
 
+## Performance Guardrails
+
+- Route/component-level lazy loading is used for heavy non-default tabs and panels in `src/app/App.tsx`.
+- Vite manual chunk strategy is defined in `vite.config.ts` for stable vendor chunking.
+- Bundle budgets are enforced with `npm run perf:budget` (also executed in CI after build).
+
 ## Stopping Services
 
 Stop SQL Server:

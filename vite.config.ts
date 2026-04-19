@@ -30,12 +30,52 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id: string) => {
-          if (id.includes('node_modules/react')) {
+          if (!id.includes('node_modules')) {
+            return undefined;
+          }
+
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/scheduler/')
+          ) {
             return 'react-vendor';
           }
-          if (id.includes('node_modules/@radix-ui')) {
+
+          if (
+            id.includes('/@radix-ui/') ||
+            id.includes('/@mui/') ||
+            id.includes('/lucide-react/')
+          ) {
             return 'ui-vendor';
           }
+
+          if (
+            id.includes('/recharts/') ||
+            id.includes('/d3-geo/') ||
+            id.includes('/topojson-client/')
+          ) {
+            return 'charts-vendor';
+          }
+
+          if (
+            id.includes('/jspdf/') ||
+            id.includes('/html2canvas/') ||
+            id.includes('/xlsx/')
+          ) {
+            return 'export-vendor';
+          }
+
+          if (
+            id.includes('/date-fns/') ||
+            id.includes('/zod/') ||
+            id.includes('/clsx/') ||
+            id.includes('/tailwind-merge/')
+          ) {
+            return 'utils-vendor';
+          }
+
+          return 'misc-vendor';
         },
       },
     },
