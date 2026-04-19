@@ -16,6 +16,7 @@ import newsRoutes from './routes/news.js';
 import observability from './observability.cjs';
 import adminObservability from './adminObservability.cjs';
 import auditTrailModule from './auditTrail.cjs';
+import persistentAuditSinkModule from './persistentAuditSink.cjs';
 
 const app = express();
 const PORT = env.SERVER_PORT;
@@ -33,9 +34,18 @@ const {
 } = observability;
 const { buildAdminAlertsPayload } = adminObservability;
 const { createAuditTrail } = auditTrailModule;
+const { createPersistentAuditSink } = persistentAuditSinkModule;
 
 const requestMetrics = initializeRequestMetrics();
 const auditTrail = createAuditTrail({ maxEntries: env.AUDIT_TRAIL_MAX_ENTRIES });
+const persistentAuditSink = createPersistentAuditSink({
+  enabled: env.AUDIT_SINK_ENABLED,
+  directory: env.AUDIT_SINK_DIR,
+  maxFiles: env.AUDIT_SINK_MAX_FILES,
+  logger: ({ message, error }) => {
+    logEvent('error', message, { error });
+  },
+});
 
 const allowedOrigins = env.ALLOWED_ORIGINS
   .split(',')
@@ -355,6 +365,8 @@ app.use((req, res, next) => {
       outcome: auditEntry.outcome,
       statusCode: auditEntry.statusCode,
     });
+
+    void persistentAuditSink.write(auditEntry);
   });
 
   return next();

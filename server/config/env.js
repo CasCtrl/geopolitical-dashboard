@@ -1,7 +1,27 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { homedir } from 'os';
 import { z } from 'zod';
+
+const envBoolean = z.preprocess((value) => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+
+    if (['false', '0', 'no', 'off', ''].includes(normalized)) {
+      return false;
+    }
+  }
+
+  return value;
+}, z.boolean());
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -17,10 +37,10 @@ const envSchema = z
     DB_USER: z.string().default('sa'),
     DB_PASSWORD: z.string().min(1).default('YourPassword123!'),
     DB_PORT: z.coerce.number().int().min(1).max(65535).default(1433),
-    DB_CONNECT_STRICT: z.coerce.boolean().default(false),
-    DB_INIT_ENABLED: z.coerce.boolean().default(true),
+    DB_CONNECT_STRICT: envBoolean.default(false),
+    DB_INIT_ENABLED: envBoolean.default(true),
 
-    AUTH_REQUIRED: z.coerce.boolean().default(false),
+    AUTH_REQUIRED: envBoolean.default(false),
     API_TOKEN: z.string().optional(),
     ADMIN_ROLE: z.string().default('admin'),
     ALLOWED_ORIGINS: z
@@ -34,6 +54,9 @@ const envSchema = z
     ADMIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).max(3600000).default(60000),
     ADMIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(1000).default(60),
     AUDIT_TRAIL_MAX_ENTRIES: z.coerce.number().int().min(10).max(20000).default(1000),
+    AUDIT_SINK_ENABLED: envBoolean.default(true),
+    AUDIT_SINK_DIR: z.string().default(path.join(homedir(), '.geopolitical-dashboard', 'audit')),
+    AUDIT_SINK_MAX_FILES: z.coerce.number().int().min(1).max(3650).default(14),
     OBS_MIN_REQUESTS: z.coerce.number().int().min(1).max(100000).default(20),
     OBS_ERROR_RATE_THRESHOLD_PCT: z.coerce.number().min(0).max(100).default(5),
     OBS_P95_LATENCY_THRESHOLD_MS: z.coerce.number().min(1).max(60000).default(800),
