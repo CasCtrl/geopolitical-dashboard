@@ -9,7 +9,7 @@ const KB = 1024;
 const BUDGETS = {
   maxInitialJsKb: Number(process.env.BUNDLE_BUDGET_INITIAL_JS_KB || 300),
   maxEntryJsKb: Number(process.env.BUNDLE_BUDGET_ENTRY_JS_KB || 180),
-  maxAsyncChunkJsKb: Number(process.env.BUNDLE_BUDGET_ASYNC_CHUNK_JS_KB || 500),
+  maxAsyncChunkJsKb: Number(process.env.BUNDLE_BUDGET_ASYNC_CHUNK_JS_KB || 400),
 };
 
 function toKb(bytes) {

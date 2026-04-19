@@ -94,6 +94,31 @@ export default defineConfig({
             return 'toast-vendor';
           }
 
+          if (
+            id.includes('/react-hook-form/') ||
+            id.includes('/react-day-picker/') ||
+            id.includes('/input-otp/')
+          ) {
+            return 'forms-vendor';
+          }
+
+          if (
+            id.includes('/react-dnd/') ||
+            id.includes('/react-dnd-html5-backend/') ||
+            id.includes('/react-resizable-panels/') ||
+            id.includes('/embla-carousel-react/')
+          ) {
+            return 'interaction-vendor';
+          }
+
+          if (
+            id.includes('/react-simple-maps/') ||
+            id.includes('/react-popper/') ||
+            id.includes('/@popperjs/core/')
+          ) {
+            return 'maps-vendor';
+          }
+
           return 'misc-vendor';
         },
       },
