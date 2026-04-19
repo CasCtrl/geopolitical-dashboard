@@ -1,0 +1,10 @@
+# Update owner handles below to valid GitHub users/teams in your org.
+
+* @casandramcdonald
+
+# Backend and infra changes require explicit owner review.
+/server/ @casandramcdonald
+/.github/workflows/ @casandramcdonald
+
+# Frontend app changes.
+/src/ @casandramcdonald

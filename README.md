@@ -399,6 +399,7 @@ geopolitical-dashboard/
 - `npm test` - Run Jest test suite
 - `npm test -- --coverage` - Run tests with code coverage report
 - `npm run ci` - Run lint + tests + production build locally
+- `npm run governance:check` - Validate governance/workflow guardrail files and required CI check names
 - `npm run playwright:install` - Install Playwright Chromium browser for e2e tests
 - `npm run test:e2e:ci` - Run Playwright smoke tests in CI mode
 
@@ -409,6 +410,9 @@ geopolitical-dashboard/
 - **Production secret checks:** Server startup validation blocks placeholder secrets in production mode.
 - **Security audit workflow:** `.github/workflows/security-audit.yml` runs scheduled/manual npm audit checks and fails on high/critical vulnerabilities.
 - **Release workflow:** `.github/workflows/release.yml` supports staged deployments (`staging`/`production`) and rollback-style redeploy using `rollback_to_tag`.
+- **Branch protection runbook:** `.github/BRANCH_PROTECTION.md` includes exact required check names and merge policy recommendations.
+- **Code owner enforcement:** `.github/CODEOWNERS` and `.github/pull_request_template.md` enforce review accountability and PR validation discipline.
+- **Settings quick-start:** `.github/GITHUB_SETTINGS_CHECKLIST.md` gives click-by-click GitHub UI setup for branch protection, required checks, environments, and merge rules.
 
 ## Testing & Test-Driven Development (TDD)
 
