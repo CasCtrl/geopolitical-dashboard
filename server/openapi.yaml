@@ -40,6 +40,30 @@ paths:
       responses:
         '200':
           description: YAML OpenAPI specification
+  /api/admin/metrics:
+    get:
+      summary: Runtime process and DB metrics (admin)
+      responses:
+        '200':
+          description: Process metrics payload
+        '403':
+          description: Forbidden
+  /api/admin/observability:
+    get:
+      summary: Request-level observability aggregates (admin)
+      responses:
+        '200':
+          description: Request volume, error rate, latency and route stats
+        '403':
+          description: Forbidden
+  /api/admin/alerts:
+    get:
+      summary: Active server alerts derived from observability thresholds (admin)
+      responses:
+        '200':
+          description: Active alert list and configured thresholds
+        '403':
+          description: Forbidden
   /api/datasets:
     get:
       summary: List datasets

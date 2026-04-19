@@ -27,6 +27,9 @@ const envSchema = z
       .string()
       .default('http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003'),
     RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(5000).default(300),
+    OBS_MIN_REQUESTS: z.coerce.number().int().min(1).max(100000).default(20),
+    OBS_ERROR_RATE_THRESHOLD_PCT: z.coerce.number().min(0).max(100).default(5),
+    OBS_P95_LATENCY_THRESHOLD_MS: z.coerce.number().min(1).max(60000).default(800),
   })
   .superRefine((env, ctx) => {
     const insecureDefaultPassword = 'YourPassword123!';

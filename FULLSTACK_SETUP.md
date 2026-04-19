@@ -64,11 +64,15 @@ The frontend will start on `http://localhost:5173`
 npm run dev:full
 ```
 
-This runs the backend and frontend concurrently.
+This uses a supervised launcher that starts the API first, waits for `http://localhost:5001/health`, then starts the frontend.
+If either process exits unexpectedly, the launcher stops the other process and returns a non-zero exit code.
 
 ## API Endpoints
 
 - `GET /api/health` - Server health check
+- `GET /api/admin/metrics` - Runtime process + DB metrics (admin role)
+- `GET /api/admin/observability` - Request volume/error/latency aggregates (admin role)
+- `GET /api/admin/alerts` - Active observability-derived alerts (admin role)
 - `GET /api/datasets` - List all datasets
 - `GET /api/assets/:datasetId` - Get assets for a dataset
 - `GET /api/dependencies/:datasetId` - Get country dependencies

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "NODE_OPTIONS=--max_old_space_size=4096 vite",
     "dev:server": "NODE_OPTIONS=--max_old_space_size=2048 node server/server.js",
-    "dev:full": "concurrently \"npm run dev:server\" \"npm run dev\"",
+    "dev:full": "node scripts/dev-full.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint src server --ext js,cjs,mjs,ts,tsx",

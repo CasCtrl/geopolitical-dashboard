@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import html2canvas from "html2canvas";
 import { Toaster, toast } from "sonner";
 import { WorldMap } from "./components/WorldMap";
@@ -56,6 +56,34 @@ import { convertPortfolioAssetToHolding, getCountriesFromAssets, getSectorsFromA
 
 const API_BASE_URL = "http://localhost:5001";
 const TIME_ZONE_STORAGE_KEY = "dashboard.timezone";
+const WEIGHTS_STORAGE_KEY = "dashboard.weights";
+const TAB_STORAGE_KEY = "dashboard.currentTab";
+const DATASET_STORAGE_KEY = "dashboard.datasetId";
+const DASHBOARD_FILTERS_STORAGE_KEY = "dashboard.filters";
+
+const readStorage = <T,>(key: string, fallback: T): T => {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  try {
+    const value = localStorage.getItem(key);
+    if (!value) {
+      return fallback;
+    }
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+};
+
+const readStorageString = (key: string, fallback: string): string => {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  return localStorage.getItem(key) || fallback;
+};
 
 type EndpointHealth = {
   ok: boolean;
@@ -74,6 +102,14 @@ type BasicHealthMetrics = {
     uptimeSeconds: number | null;
     heapUsedMb: number | null;
     databaseConnected: boolean | null;
+    error?: string;
+  };
+  observability: {
+    ok: boolean;
+    totalRequests: number | null;
+    errorRatePct: number | null;
+    p95LatencyMs: number | null;
+    activeAlerts: number;
     error?: string;
   };
 };
@@ -121,8 +157,8 @@ const normalizeDependencyType = (value: string): CountryDependency["type"] => {
 };
 
 export default function App() {
-  const [weights, setWeights] = useState(getDefaultWeights());
-  const [currentTab, setCurrentTab] = useState("dashboard");
+  const [weights, setWeights] = useState(() => readStorage(WEIGHTS_STORAGE_KEY, getDefaultWeights()));
+  const [currentTab, setCurrentTab] = useState(() => readStorageString(TAB_STORAGE_KEY, "dashboard"));
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showUpdateStatus, setShowUpdateStatus] = useState(false);
   const [showAlertsWindow, setShowAlertsWindow] = useState(false);
@@ -139,6 +175,13 @@ export default function App() {
       heapUsedMb: null,
       databaseConnected: null,
     },
+    observability: {
+      ok: false,
+      totalRequests: null,
+      errorRatePct: null,
+      p95LatencyMs: null,
+      activeAlerts: 0,
+    },
   });
   const [newsRefreshToken, setNewsRefreshToken] = useState(0);
   const [newsAlertCount, setNewsAlertCount] = useState(0);
@@ -154,14 +197,22 @@ export default function App() {
   });
 
   const [datasets, setDatasets] = useState<DatasetMetadata[]>([]);
-  const [selectedDatasetId, setSelectedDatasetId] = useState("default");
+  const [selectedDatasetId, setSelectedDatasetId] = useState(() => readStorageString(DATASET_STORAGE_KEY, "default"));
   const [assetsByDataset, setAssetsByDataset] = useState<{
     [datasetId: string]: Asset[];
   }>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [dashboardMinRiskFilter, setDashboardMinRiskFilter] = useState(0);
-  const [dashboardSectorFilter, setDashboardSectorFilter] = useState("all");
-  const [dashboardCountryFilter, setDashboardCountryFilter] = useState("all");
+  const [dashboardMinRiskFilter, setDashboardMinRiskFilter] = useState(() =>
+    readStorage(DASHBOARD_FILTERS_STORAGE_KEY, { minRisk: 0, sector: "all", country: "all" }).minRisk
+  );
+  const [dashboardSectorFilter, setDashboardSectorFilter] = useState(() =>
+    readStorage(DASHBOARD_FILTERS_STORAGE_KEY, { minRisk: 0, sector: "all", country: "all" }).sector
+  );
+  const [dashboardCountryFilter, setDashboardCountryFilter] = useState(() =>
+    readStorage(DASHBOARD_FILTERS_STORAGE_KEY, { minRisk: 0, sector: "all", country: "all" }).country
+  );
+  const hasInitializedDatasetFilters = useRef(false);
+  const initialSelectedDatasetId = useRef(selectedDatasetId);
 
   const availableTimeZones = useMemo(() => {
     const zones = [
@@ -302,7 +353,8 @@ export default function App() {
 
         setAssetsByDataset(assetsByDatasetMap);
         if (mappedDatasets.length > 0) {
-          setSelectedDatasetId(mappedDatasets[0].id);
+          const selectedExists = mappedDatasets.some((dataset) => dataset.id === initialSelectedDatasetId.current);
+          setSelectedDatasetId(selectedExists ? initialSelectedDatasetId.current : mappedDatasets[0].id);
         }
       } catch (error) {
         console.warn("API not available, falling back to CSV:", error);
@@ -314,7 +366,8 @@ export default function App() {
           setDatasets(loadedDatasets);
           setAssetsByDataset(loadedAssets);
           if (loadedDatasets.length > 0) {
-            setSelectedDatasetId(loadedDatasets[0].id);
+            const selectedExists = loadedDatasets.some((dataset) => dataset.id === initialSelectedDatasetId.current);
+            setSelectedDatasetId(selectedExists ? initialSelectedDatasetId.current : loadedDatasets[0].id);
           }
         } catch (fallbackError) {
           console.error("Failed to load datasets from CSV:", fallbackError);
@@ -360,10 +413,16 @@ export default function App() {
 
     setHealthMetrics((prev) => ({ ...prev, loading: true }));
 
-    const [healthRes, readyRes, metricsRes] = await Promise.all([
+    const [healthRes, readyRes, metricsRes, observabilityRes, alertsRes] = await Promise.all([
       timedFetch(`${API_BASE_URL}/health`),
       timedFetch(`${API_BASE_URL}/ready`),
       timedFetch(`${API_BASE_URL}/api/admin/metrics`, {
+        headers: { "x-user-role": "admin" },
+      }),
+      timedFetch(`${API_BASE_URL}/api/admin/observability`, {
+        headers: { "x-user-role": "admin" },
+      }),
+      timedFetch(`${API_BASE_URL}/api/admin/alerts`, {
         headers: { "x-user-role": "admin" },
       }),
     ]);
@@ -400,6 +459,28 @@ export default function App() {
             : null,
         error: metricsRes.error || (!metricsRes.ok ? "Metrics endpoint unavailable" : undefined),
       },
+      observability: {
+        ok: observabilityRes.ok,
+        totalRequests:
+          typeof observabilityRes.data?.requests?.total === "number"
+            ? observabilityRes.data.requests.total
+            : null,
+        errorRatePct:
+          typeof observabilityRes.data?.requests?.errorRatePct === "number"
+            ? Number(observabilityRes.data.requests.errorRatePct.toFixed(2))
+            : null,
+        p95LatencyMs:
+          typeof observabilityRes.data?.latency?.p95Ms === "number"
+            ? Number(observabilityRes.data.latency.p95Ms.toFixed(1))
+            : null,
+        activeAlerts:
+          Array.isArray(alertsRes.data?.alerts)
+            ? alertsRes.data.alerts.filter((alert: { active?: boolean }) => alert.active).length
+            : 0,
+        error:
+          observabilityRes.error ||
+          (!observabilityRes.ok ? "Observability endpoint unavailable" : undefined),
+      },
     });
   }, [selectedTimeZone]);
 
@@ -428,6 +509,37 @@ export default function App() {
   }, [selectedTimeZone]);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(WEIGHTS_STORAGE_KEY, JSON.stringify(weights));
+    }
+  }, [weights]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(TAB_STORAGE_KEY, currentTab);
+    }
+  }, [currentTab]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(DATASET_STORAGE_KEY, selectedDatasetId);
+    }
+  }, [selectedDatasetId]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        DASHBOARD_FILTERS_STORAGE_KEY,
+        JSON.stringify({
+          minRisk: dashboardMinRiskFilter,
+          sector: dashboardSectorFilter,
+          country: dashboardCountryFilter,
+        })
+      );
+    }
+  }, [dashboardMinRiskFilter, dashboardSectorFilter, dashboardCountryFilter]);
+
+  useEffect(() => {
     if (!showSettingsModal) return;
 
     checkBasicHealthMetrics();
@@ -436,6 +548,11 @@ export default function App() {
   }, [showSettingsModal, checkBasicHealthMetrics]);
 
   useEffect(() => {
+    if (!hasInitializedDatasetFilters.current) {
+      hasInitializedDatasetFilters.current = true;
+      return;
+    }
+
     setDashboardMinRiskFilter(0);
     setDashboardSectorFilter("all");
     setDashboardCountryFilter("all");
@@ -1053,11 +1170,15 @@ export default function App() {
                     <div className="bg-zinc-950/70 border border-zinc-800 rounded p-2 text-[11px] space-y-1">
                       <p><span className="text-zinc-400">Service Uptime:</span> {formatUptime(healthMetrics.metrics.uptimeSeconds)}</p>
                       <p><span className="text-zinc-400">Heap Used:</span> {healthMetrics.metrics.heapUsedMb === null ? "N/A" : `${healthMetrics.metrics.heapUsedMb} MB`}</p>
+                      <p><span className="text-zinc-400">Request Volume:</span> {healthMetrics.observability.totalRequests ?? "N/A"}</p>
+                      <p><span className="text-zinc-400">Error Rate:</span> {healthMetrics.observability.errorRatePct === null ? "N/A" : `${healthMetrics.observability.errorRatePct}%`}</p>
+                      <p><span className="text-zinc-400">P95 Latency:</span> {healthMetrics.observability.p95LatencyMs === null ? "N/A" : `${healthMetrics.observability.p95LatencyMs} ms`}</p>
+                      <p><span className="text-zinc-400">Active Server Alerts:</span> {healthMetrics.observability.activeAlerts}</p>
                       <p><span className="text-zinc-400">Last Checked:</span> {healthMetrics.lastChecked}</p>
-                      <p className="text-zinc-500">Basic endpoint metrics are available. Full tracing and alerting stack is not configured yet.</p>
-                      {(healthMetrics.health.error || healthMetrics.ready.error || healthMetrics.metrics.error) && (
+                      <p className="text-zinc-500">This panel includes basic health checks plus lightweight observability trend indicators.</p>
+                      {(healthMetrics.health.error || healthMetrics.ready.error || healthMetrics.metrics.error || healthMetrics.observability.error) && (
                         <p className="text-amber-300">
-                          Note: {healthMetrics.health.error || healthMetrics.ready.error || healthMetrics.metrics.error}
+                          Note: {healthMetrics.health.error || healthMetrics.ready.error || healthMetrics.metrics.error || healthMetrics.observability.error}
                         </p>
                       )}
                     </div>
