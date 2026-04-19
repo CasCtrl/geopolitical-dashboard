@@ -4,6 +4,7 @@ const {
   getObservabilitySnapshot,
   getActiveAlerts,
 } = require('../observability.cjs');
+const { buildAdminAlertsPayload } = require('../adminObservability.cjs');
 
 describe('server observability alerts', () => {
   test('raises readiness alert when service is degraded', () => {
@@ -102,5 +103,39 @@ describe('server observability alerts', () => {
     });
 
     expect(alerts.some((alert) => alert.id === 'latency_p95_high')).toBe(true);
+  });
+
+  test('builds admin alerts endpoint payload with thresholds and timestamp', () => {
+    const metrics = initializeRequestMetrics();
+
+    for (let i = 0; i < 25; i += 1) {
+      recordRequestCompletion(metrics, {
+        method: 'GET',
+        path: '/api/news',
+        statusCode: i < 3 ? 500 : 200,
+        durationMs: 950,
+      });
+    }
+
+    const payload = buildAdminAlertsPayload({
+      ready: false,
+      requestMetrics: metrics,
+      thresholds: {
+        minRequests: 20,
+        errorRatePct: 5,
+        p95LatencyMs: 800,
+      },
+      now: () => '2026-04-19T00:00:00.000Z',
+    });
+
+    expect(payload.thresholds).toEqual({
+      minRequests: 20,
+      errorRatePct: 5,
+      p95LatencyMs: 800,
+    });
+    expect(payload.timestamp).toBe('2026-04-19T00:00:00.000Z');
+    expect(payload.alerts.some((alert) => alert.id === 'readiness_degraded')).toBe(true);
+    expect(payload.alerts.some((alert) => alert.id === 'error_rate_high')).toBe(true);
+    expect(payload.alerts.some((alert) => alert.id === 'latency_p95_high')).toBe(true);
   });
 });

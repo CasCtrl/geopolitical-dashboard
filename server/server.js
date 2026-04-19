@@ -14,6 +14,7 @@ import assetsRoutes from './routes/assets.js';
 import reportsRoutes from './routes/reports.js';
 import newsRoutes from './routes/news.js';
 import observability from './observability.cjs';
+import adminObservability from './adminObservability.cjs';
 
 const app = express();
 const PORT = env.SERVER_PORT;
@@ -28,8 +29,8 @@ const {
   initializeRequestMetrics,
   recordRequestCompletion,
   getObservabilitySnapshot,
-  getActiveAlerts,
 } = observability;
+const { buildAdminAlertsPayload } = adminObservability;
 
 const requestMetrics = initializeRequestMetrics();
 
@@ -207,23 +208,13 @@ app.get('/api/admin/alerts', requireRoles([ADMIN_ROLE]), async (req, res) => {
   const dbPool = await getPool();
   const ready = Boolean(dbPool?.connected);
 
-  res.json({
-    alerts: getActiveAlerts({
-      ready,
-      requestMetrics,
-      thresholds: {
-        minRequests: env.OBS_MIN_REQUESTS,
-        errorRatePct: env.OBS_ERROR_RATE_THRESHOLD_PCT,
-        p95LatencyMs: env.OBS_P95_LATENCY_THRESHOLD_MS,
-      },
-    }),
-    thresholds: {
-      minRequests: env.OBS_MIN_REQUESTS,
-      errorRatePct: env.OBS_ERROR_RATE_THRESHOLD_PCT,
-      p95LatencyMs: env.OBS_P95_LATENCY_THRESHOLD_MS,
-    },
-    timestamp: new Date().toISOString(),
-  });
+  const thresholds = {
+    minRequests: env.OBS_MIN_REQUESTS,
+    errorRatePct: env.OBS_ERROR_RATE_THRESHOLD_PCT,
+    p95LatencyMs: env.OBS_P95_LATENCY_THRESHOLD_MS,
+  };
+
+  res.json(buildAdminAlertsPayload({ ready, requestMetrics, thresholds }));
 });
 
 // Health check
