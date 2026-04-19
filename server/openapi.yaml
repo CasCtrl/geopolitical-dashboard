@@ -34,6 +34,12 @@ paths:
       responses:
         '200':
           description: API metadata and OpenAPI location
+  /api/compliance:
+    get:
+      summary: Compliance and policy summary (privacy links, retention, audit endpoints)
+      responses:
+        '200':
+          description: Compliance summary payload
   /api/openapi.yaml:
     get:
       summary: OpenAPI contract

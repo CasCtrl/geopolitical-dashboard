@@ -35,7 +35,7 @@ const envSchema = z
     DB_SERVER: z.string().default('localhost'),
     DB_DATABASE: z.string().default('geopolitical_dashboard'),
     DB_USER: z.string().default('sa'),
-    DB_PASSWORD: z.string().min(1).default('YourPassword123!'),
+    DB_PASSWORD: z.string().min(1).optional(),
     DB_PORT: z.coerce.number().int().min(1).max(65535).default(1433),
     DB_CONNECT_STRICT: envBoolean.default(false),
     DB_INIT_ENABLED: envBoolean.default(true),
@@ -65,9 +65,21 @@ const envSchema = z
     OBS_FRONTEND_CRASH_MAX_PER_1K: z.coerce.number().min(0).max(1000).default(2),
     INCIDENT_MAX_ENTRIES: z.coerce.number().int().min(10).max(100000).default(500),
     INCIDENT_WEBHOOK_URL: z.string().url().optional().or(z.literal('')),
+    PRIVACY_POLICY_URL: z.string().url().optional().or(z.literal('')),
+    TERMS_OF_USE_URL: z.string().url().optional().or(z.literal('')),
+    DATA_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
   })
   .superRefine((env, ctx) => {
     const insecureDefaultPassword = 'YourPassword123!';
+    const needsDatabaseSecret = env.NODE_ENV === 'production' || env.DB_CONNECT_STRICT || env.DB_INIT_ENABLED;
+
+    if (needsDatabaseSecret && !env.DB_PASSWORD) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'DB_PASSWORD is required when DB access is enabled or strict mode is on',
+        path: ['DB_PASSWORD'],
+      });
+    }
 
     if (env.AUTH_REQUIRED && !env.API_TOKEN) {
       ctx.addIssue({
@@ -90,6 +102,14 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         message: 'API_TOKEN must not use the placeholder value in production',
         path: ['API_TOKEN'],
+      });
+    }
+
+    if (env.NODE_ENV === 'production' && !env.AUTH_REQUIRED) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'AUTH_REQUIRED must be true in production',
+        path: ['AUTH_REQUIRED'],
       });
     }
   });

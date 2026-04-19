@@ -219,4 +219,13 @@ describe('API contract with metadata envelope', () => {
     expect(response.body).toHaveProperty('slo.indicators');
     expect(response.body).toHaveProperty('slo.status');
   });
+
+  test('returns compliance summary with retention and policy links', async () => {
+    const response = await makeRequest(server.baseUrl, 'GET', '/api/compliance');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('data.dataRetentionDays');
+    expect(response.body).toHaveProperty('data.endpoints.auditTrail', '/api/admin/audit-trail');
+    expect(response.body).toHaveProperty('meta.provenance.source', 'runtime.compliance-config');
+  });
 });

@@ -302,6 +302,35 @@ New environment variables:
 - `INCIDENT_MAX_ENTRIES`
 - `INCIDENT_WEBHOOK_URL`
 
+### API SDK and Contract-First Client Layer
+
+Frontend API calls now have a centralized typed SDK surface in:
+
+- `src/app/api/sdk.ts`
+
+Current usage includes workspace persistence state writes (`workspaceStateApi`) and compliance summary retrieval.
+
+This keeps API usage aligned with the OpenAPI contract and reduces scattered ad-hoc fetch calls.
+
+### Compliance and Privacy Surface
+
+Compliance summary endpoint:
+
+- `GET /api/compliance`
+
+The endpoint reports:
+
+- Privacy policy URL
+- Terms of use URL
+- Data retention days
+- Operational compliance-related endpoint map (health/readiness/audit/incidents/observability)
+
+Related environment variables:
+
+- `PRIVACY_POLICY_URL`
+- `TERMS_OF_USE_URL`
+- `DATA_RETENTION_DAYS`
+
 ## Docker Setup
 
 The application uses Docker for complete containerization and easy deployment.

@@ -133,6 +133,22 @@ function classifyAuditableAction(req) {
     };
   }
 
+  if (method === 'GET' && req.path === '/api/admin/incidents') {
+    return {
+      action: 'admin.incidents.read',
+      target: 'incident-dashboard',
+      details: { limit: req.query?.limit ?? undefined },
+    };
+  }
+
+  if (method === 'GET' && req.path === '/api/compliance') {
+    return {
+      action: 'admin.compliance.read',
+      target: 'compliance-summary',
+      details: {},
+    };
+  }
+
   if (method === 'POST' && req.path === '/api/reports/generate') {
     return {
       action: 'release.report.generate',
@@ -531,6 +547,36 @@ app.get('/api/meta', (req, res) => {
     version: APP_VERSION,
     openApiPath: '/api/openapi.yaml',
     timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/compliance', (req, res) => {
+  res.json({
+    data: {
+      privacyPolicyUrl: env.PRIVACY_POLICY_URL || null,
+      termsOfUseUrl: env.TERMS_OF_USE_URL || null,
+      dataRetentionDays: env.DATA_RETENTION_DAYS,
+      endpoints: {
+        health: '/health',
+        readiness: '/ready',
+        auditTrail: '/api/admin/audit-trail',
+        incidents: '/api/admin/incidents',
+        observability: '/api/admin/observability',
+      },
+      timestamp: new Date().toISOString(),
+    },
+    meta: {
+      reliability: {
+        score: 0.95,
+        tier: 'high',
+        methodologyVersion: 'compliance-summary-v1',
+      },
+      provenance: {
+        source: 'runtime.compliance-config',
+        sourceType: 'generated',
+        fallback: { used: false, reason: null },
+      },
+    },
   });
 });
 

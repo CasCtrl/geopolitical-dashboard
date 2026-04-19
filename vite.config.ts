@@ -32,6 +32,35 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id: string) => {
+          if (id.includes('/src/app/components/')) {
+            if (
+              id.includes('/BacktestPanel') ||
+              id.includes('/MonteCarloPanel') ||
+              id.includes('/CorrelationAnalysisPanel')
+            ) {
+              return 'feature-analytics';
+            }
+
+            if (
+              id.includes('/HistoricalTrends') ||
+              id.includes('/RealtimeStatusPanel') ||
+              id.includes('/NewsFeedPanel')
+            ) {
+              return 'feature-intelligence';
+            }
+
+            if (
+              id.includes('/ExportReports') ||
+              id.includes('/AlertsAndNotifications') ||
+              id.includes('/CustomScenarioBuilderPanel') ||
+              id.includes('/AdvancedFilters')
+            ) {
+              return 'feature-workflows';
+            }
+
+            return 'feature-core';
+          }
+
           if (!id.includes('node_modules')) {
             return undefined;
           }
