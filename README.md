@@ -389,6 +389,134 @@ geopolitical-dashboard/
 - `npm run lint` - Run ESLint for code quality
 - `docker-compose up -d` - Start all containers
 - `docker-compose down` - Stop all containers
+- `npm test` - Run Jest test suite
+- `npm test -- --coverage` - Run tests with code coverage report
+
+## Testing & Test-Driven Development (TDD)
+
+This project employs Test-Driven Development (TDD) methodology to ensure code quality, reliability, and maintainability. All critical business logic is covered by comprehensive unit tests using Jest.
+
+### Testing Framework
+
+- **Jest** - JavaScript testing framework with TypeScript support (`ts-jest` preset)
+- **Test Structure** - Tests are collocated with source code in `__tests__` directories
+- **Test Pattern** - Follows AAA (Arrange-Act-Assert) pattern for clarity
+
+### Test Suites
+
+#### 1. **Country Risk Data Tests** (`countryRiskData.test.ts`)
+Tests the core risk calculation engine for geopolitical factors.
+
+**Test Coverage:**
+- **Zero Risk Calculation** - Verifies that when all risk weights are 0, the risk score is 0
+- **Proportional Risk Scaling** - Ensures higher weights produce proportionally higher risk scores
+- **Risk Score Bounds** - Validates that risk scores stay within reasonable bounds (0-100)
+- **Country Differentiation** - Confirms different countries have different base risk profiles based on their geopolitical factors
+- **Alert Threshold Validation** - Verifies that countries above risk threshold 5 correctly trigger alerts
+
+**Why It Matters:** These tests ensure that the risk calculation engine, which is the heart of the dashboard, produces accurate and consistent results.
+
+#### 2. **Portfolio Risk Calculation Tests** (`portfolioData.test.ts`)
+Tests portfolio-level risk aggregation and analysis.
+
+**Test Coverage:**
+- **Zero Portfolio Risk** - Verifies portfolio shows zero risk when all countries have zero risk
+- **Top Risk Country Identification** - Ensures the highest-risk countries are correctly identified and ranked
+- **Asset Weight Proportionality** - Confirms that higher-weighted assets contribute more to portfolio risk
+- **Missing Data Handling** - Tests graceful handling of missing country risk data (defaults to 0, doesn't crash)
+- **Asset Risk Contributions** - Validates that individual asset risk scores are correctly calculated
+
+**Why It Matters:** These tests ensure accurate portfolio-level analytics and prevent cascading errors from bad data.
+
+#### 3. **Portfolio Data Validation Tests** (`portfolioValidation.test.ts`)
+Tests data integrity and consistency of portfolio structures.
+
+**Test Coverage:**
+- **Weight Sum Validation** - Ensures asset weights sum to exactly 100%
+- **Country Dependency Requirements** - Verifies every asset has at least one country dependency
+- **Dependency Weight Validity** - Confirms dependency weights are valid probabilities (0-1)
+- **Dependency Type Validation** - Ensures dependencies are properly categorized (direct, indirect, macro)
+- **Asset Value Sanity Checks** - Validates that asset values are positive and align with weights
+
+**Why It Matters:** These tests prevent data quality issues that could lead to incorrect risk calculations.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode (re-run on file changes)
+npm test -- --watch
+
+# Run tests with coverage report
+npm test -- --coverage
+
+# Run specific test file
+npm test countryRiskData.test.ts
+
+# Run tests matching a pattern
+npm test -- --testNamePattern="portfolio"
+```
+
+### Test Output Example
+
+```
+PASS  src/app/data/__tests__/countryRiskData.test.ts
+PASS  src/app/data/__tests__/portfolioData.test.ts
+PASS  src/app/data/__tests__/portfolioValidation.test.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       30 passed, 30 total
+Snapshots:   0 total
+Time:        2.345 s
+```
+
+### TDD Best Practices Used
+
+1. **Red-Green-Refactor** - Tests are written before implementation to define expected behavior
+2. **Clear Test Names** - Each test clearly describes what behavior it validates
+3. **Isolated Tests** - Tests are independent and can run in any order
+4. **Test Documentation** - JSDoc comments explain the "why" behind each test
+5. **Mock Independence** - Tests don't depend on external services or databases
+6. **Edge Case Coverage** - Tests include boundary conditions and error scenarios
+
+### Code Coverage
+
+The project aims for high code coverage in critical areas:
+- **Risk calculation logic** - 100% coverage
+- **Portfolio analytics** - 100% coverage
+- **Data validation** - 100% coverage
+
+View coverage reports:
+```bash
+npm test -- --coverage --coverageReporters=text
+```
+
+### Adding New Tests
+
+When adding new features, follow the TDD workflow:
+
+1. **Write the Test First** - Define expected behavior in a test that initially fails
+2. **Implement the Feature** - Write minimal code to make the test pass
+3. **Refactor** - Improve code quality while keeping tests passing
+4. **Commit** - Include both test and implementation in git commit
+
+Example:
+```typescript
+describe('New Feature', () => {
+  test('should do something specific', () => {
+    // Arrange
+    const input = setupTestData();
+    
+    // Act
+    const result = newFeature(input);
+    
+    // Assert
+    expect(result).toEqual(expectedOutput);
+  });
+});
+```
 
 ## Figma Integration
 
