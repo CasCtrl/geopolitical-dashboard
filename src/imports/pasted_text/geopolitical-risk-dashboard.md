@@ -169,7 +169,20 @@ BTC	15%	Global	macro/regulatory instability	5.40
 - Latest Version: 1.1
 - Build: 1.1
 - Last Updated: April 19, 2026
-- Product direction now includes one-click map snapshot export from the Global Risk Heat Map card.
-- Dashboard status language now includes explicit daily-update recency indicators.
-- Help-system copy now reflects exports, refresh logic, and expanded tooling options.
-- Local integration assumptions are updated for backend API on port 5001.
+
+### Product & UX
+
+- ✅ Product direction now includes one-click map snapshot export from the Global Risk Heat Map card.
+- ✅ Dashboard status language now includes explicit daily-update recency indicators.
+- ✅ Help-system copy now reflects exports, refresh logic, and expanded tooling options.
+
+### Data & Runtime
+
+- ✅ Local integration assumptions are updated for backend API on port 5001.
+- ✅ Database bootstrap reliability was improved for local initialization paths.
+
+### Security, Observability, and DX
+
+- ✅ Server baseline now includes security middleware, rate limiting, and CORS controls.
+- ✅ Operational visibility now includes request tracing and structured runtime logging.
+- ✅ Lint/style hygiene was improved with TypeScript-aware linting and CSS import-order cleanup.

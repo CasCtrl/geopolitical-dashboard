@@ -32,6 +32,7 @@ import { NewsFeedPanel } from "./components/NewsFeedPanel";
 import { generateMockNews, parseNewsForRisk, newsToRiskEvent } from "./data/newsIntegration";
 import { initializeRealtimeUpdates, stopRealtimeUpdates } from "./data/realtimeUpdateManager";
 import {
+  Activity,
   AlertTriangle,
   TrendingDown,
   Swords,
@@ -56,6 +57,27 @@ import { convertPortfolioAssetToHolding, getCountriesFromAssets, getSectorsFromA
 const API_BASE_URL = "http://localhost:5001";
 const TIME_ZONE_STORAGE_KEY = "dashboard.timezone";
 
+type EndpointHealth = {
+  ok: boolean;
+  status: string;
+  latencyMs: number | null;
+  error?: string;
+};
+
+type BasicHealthMetrics = {
+  loading: boolean;
+  lastChecked: string;
+  health: EndpointHealth;
+  ready: EndpointHealth;
+  metrics: {
+    ok: boolean;
+    uptimeSeconds: number | null;
+    heapUsedMb: number | null;
+    databaseConnected: boolean | null;
+    error?: string;
+  };
+};
+
 export default function App() {
   const [weights, setWeights] = useState(getDefaultWeights());
   const [currentTab, setCurrentTab] = useState("dashboard");
@@ -64,6 +86,18 @@ export default function App() {
   const [showAlertsWindow, setShowAlertsWindow] = useState(false);
   const [showNewsFeedPanel, setShowNewsFeedPanel] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [healthMetrics, setHealthMetrics] = useState<BasicHealthMetrics>({
+    loading: false,
+    lastChecked: "Never",
+    health: { ok: false, status: "unknown", latencyMs: null },
+    ready: { ok: false, status: "unknown", latencyMs: null },
+    metrics: {
+      ok: false,
+      uptimeSeconds: null,
+      heapUsedMb: null,
+      databaseConnected: null,
+    },
+  });
   const [newsRefreshToken, setNewsRefreshToken] = useState(0);
   const [newsAlertCount, setNewsAlertCount] = useState(0);
   const [updateStatusTick, setUpdateStatusTick] = useState(0);
@@ -264,6 +298,78 @@ export default function App() {
     }
   }, []);
 
+  const checkBasicHealthMetrics = useCallback(async () => {
+    const timedFetch = async (url: string, init?: RequestInit) => {
+      const startedAt = performance.now();
+      try {
+        const response = await fetch(url, init);
+        const latencyMs = Math.round(performance.now() - startedAt);
+        const data = await response.json().catch(() => null);
+        return { ok: response.ok, latencyMs, data };
+      } catch (error) {
+        return {
+          ok: false,
+          latencyMs: null,
+          data: null,
+          error: error instanceof Error ? error.message : "Request failed",
+        };
+      }
+    };
+
+    setHealthMetrics((prev) => ({ ...prev, loading: true }));
+
+    const [healthRes, readyRes, metricsRes] = await Promise.all([
+      timedFetch(`${API_BASE_URL}/health`),
+      timedFetch(`${API_BASE_URL}/ready`),
+      timedFetch(`${API_BASE_URL}/api/admin/metrics`, {
+        headers: { "x-user-role": "admin" },
+      }),
+    ]);
+
+    setHealthMetrics({
+      loading: false,
+      lastChecked: new Date().toLocaleString(undefined, {
+        timeZone: selectedTimeZone,
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
+      health: {
+        ok: healthRes.ok,
+        status: healthRes.data?.status || (healthRes.ok ? "ok" : "error"),
+        latencyMs: healthRes.latencyMs,
+        error: healthRes.error,
+      },
+      ready: {
+        ok: readyRes.ok,
+        status: readyRes.data?.status || (readyRes.ok ? "ready" : "degraded"),
+        latencyMs: readyRes.latencyMs,
+        error: readyRes.error,
+      },
+      metrics: {
+        ok: metricsRes.ok,
+        uptimeSeconds: typeof metricsRes.data?.uptimeSeconds === "number" ? metricsRes.data.uptimeSeconds : null,
+        heapUsedMb:
+          typeof metricsRes.data?.memory?.heapUsed === "number"
+            ? Number((metricsRes.data.memory.heapUsed / (1024 * 1024)).toFixed(1))
+            : null,
+        databaseConnected:
+          typeof metricsRes.data?.databaseConnected === "boolean"
+            ? metricsRes.data.databaseConnected
+            : null,
+        error: metricsRes.error || (!metricsRes.ok ? "Metrics endpoint unavailable" : undefined),
+      },
+    });
+  }, [selectedTimeZone]);
+
+  const formatUptime = useCallback((uptimeSeconds: number | null) => {
+    if (uptimeSeconds === null) return "N/A";
+    const total = Math.floor(uptimeSeconds);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }, []);
+
   // Check backend connectivity periodically to keep live-data status current.
   useEffect(() => {
     checkLiveDataStatus();
@@ -278,6 +384,14 @@ export default function App() {
       localStorage.setItem(TIME_ZONE_STORAGE_KEY, selectedTimeZone);
     }
   }, [selectedTimeZone]);
+
+  useEffect(() => {
+    if (!showSettingsModal) return;
+
+    checkBasicHealthMetrics();
+    const intervalId = window.setInterval(checkBasicHealthMetrics, 60000);
+    return () => window.clearInterval(intervalId);
+  }, [showSettingsModal, checkBasicHealthMetrics]);
 
   useEffect(() => {
     setDashboardMinRiskFilter(0);
@@ -728,6 +842,20 @@ export default function App() {
                         <li><span className="font-semibold">Correlation & Scenarios:</span> Explore cross-country risk relationships and test custom what-if scenarios before making allocation changes.</li>
                       </ul>
                     </div>
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3">
+                      <p className="text-[11px] text-zinc-200 font-semibold">Created by</p>
+                      <p className="text-[11px] text-zinc-300 mt-1">This app was built by Casandra Cain</p>
+                      <p className="text-[11px] text-zinc-400 mt-1">Inspired by Ian Bremmer's political podcast, G-Zero World.</p>
+                      <a
+                        href="https://cascain.io"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block text-[11px] text-blue-300 hover:text-blue-200 underline underline-offset-2"
+                      >
+                        cascain.io
+                      </a>
+                      <p className="text-[10px] text-zinc-500 mt-2">Copyright © 2026 Casandra Cain.</p>
+                    </div>
                   </div>
                 </TabsContent>
 
@@ -738,17 +866,40 @@ export default function App() {
                       <p className="text-[11px] text-zinc-300 mb-2">
                         <span className="font-semibold text-white">Build:</span> 1.1 | <span className="font-semibold text-white">Last Updated:</span> April 19, 2026
                       </p>
-                      <div className="space-y-1 text-[11px]">
-                        <p>✅ Added Global Risk Heat Map PNG snapshot download with stronger capture reliability.</p>
-                        <p>✅ Added toast feedback for snapshot success and error states.</p>
-                        <p>✅ Added refresh-status indicators: checkmark for data refreshed within 24 hours, alert when overdue.</p>
-                        <p>✅ Updated alert functionality so the Alerts modal "Active Alerts" summary now matches the high-risk alert count shown in the header badge/stat.</p>
-                        <p>✅ Added live API connector feed/status in Settings (APIs tab), including connected/disconnected indicators and manual recheck.</p>
-                        <p>✅ Added a top-header live data status badge (green/red) near the dashboard title.</p>
-                        <p>✅ Added a new Settings icon and modal with API connection guidance and basic app information.</p>
-                        <p>✅ Added a persisted time zone selector in Settings for localized status timestamps.</p>
-                        <p>✅ Expanded Help content for exports, snapshot flow, daily updates, and advanced tools.</p>
-                        <p>✅ Updated local backend runtime baseline to port 5001 with improved DB bootstrap reliability.</p>
+                      <div className="grid grid-cols-1 gap-3 text-[11px]">
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Product & UX</p>
+                          <p>✅ Added Global Risk Heat Map PNG snapshot download with stronger capture reliability.</p>
+                          <p>✅ Added toast feedback for snapshot success and error states.</p>
+                          <p>✅ Added refresh-status indicators: checkmark for data refreshed within 24 hours, alert when overdue.</p>
+                          <p>✅ Updated alert functionality so the Alerts modal "Active Alerts" summary now matches the high-risk alert count shown in the header badge/stat.</p>
+                          <p>✅ Added a top-header live data status badge (green/red) near the dashboard title.</p>
+                          <p>✅ Added a new Settings icon and modal with API connection guidance and basic app information.</p>
+                          <p>✅ Added a persisted time zone selector in Settings for localized status timestamps.</p>
+                          <p>✅ Expanded Help content for exports, snapshot flow, daily updates, and advanced tools.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Data & Runtime</p>
+                          <p>✅ Added live API connector feed/status in Settings (APIs tab), including connected/disconnected indicators and manual recheck.</p>
+                          <p>✅ Updated local backend runtime baseline to port 5001 with improved DB bootstrap reliability.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Security Hardening</p>
+                          <p>✅ Added server hardening with Helmet headers, API rate limiting, and CORS allowlist controls.</p>
+                          <p>✅ Added optional token-based API protection and role-guarded admin metrics route.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Observability & Operations</p>
+                          <p>✅ Added structured JSON logging for startup, requests, and failures with request ID tracing.</p>
+                          <p>✅ Added health/readiness coverage with versioned /health and DB-aware /ready endpoints.</p>
+                          <p>✅ Added process-level handling for unhandled rejections and uncaught exceptions.</p>
+                          <p>✅ Added a new Basic Health Metrics card in Settings (APIs tab) with endpoint status, latency, uptime, memory, DB state, and last-checked time.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Developer Experience</p>
+                          <p>✅ Updated lint pipeline to cover app and server code with TypeScript-aware rules.</p>
+                          <p>✅ Fixed CSS import ordering to reduce PostCSS dev/build warnings.</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -823,6 +974,61 @@ export default function App() {
                     >
                       Recheck API Status
                     </button>
+                  </div>
+
+                  <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="font-semibold text-white flex items-center gap-1.5">
+                        <Activity className="size-3.5 text-emerald-300" />
+                        Basic Health Metrics
+                      </h3>
+                      <button
+                        onClick={checkBasicHealthMetrics}
+                        className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-white text-[10px] font-medium transition-colors"
+                      >
+                        {healthMetrics.loading ? "Checking..." : "Refresh"}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                      <div className="bg-zinc-950/70 border border-zinc-800 rounded p-2">
+                        <p className="text-zinc-400">/health</p>
+                        <p className={`font-semibold ${healthMetrics.health.ok ? "text-emerald-300" : "text-red-300"}`}>
+                          {healthMetrics.health.status}
+                        </p>
+                        <p className="text-zinc-500">{healthMetrics.health.latencyMs ?? "-"} ms</p>
+                      </div>
+                      <div className="bg-zinc-950/70 border border-zinc-800 rounded p-2">
+                        <p className="text-zinc-400">/ready</p>
+                        <p className={`font-semibold ${healthMetrics.ready.ok ? "text-emerald-300" : "text-amber-300"}`}>
+                          {healthMetrics.ready.status}
+                        </p>
+                        <p className="text-zinc-500">{healthMetrics.ready.latencyMs ?? "-"} ms</p>
+                      </div>
+                      <div className="bg-zinc-950/70 border border-zinc-800 rounded p-2">
+                        <p className="text-zinc-400">DB Connection</p>
+                        <p className={`font-semibold ${healthMetrics.metrics.databaseConnected ? "text-emerald-300" : "text-amber-300"}`}>
+                          {healthMetrics.metrics.databaseConnected === null
+                            ? "Unknown"
+                            : healthMetrics.metrics.databaseConnected
+                            ? "Connected"
+                            : "Disconnected"}
+                        </p>
+                        <p className="text-zinc-500">Admin metrics</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-950/70 border border-zinc-800 rounded p-2 text-[11px] space-y-1">
+                      <p><span className="text-zinc-400">Service Uptime:</span> {formatUptime(healthMetrics.metrics.uptimeSeconds)}</p>
+                      <p><span className="text-zinc-400">Heap Used:</span> {healthMetrics.metrics.heapUsedMb === null ? "N/A" : `${healthMetrics.metrics.heapUsedMb} MB`}</p>
+                      <p><span className="text-zinc-400">Last Checked:</span> {healthMetrics.lastChecked}</p>
+                      <p className="text-zinc-500">Basic endpoint metrics are available. Full tracing and alerting stack is not configured yet.</p>
+                      {(healthMetrics.health.error || healthMetrics.ready.error || healthMetrics.metrics.error) && (
+                        <p className="text-amber-300">
+                          Note: {healthMetrics.health.error || healthMetrics.ready.error || healthMetrics.metrics.error}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
@@ -1040,7 +1246,7 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                    <div className="max-h-[320px] overflow-y-auto p-2">
+                    <div className="max-h-[320px] overflow-hidden p-2">
                       <NewsFeedPanel
                         countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
                           acc[country] = riskData[country] || 50;

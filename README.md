@@ -575,8 +575,33 @@ For issues or questions, refer to the project guidelines in the `/guidelines` fo
 - Latest Version: 1.1
 - Build: 1.1
 - Last Updated: April 19, 2026
-- Added Global Risk Heat Map snapshot download (PNG) with reliability improvements and toast feedback.
-- Added daily refresh status indicators: checkmark for <=24h freshness and alert state when overdue.
-- Updated Help modal content for exports, snapshot workflow, refresh states, and expanded tools guidance.
-- Local backend API now defaults to port 5001.
-- Database initialization now auto-creates the target DB when missing and improves dataset load reliability.
+
+### Product & UX
+
+- ✅ Added Global Risk Heat Map snapshot download (PNG) with reliability improvements and toast feedback.
+- ✅ Added daily refresh status indicators: checkmark for <=24h freshness and alert state when overdue.
+- ✅ Updated alert-center summary alignment so Active Alerts matches the high-risk count shown in the header.
+- ✅ Added top-header live data status badge and expanded Help modal guidance.
+- ✅ Added Settings modal enhancements, including time zone persistence and API connector visibility.
+
+### Data & Runtime
+
+- ✅ Local backend API now defaults to port 5001.
+- ✅ Database initialization now auto-creates the target DB when missing and improves dataset load reliability.
+
+### Security Hardening
+
+- ✅ Added server hardening with Helmet security headers.
+- ✅ Added API rate limiting and allowlist-based CORS controls.
+- ✅ Added optional token-based API auth and role-guarded admin metrics endpoint.
+
+### Observability & Operations
+
+- ✅ Added structured JSON logs for startup, request completion, and failure paths.
+- ✅ Added request ID tracing support for easier incident correlation.
+- ✅ Added health/readiness endpoint coverage including DB-aware readiness state.
+
+### Developer Experience
+
+- ✅ Upgraded lint configuration to cover frontend and backend files with TypeScript-aware rules.
+- ✅ Fixed CSS import ordering to reduce PostCSS import-order warnings.

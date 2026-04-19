@@ -37,7 +37,7 @@ export function DatasetSelector({
     <div className="relative w-full md:w-80">
       <button
         onClick={() => setOpen(!isOpen)}
-        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-md flex items-center justify-between hover:bg-zinc-800 transition-colors text-sm text-white"
+        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded flex items-center justify-between hover:bg-zinc-800 transition-colors text-sm text-white"
       >
         <span className="truncate">
           <span className="text-zinc-500 mr-2">Dataset:</span>
@@ -47,7 +47,7 @@ export function DatasetSelector({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-md shadow-lg z-50">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded shadow-lg z-50 overflow-hidden">
           <div className="max-h-64 overflow-y-auto">
             {datasets.map((dataset) => (
               <button

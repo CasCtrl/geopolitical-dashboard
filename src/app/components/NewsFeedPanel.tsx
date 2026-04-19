@@ -327,7 +327,7 @@ export function NewsFeedPanel({ countryRisks, portfolioCountries, compact = fals
       )}
 
       {/* Articles List */}
-      <div className={`${compact ? 'space-y-1.5 max-h-[260px]' : 'space-y-3 max-h-[600px]'} overflow-y-auto`}>
+      <div className={`${compact ? 'space-y-1.5 max-h-[260px]' : 'space-y-3 max-h-[600px]'} overflow-y-auto pr-1 [scrollbar-gutter:stable]`}>
         {isLoading ? (
           <Card className="p-8 bg-zinc-950 border border-zinc-800 text-center">
             <Loader size={24} className="animate-spin mx-auto mb-2 text-blue-400" />

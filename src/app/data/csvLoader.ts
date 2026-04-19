@@ -23,7 +23,7 @@ export interface DatasetRecord {
 
 // CSV Parsing Cache
 let csvParserWorker: Worker | null = null;
-let csvParseCache: { [key: string]: { datasets: DatasetMetadata[]; assetsByDataset: { [datasetId: string]: Asset[] } } } = {};
+const csvParseCache: { [key: string]: { datasets: DatasetMetadata[]; assetsByDataset: { [datasetId: string]: Asset[] } } } = {};
 
 function getCSVWorker(): Worker {
   if (!csvParserWorker) {

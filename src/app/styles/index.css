@@ -1,6 +1,7 @@
-/* Global styles */
 @import './theme.css';
 @import './tailwind.css';
+
+/* Global styles */
 
 * {
   margin: 0;
