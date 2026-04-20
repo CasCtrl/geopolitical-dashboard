@@ -213,7 +213,7 @@ function getSloSnapshot(requestMetrics, thresholds) {
 
   const indicators = {
     apiErrorRatePct: snapshot.requests.errorRatePct,
-    apiP95LatencyMs: snapshot.latency.p95Ms,
+    requestP95LatencyMs: snapshot.latency.p95Ms,
     dbHealthPct: dbHealthyPct,
     newsIngestionSuccessPct: newsSuccessPct,
     frontendCrashPer1kRequests: frontendCrashRatePer1k,
@@ -224,9 +224,9 @@ function getSloSnapshot(requestMetrics, thresholds) {
     indicators,
     status: {
       apiErrorRateOk: indicators.apiErrorRatePct <= objectives.apiErrorRateMaxPct,
-      apiP95LatencyOk: indicators.apiP95LatencyMs === null
+      requestP95LatencyOk: indicators.requestP95LatencyMs === null
         ? true
-        : indicators.apiP95LatencyMs <= objectives.apiP95LatencyMaxMs,
+        : indicators.requestP95LatencyMs <= objectives.apiP95LatencyMaxMs,
       dbHealthOk: indicators.dbHealthPct >= objectives.dbHealthMinPct,
       newsIngestionOk: indicators.newsIngestionSuccessPct >= objectives.newsIngestionMinSuccessPct,
       frontendCrashRateOk: indicators.frontendCrashPer1kRequests <= objectives.frontendCrashMaxPer1kRequests,
