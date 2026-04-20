@@ -271,7 +271,15 @@ export function calculateAllMetrics(trendData: TrendDataPoint[]): RiskMetrics {
  * Analyze risk attribution by factor and country
  */
 export function analyzeRiskAttribution(
-  countryRisks: { [country: string]: unknown },
+  countryRisks: {
+    [country: string]: {
+      political?: number;
+      economic?: number;
+      conflict?: number;
+      corruption?: number;
+      terrorism?: number;
+    };
+  },
   weights: {
     political: number;
     economic: number;
@@ -286,20 +294,24 @@ export function analyzeRiskAttribution(
     return Number.isFinite(n) ? n : 0;
   };
 
-  // Calculate factor contributions
+  // Calculate exposure-weighted factor contributions for the current portfolio.
+  // This ensures attribution reflects what the user currently holds.
   let totalPolitical = 0,
     totalEconomic = 0,
     totalConflict = 0,
     totalCorruption = 0,
     totalTerrorism = 0;
 
-  for (const country in countryRisks) {
-    const risk = (countryRisks[country] || {}) as Record<string, unknown>;
-    totalPolitical += safeNumber(risk.political) * safeNumber(weights.political);
-    totalEconomic += safeNumber(risk.economic) * safeNumber(weights.economic);
-    totalConflict += safeNumber(risk.conflict) * safeNumber(weights.conflict);
-    totalCorruption += safeNumber(risk.corruption) * safeNumber(weights.corruption);
-    totalTerrorism += safeNumber(risk.terrorism) * safeNumber(weights.terrorism);
+  for (const exposure of portfolioExposures) {
+    const country = exposure.country;
+    const risk = countryRisks[country] || {};
+    const exposureWeight = Math.max(0, safeNumber(exposure.riskContribution));
+
+    totalPolitical += exposureWeight * safeNumber(risk.political) * safeNumber(weights.political);
+    totalEconomic += exposureWeight * safeNumber(risk.economic) * safeNumber(weights.economic);
+    totalConflict += exposureWeight * safeNumber(risk.conflict) * safeNumber(weights.conflict);
+    totalCorruption += exposureWeight * safeNumber(risk.corruption) * safeNumber(weights.corruption);
+    totalTerrorism += exposureWeight * safeNumber(risk.terrorism) * safeNumber(weights.terrorism);
   }
 
   const totalRiskRaw =
@@ -324,11 +336,16 @@ export function analyzeRiskAttribution(
   };
 
   // Calculate country contributions
+  const totalCountryContribution = portfolioExposures.reduce(
+    (sum, exposure) => sum + Math.max(0, safeNumber(exposure.riskContribution)),
+    0
+  );
+
   const byCountry = portfolioExposures
     .map((exposure) => ({
       country: exposure.country,
       contribution: Math.round(safeNumber(exposure.riskContribution) * 100) / 100,
-      percentOfTotal: toPercent(safeNumber(exposure.riskContribution), totalRisk),
+      percentOfTotal: toPercent(safeNumber(exposure.riskContribution), totalCountryContribution),
     }))
     .sort((a, b) => b.contribution - a.contribution);
 

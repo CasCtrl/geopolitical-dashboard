@@ -238,6 +238,9 @@ const CustomScenarioBuilderPanel = lazy(() =>
 const MonteCarloPanel = lazy(() =>
   import("./components/MonteCarloPanel").then((module) => ({ default: module.MonteCarloPanel }))
 );
+const SupplyChainExposureMappingPanel = lazy(() =>
+  import("./components/SupplyChainExposureMappingPanel").then((module) => ({ default: module.SupplyChainExposureMappingPanel }))
+);
 const NewsFeedPanel = lazy(() =>
   import("./components/NewsFeedPanel").then((module) => ({ default: module.NewsFeedPanel }))
 );
@@ -2247,10 +2250,7 @@ export default function App() {
               <>
                 <RiskMetricsPanel
                   trendData={getPortfolioRiskTrend(30, selectedDatasetId)}
-                  countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
-                    acc[country] = riskData[country] || 50;
-                    return acc;
-                  }, {} as { [country: string]: number })}
+                  countryRisks={baseRiskData}
                   weights={weights}
                   portfolioRisk={portfolioAnalysis.totalRiskScore}
                   portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({
@@ -2262,6 +2262,27 @@ export default function App() {
                   showBenchmarkComparison={true}
                   showRiskAttribution={false}
                 />
+
+                {/* Correlation & Diversification Analysis */}
+                <div className="border-t border-zinc-800 pt-4">
+                  <Suspense fallback={tabLoadingFallback}>
+                    <CorrelationAnalysisPanel
+                      countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
+                        acc[country] = riskData[country] || 50;
+                        return acc;
+                      }, {} as { [country: string]: number })}
+                      trendData={Object.keys(baseRiskData).reduce((acc, country) => {
+                        acc[country] = Array(30).fill(riskData[country] || 50);
+                        return acc;
+                      }, {} as { [country: string]: number[] })}
+                      weights={portfolioAnalysis.countryExposures.reduce((acc, exp) => {
+                        acc[exp.country] = exp.riskContribution;
+                        return acc;
+                      }, {} as { [country: string]: number })}
+                      currentPortfolioCountries={portfolioAnalysis.countryExposures.map(exp => exp.country)}
+                    />
+                  </Suspense>
+                </div>
               </>
             )}
           </div>
@@ -2274,7 +2295,6 @@ export default function App() {
               <HistoricalTrends
                 availableCountries={Object.keys(baseRiskData)}
                 portfolio={portfolio}
-                riskData={riskData}
                 datasetId={selectedDatasetId}
               />
             </Suspense>
@@ -2317,23 +2337,12 @@ export default function App() {
                     </Suspense>
                   </div>
 
-                  {/* Correlation Analysis Panel */}
+                  {/* Supply Chain Exposure Mapping */}
                   <div className="border-t border-zinc-800 pt-4">
                     <Suspense fallback={tabLoadingFallback}>
-                      <CorrelationAnalysisPanel
-                        countryRisks={Object.keys(baseRiskData).reduce((acc, country) => {
-                          acc[country] = riskData[country] || 50;
-                          return acc;
-                        }, {} as { [country: string]: number })}
-                        trendData={Object.keys(baseRiskData).reduce((acc, country) => {
-                          acc[country] = Array(30).fill(riskData[country] || 50);
-                          return acc;
-                        }, {} as { [country: string]: number[] })}
-                        weights={portfolioAnalysis.countryExposures.reduce((acc, exp) => {
-                          acc[exp.country] = exp.riskContribution;
-                          return acc;
-                        }, {} as { [country: string]: number })}
-                        currentPortfolioCountries={portfolioAnalysis.countryExposures.map(exp => exp.country)}
+                      <SupplyChainExposureMappingPanel
+                        portfolio={portfolio}
+                        riskData={riskData}
                       />
                     </Suspense>
                   </div>

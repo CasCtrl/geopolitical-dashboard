@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Card } from "./ui/card";
 import { AlertTriangle, TrendingUp, Target, Shield } from "lucide-react";
 import { RiskScoreInfo } from "./RiskScoreInfo";
+import { Asset } from "../data/portfolioData";
+import { AssetLevelIntelligencePanel } from "./AssetLevelIntelligencePanel";
 
 interface SummaryProps {
   portfolioAnalysis: {
@@ -19,7 +21,7 @@ interface SummaryProps {
     corruption: number;
     terrorism: number;
   };
-  portfolio: Array<{ ticker: string; name: string; sector: string; weight: number; value: number }>;
+  portfolio: Asset[];
   dataFreshnessLabel?: string;
   isStaleData?: boolean;
 }
@@ -142,7 +144,10 @@ export function Summary({
   
   // Generate insights
   const insights: string[] = [];
-  const recommendations: string[] = [];
+  const recommendationCandidates: Array<{ text: string; priority: number }> = [];
+  const addRecommendation = (text: string, priority: number) => {
+    recommendationCandidates.push({ text, priority });
+  };
 
   const rankedAssetsByRiskDesc = [...portfolioAnalysis.assetContributions].sort((a, b) => b.riskScore - a.riskScore);
   const rankedAssetsByRiskAsc = [...portfolioAnalysis.assetContributions].sort((a, b) => a.riskScore - b.riskScore);
@@ -199,20 +204,24 @@ export function Summary({
 
   // Recommendations for changes
   if (riskScore >= 80) {
-    recommendations.push(
-      `Your portfolio is exposed to critical geopolitical risks. Alternative: cut 5-10% from the highest-risk position ${highestRiskAsset?.ticker || "currently highest-risk asset"} and reallocate toward lower-risk names like ${lowRiskAlternativeText}, with added country exposure to ${lowRiskCountryText}.`
+    addRecommendation(
+      `Your portfolio is exposed to critical geopolitical risks. Alternative: cut 5-10% from the highest-risk position ${highestRiskAsset?.ticker || "currently highest-risk asset"} and reallocate toward lower-risk names like ${lowRiskAlternativeText}, with added country exposure to ${lowRiskCountryText}.`,
+      100
     );
   } else if (riskScore >= 60) {
-    recommendations.push(
-      `Your portfolio carries significant geopolitical risk. Alternative: trim 3-7% from top-risk holdings and rotate into ${lowRiskAlternativeText}; prioritize new allocation in ${lowRiskCountryText} to reduce concentration risk.`
+    addRecommendation(
+      `Your portfolio carries significant geopolitical risk. Alternative: trim 3-7% from top-risk holdings and rotate into ${lowRiskAlternativeText}; prioritize new allocation in ${lowRiskCountryText} to reduce concentration risk.`,
+      85
     );
   } else if (riskScore >= 40) {
-    recommendations.push(
-      `Your portfolio shows moderate risk exposure. Alternative: maintain core positions but shift 2-4% from high-risk names into ${lowRiskAlternativeText}, and direct incremental exposure toward ${lowRiskCountryText}.`
+    addRecommendation(
+      `Your portfolio shows moderate risk exposure. Alternative: maintain core positions but shift 2-4% from high-risk names into ${lowRiskAlternativeText}, and direct incremental exposure toward ${lowRiskCountryText}.`,
+      70
     );
   } else {
-    recommendations.push(
-      `Your portfolio demonstrates strong resilience to geopolitical shocks. Alternative: preserve current mix by keeping higher weights in ${alternativeTickers} and only adding new exposure in lower-risk markets such as ${lowRiskCountryText}.`
+    addRecommendation(
+      `Your portfolio demonstrates strong resilience to geopolitical shocks. Alternative: preserve current mix by keeping higher weights in ${alternativeTickers} and only adding new exposure in lower-risk markets such as ${lowRiskCountryText}.`,
+      55
     );
   }
 
@@ -222,8 +231,9 @@ export function Summary({
     const topCountryRisk = riskData[topCountry] || 0;
     const topCountryExposure = portfolioAnalysis.countryExposures.find((entry) => entry.country === topCountry);
     const topCountryAssets = topCountryExposure?.contributingAssets?.slice(0, 3).join(", ") || "the related holdings";
-    recommendations.push(
-      `${topCountry} represents your highest geographic risk exposure with a score of ${topCountryRisk.toFixed(0)}. Alternative: reduce exposure in ${topCountryAssets} and redirect that capital into assets tied to ${lowRiskCountryText}.`
+    addRecommendation(
+      `${topCountry} represents your highest geographic risk exposure with a score of ${topCountryRisk.toFixed(0)}. Alternative: reduce exposure in ${topCountryAssets} and redirect that capital into assets tied to ${lowRiskCountryText}.`,
+      90
     );
   }
 
@@ -246,12 +256,14 @@ export function Summary({
       });
 
     if (sameSectorLowerRisk && highestRiskHolding) {
-      recommendations.push(
-        `Replace strategy: reduce ${highestRiskAsset.ticker} (${highestRiskAsset.riskScore.toFixed(1)} risk) and increase ${sameSectorLowerRisk.ticker} (${sameSectorLowerRisk.riskScore.toFixed(1)} risk) to keep ${highestRiskHolding.sector} exposure with lower geopolitical sensitivity.`
+      addRecommendation(
+        `Replace strategy: reduce ${highestRiskAsset.ticker} (${highestRiskAsset.riskScore.toFixed(1)} risk) and increase ${sameSectorLowerRisk.ticker} (${sameSectorLowerRisk.riskScore.toFixed(1)} risk) to keep ${highestRiskHolding.sector} exposure with lower geopolitical sensitivity.`,
+        95
       );
     } else if (lowestRiskAsset.ticker !== highestRiskAsset.ticker) {
-      recommendations.push(
-        `Replace strategy: trim ${highestRiskAsset.ticker} (${highestRiskAsset.riskScore.toFixed(1)} risk) and add to ${lowestRiskAsset.ticker} (${lowestRiskAsset.riskScore.toFixed(1)} risk) as a direct lower-risk alternative.`
+      addRecommendation(
+        `Replace strategy: trim ${highestRiskAsset.ticker} (${highestRiskAsset.riskScore.toFixed(1)} risk) and add to ${lowestRiskAsset.ticker} (${lowestRiskAsset.riskScore.toFixed(1)} risk) as a direct lower-risk alternative.`,
+        95
       );
     }
   }
@@ -263,15 +275,17 @@ export function Summary({
   });
   const mostCommonSector = Object.entries(sectorCounts).sort(([, a], [, b]) => b - a)[0];
   if (mostCommonSector && mostCommonSector[1] > portfolio.length * 0.3) {
-    recommendations.push(
-      `Your portfolio has high concentration in the ${mostCommonSector[0]} sector with ${mostCommonSector[1]} assets. Alternative: shift part of new buys toward ${lowRiskSectorText} and use lower-risk tickers like ${alternativeTickers}.`
+    addRecommendation(
+      `Your portfolio has high concentration in the ${mostCommonSector[0]} sector with ${mostCommonSector[1]} assets. Alternative: shift part of new buys toward ${lowRiskSectorText} and use lower-risk tickers like ${alternativeTickers}.`,
+      80
     );
   }
 
   // Asset diversity recommendation
   if (portfolio.length < 5) {
-    recommendations.push(
-      `Your portfolio contains only ${portfolio.length} assets, which limits diversification benefits. Alternative: add 2-3 names from lower-risk options such as ${lowRiskAlternativeText}, across sectors like ${lowRiskSectorText}.`
+    addRecommendation(
+      `Your portfolio contains only ${portfolio.length} assets, which limits diversification benefits. Alternative: add 2-3 names from lower-risk options such as ${lowRiskAlternativeText}, across sectors like ${lowRiskSectorText}.`,
+      75
     );
   }
 
@@ -280,10 +294,38 @@ export function Summary({
     portfolioAnalysis.countryExposures.map((e) => e.country)
   );
   if (uniqueCountries.size < 3) {
-    recommendations.push(
-      `Your portfolio is concentrated in only ${uniqueCountries.size} countries. Alternative: add exposure to ${lowRiskCountryText} so your allocation spans at least 5-7 countries.`
+    addRecommendation(
+      `Your portfolio is concentrated in only ${uniqueCountries.size} countries. Alternative: add exposure to ${lowRiskCountryText} so your allocation spans at least 5-7 countries.`,
+      78
     );
   }
+
+  addRecommendation(
+    `Action plan: set a rebalance trigger to review ${highestRiskAsset?.ticker || "your highest-risk holding"} weekly and rotate increments into ${alternativeTickers} if its risk score rises further.`,
+    65
+  );
+
+  addRecommendation(
+    `Execution order: 1) reduce highest country concentration, 2) swap into lower-risk alternatives (${alternativeTickers}), 3) add exposure to ${lowRiskCountryText}.`,
+    60
+  );
+
+  const recommendations = recommendationCandidates
+    .sort((a, b) => b.priority - a.priority)
+    .filter((item, index, arr) => arr.findIndex((candidate) => candidate.text === item.text) === index)
+    .slice(0, 4);
+
+  const getPriorityMeta = (priority: number) => {
+    if (priority >= 90) {
+      return { label: "Priority 1", className: "bg-red-950/40 text-red-300 border-red-900/50" };
+    }
+
+    if (priority >= 75) {
+      return { label: "Priority 2", className: "bg-orange-950/30 text-orange-300 border-orange-900/50" };
+    }
+
+    return { label: "Priority 3", className: "bg-yellow-950/30 text-yellow-300 border-yellow-900/50" };
+  };
 
   const getRiskLevel = (score: number) => {
     if (score >= 80) return { label: "CRITICAL", color: "text-red-400", bg: "bg-red-950/20" };
@@ -330,7 +372,7 @@ export function Summary({
       )}
       {/* Current Snapshot */}
       <Card className="p-4 bg-zinc-950 border-zinc-900">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-3">
           <div>
             <div className="mb-1 flex items-center gap-1">
               <h2 className="text-sm font-semibold text-white">Portfolio Snapshot</h2>
@@ -431,7 +473,7 @@ export function Summary({
 
         {/* Risk Factor Breakdown */}
         <div className="bg-zinc-900/30 border border-zinc-800 rounded p-3">
-          <div className="mb-3 flex items-center gap-1">
+          <div className="mb-2 flex items-center gap-1">
             <p className="text-xs text-zinc-400 uppercase tracking-wide font-medium">Active Risk Factors</p>
             <RiskScoreInfo
               meaning="Relative weighting of the geopolitical factors currently driving model sensitivity."
@@ -463,7 +505,7 @@ export function Summary({
 
       {/* Key Insights */}
       <Card className="p-4 bg-zinc-950 border-zinc-900">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-2">
           <AlertTriangle className="size-4 text-amber-400" />
           <h3 className="text-sm font-semibold text-white">Potential Losses from Exposure</h3>
           <RiskScoreInfo
@@ -545,7 +587,7 @@ export function Summary({
 
       {/* Key Insights */}
       <Card className="p-4 bg-zinc-950 border-zinc-900">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-2">
           <Shield className="size-4 text-green-400" />
           <h3 className="text-sm font-semibold text-white">Key Insights</h3>
           <RiskScoreInfo
@@ -564,7 +606,7 @@ export function Summary({
 
       {/* Recommendations */}
       <Card className="p-4 bg-zinc-950 border-zinc-900">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-2">
           <Target className="size-4 text-blue-400" />
           <h3 className="text-sm font-semibold text-white">Recommendations</h3>
           <RiskScoreInfo
@@ -573,19 +615,33 @@ export function Summary({
           />
         </div>
         <div className="space-y-2 text-xs text-zinc-300">
-          {recommendations.map((rec, idx) => (
+          {recommendations.map((rec, idx) => {
+            const priority = getPriorityMeta(rec.priority);
+            return (
             <div key={idx} className="bg-zinc-900/40 p-2 rounded border border-zinc-800/50">
-              <p>{rec}</p>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${priority.className}`}>
+                  {priority.label}
+                </span>
+                <span className="text-[10px] text-zinc-500">Weight {rec.priority}</span>
+              </div>
+              <p>{rec.text}</p>
             </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
+
+      <AssetLevelIntelligencePanel
+        portfolio={portfolio}
+        riskData={riskData}
+      />
 
       {/* Top Exposures */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Top Risk Assets */}
         <Card className="p-4 bg-zinc-950 border-zinc-900">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="size-4 text-orange-400" />
             <h3 className="text-sm font-semibold text-white">Top Risk Assets</h3>
             <RiskScoreInfo
@@ -608,7 +664,7 @@ export function Summary({
 
         {/* Top Risk Countries */}
         <Card className="p-4 bg-zinc-950 border-zinc-900">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="size-4 text-red-400" />
             <h3 className="text-sm font-semibold text-white">Top Risk Countries</h3>
             <RiskScoreInfo

@@ -36,7 +36,23 @@ export function RiskMetricsPanel({
   showRiskAttribution = true,
   showBenchmarkComparison = true,
 }: RiskMetricsPanelProps) {
-  const metrics = useMemo(() => calculateAllMetrics(trendData), [trendData]);
+  const metricsTrendData = useMemo(() => {
+    if (trendData.length === 0) {
+      return [{ timestamp: new Date().toISOString(), value: portfolioRisk }];
+    }
+
+    const lastPoint = trendData[trendData.length - 1];
+    if (Math.round(lastPoint.value) === Math.round(portfolioRisk)) {
+      return trendData;
+    }
+
+    return [
+      ...trendData,
+      { timestamp: new Date().toISOString(), value: portfolioRisk },
+    ];
+  }, [trendData, portfolioRisk]);
+
+  const metrics = useMemo(() => calculateAllMetrics(metricsTrendData), [metricsTrendData]);
   const attribution = useMemo(
     () => analyzeRiskAttribution(countryRisks, weights, portfolioExposures),
     [countryRisks, weights, portfolioExposures]

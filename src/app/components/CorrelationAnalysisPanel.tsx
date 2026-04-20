@@ -160,11 +160,13 @@ export function CorrelationAnalysisPanel({
           onClick={() => setShowMatrix(!showMatrix)}
           className="w-full text-left flex items-center justify-between hover:bg-zinc-900/50 p-2 -m-2 rounded"
         >
-          <h3 className="text-sm font-semibold text-zinc-100">Strong Correlations</h3>
-          <RiskScoreInfo
-            meaning="Highest correlation country pairs in the current dataset."
-            calculation="Ranks pairs by absolute correlation strength from historical trend series."
-          />
+          <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+            Strong Correlations
+            <RiskScoreInfo
+              meaning="Highest correlation country pairs in the current dataset."
+              calculation="Ranks pairs by absolute correlation strength from historical trend series."
+            />
+          </h3>
           <span className="text-xs text-zinc-400">{showMatrix ? '▼' : '▶'}</span>
         </button>
 
