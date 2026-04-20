@@ -1184,6 +1184,30 @@ export default function App() {
                     Adjust the sliders on the left sidebar to customize how different risk factors influence the overall risk calculation. Political, Economic, Conflict, Corruption, and Terrorism factors all contribute to the overall portfolio risk.
                   </p>
                 </div>
+                <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                  <h3 className="font-semibold text-white">How Risk Weights Are Calculated</h3>
+                  <p className="text-[11px] text-zinc-300">
+                    Each country has a base factor score (0-100) for Political, Economic, Conflict, Corruption, and Terrorism. The app multiplies each base factor by your slider weight, sums those results, then normalizes by 500:
+                  </p>
+                  <p className="text-[11px] text-zinc-200 font-mono bg-zinc-950/70 border border-zinc-800 rounded px-2 py-1">
+                    countryRisk = round((P*wP + E*wE + C*wC + Cor*wCor + T*wT) / 500)
+                  </p>
+                  <p className="text-[11px] text-zinc-400">
+                    Note: if all five sliders are set to 0, the model returns a risk score of 0 by design.
+                  </p>
+                  <div>
+                    <p className="text-[11px] font-semibold text-white mb-1">What The Scores Mean</p>
+                    <ul className="space-y-0.5 list-disc list-inside text-[11px] text-zinc-300">
+                      <li><span className="font-semibold text-zinc-100">0-25:</span> Low risk</li>
+                      <li><span className="font-semibold text-zinc-100">26-50:</span> Elevated but below high-risk alert threshold</li>
+                      <li><span className="font-semibold text-zinc-100">51-74:</span> High risk</li>
+                      <li><span className="font-semibold text-zinc-100">75-100:</span> Critical risk</li>
+                    </ul>
+                    <p className="text-[11px] text-zinc-400 mt-1">
+                      Alert logic: countries are included in alerts when score &gt; {MIN_ALERT_RISK_SCORE}, tagged high at {HIGH_RISK_SCORE_THRESHOLD}+, and critical at {CRITICAL_RISK_SCORE_THRESHOLD}+.
+                    </p>
+                  </div>
+                </div>
                 <div>
                   <h3 className="font-semibold text-white mb-1">Dashboard Tab</h3>
                   <p className="text-[11px]">
