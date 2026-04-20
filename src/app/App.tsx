@@ -2152,9 +2152,14 @@ export default function App() {
                         {activeRiskAlerts.map((alert, index) => (
                           <div
                             key={`${alert.country}-${alert.exposureType}-${index}`}
-                            className="flex items-center justify-between gap-2 bg-zinc-900/70 border border-zinc-800 px-2 py-1"
+                            className="flex items-start justify-between gap-2 bg-zinc-900/70 border border-zinc-800 px-2 py-1.5"
                           >
-                            <p className="text-[10px] text-zinc-300 truncate min-w-0">{alert.country}</p>
+                            <div className="min-w-0">
+                              <p className="text-[10px] text-zinc-300 truncate">{alert.country}</p>
+                              <p className="text-[10px] text-zinc-500 truncate">
+                                Stocks: {alert.contributingAssets.length > 0 ? alert.contributingAssets.join(", ") : "No mapped holdings"}
+                              </p>
+                            </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <span
                                 className={`px-1.5 py-0.5 rounded text-[10px] border ${
