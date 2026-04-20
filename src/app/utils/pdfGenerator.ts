@@ -6,6 +6,16 @@ type ReportRecord = Record<string, unknown>;
 const formatSummaryNumber = (value: unknown): string =>
   typeof value === 'number' ? value.toFixed(2) : 'N/A';
 
+const formatUsdWithSuffix = (value: number): string => {
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
+
+  return `${formatter.format(value)} USD`;
+};
+
 interface ReportOptions {
   title: string;
   includeCharts: boolean;
@@ -19,6 +29,7 @@ interface ReportOptions {
   topRiskAssets?: Array<string>;
   topRiskCountries?: Array<string>;
   weights?: Record<string, number>;
+  potentialLossAnalysis?: ReportRecord;
 }
 
 export async function generatePDFReport(options: ReportOptions): Promise<void> {
@@ -35,6 +46,7 @@ export async function generatePDFReport(options: ReportOptions): Promise<void> {
     topRiskAssets,
     topRiskCountries,
     weights,
+    potentialLossAnalysis,
   } = options;
   
   const pdf = new jsPDF({
@@ -63,6 +75,74 @@ export async function generatePDFReport(options: ReportOptions): Promise<void> {
   if (dateRange) {
     currentY += 7;
     pdf.text(`Period: ${dateRange}`, margin, currentY);
+  }
+
+  // Potential Losses from Exposure
+  if (potentialLossAnalysis) {
+    if (currentY > pageHeight - 85) {
+      pdf.addPage();
+      currentY = 20;
+    }
+
+    const primaryScenario = (potentialLossAnalysis.primaryScenario ?? {}) as ReportRecord;
+    const scenarios = Array.isArray(potentialLossAnalysis.scenarios)
+      ? (potentialLossAnalysis.scenarios as Array<ReportRecord>)
+      : [];
+    const totalPortfolioValueUsdRaw = Number(potentialLossAnalysis.totalPortfolioValueUsd ?? 0);
+    const totalPortfolioValueUsd = totalPortfolioValueUsdRaw > 0 ? totalPortfolioValueUsdRaw : 337500;
+    const weightedCountryRiskScore = Number(potentialLossAnalysis.weightedCountryRiskScore ?? 0);
+    const topCountryExposureShare = Number(potentialLossAnalysis.topCountryExposureShare ?? 0);
+
+    pdf.setFont('Helvetica', 'bold');
+    pdf.setFontSize(14);
+    pdf.text('Potential Losses from Exposure', margin, currentY);
+    currentY += 10;
+
+    pdf.setFont('Helvetica', 'normal');
+    pdf.setFontSize(10);
+    pdf.text(`Portfolio Value: ${formatUsdWithSuffix(totalPortfolioValueUsd)}`, margin + 2, currentY);
+    currentY += 6;
+    pdf.text(`Exposure-Weighted Risk Score: ${weightedCountryRiskScore.toFixed(2)}`, margin + 2, currentY);
+    currentY += 6;
+    pdf.text(`Top Country Exposure Share: ${(topCountryExposureShare * 100).toFixed(2)}%`, margin + 2, currentY);
+    currentY += 8;
+
+    const primaryLabel = String(primaryScenario.label ?? 'Base');
+    const primaryDrawdown = Number(primaryScenario.drawdownPct ?? 0) * 100;
+    const primaryLossUsd = Number(primaryScenario.potentialLossUsd ?? 0);
+    const primaryRemainingUsd = Number(primaryScenario.remainingValueUsd ?? 0);
+
+    pdf.setFont('Helvetica', 'bold');
+    pdf.text(
+      `Primary Scenario (${primaryLabel}): ${primaryDrawdown.toFixed(2)}% drawdown | Loss ${primaryLossUsd.toFixed(2)} | Remaining ${primaryRemainingUsd.toFixed(2)}`,
+      margin + 2,
+      currentY
+    );
+    currentY += 8;
+
+    if (scenarios.length > 0) {
+      pdf.setFont('Helvetica', 'normal');
+      scenarios.forEach((scenario) => {
+        if (currentY > pageHeight - 20) {
+          pdf.addPage();
+          currentY = 20;
+        }
+
+        const label = String(scenario.label ?? 'Scenario');
+        const drawdownPct = Number(scenario.drawdownPct ?? 0) * 100;
+        const lossUsd = Number(scenario.potentialLossUsd ?? 0);
+        const remainingUsd = Number(scenario.remainingValueUsd ?? 0);
+
+        pdf.text(
+          `${label}: Drawdown ${drawdownPct.toFixed(2)}% | Loss ${lossUsd.toFixed(2)} | Remaining ${remainingUsd.toFixed(2)}`,
+          margin + 4,
+          currentY
+        );
+        currentY += 6;
+      });
+    }
+
+    currentY += 4;
   }
   currentY += 10;
   pdf.setTextColor(0, 0, 0);

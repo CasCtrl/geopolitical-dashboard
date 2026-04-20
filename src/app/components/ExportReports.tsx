@@ -29,6 +29,14 @@ interface ExportReportsProps {
 
 type ReportPageKey = 'portfolioSummary' | 'countryAnalysis' | 'holdings' | 'historicalTrends';
 
+type LossScenario = {
+  key: 'conservative' | 'base' | 'aggressive';
+  label: string;
+  drawdownPct: number;
+  potentialLossUsd: number;
+  remainingValueUsd: number;
+};
+
 export function ExportReports({
   portfolioSummary,
   countryRisks,
@@ -37,6 +45,7 @@ export function ExportReports({
   weights,
 }: ExportReportsProps) {
   const [selectedFormat, setSelectedFormat] = useState<'pdf' | 'excel' | 'csv'>('pdf');
+  const [selectedLossScenario, setSelectedLossScenario] = useState<'auto' | 'conservative' | 'base' | 'aggressive'>('auto');
   const [reportTitle, setReportTitle] = useState('Geopolitical Risk Report');
   const [includeCharts, setIncludeCharts] = useState(true);
   const [recipientEmail, setRecipientEmail] = useState('');
@@ -93,6 +102,108 @@ export function ExportReports({
 
   const trendPath = buildTrendPath(trendPoints);
 
+  const computePotentialLossAnalysis = (
+    scenarioOverride: 'auto' | 'conservative' | 'base' | 'aggressive'
+  ) => {
+    const totalRiskScore = Number(portfolioSummary?.totalRiskScore || 0);
+    const totalPortfolioValueUsd =
+      holdings?.reduce(
+        (sum: number, asset: unknown) => sum + Number((asset as { value?: unknown })?.value || 0),
+        0
+      ) ?? 0;
+
+    const exposures = (portfolioSummary?.countryExposures || []) as Array<{
+      country?: string;
+      totalExposure?: number;
+      riskContribution?: number;
+    }>;
+
+    const exposureWeightSum = exposures.reduce((sum, exposure) => {
+      const basis = Number(exposure.totalExposure ?? exposure.riskContribution ?? 0);
+      return sum + Math.max(basis, 0);
+    }, 0);
+
+    const weightedCountryRiskScore = exposureWeightSum > 0
+      ? exposures.reduce((sum, exposure) => {
+          const basis = Math.max(Number(exposure.totalExposure ?? exposure.riskContribution ?? 0), 0);
+          const country = String(exposure.country || '');
+          const risk = Number(countryRisks?.[country] ?? 0);
+          return sum + basis * risk;
+        }, 0) / exposureWeightSum
+      : totalRiskScore;
+
+    const topExposureBasis = exposures.length > 0
+      ? Math.max(Number(exposures[0].totalExposure ?? exposures[0].riskContribution ?? 0), 0)
+      : 0;
+    const topCountryExposureShare = exposureWeightSum > 0 ? topExposureBasis / exposureWeightSum : 0;
+
+    const scenarioPolicies = [
+      {
+        key: 'conservative' as const,
+        label: 'Conservative',
+        stressFactor: 0.22,
+        concentrationWeight: 0.35,
+        minLossPct: 0.015,
+        maxLossPct: 0.3,
+      },
+      {
+        key: 'base' as const,
+        label: 'Base',
+        stressFactor: 0.35,
+        concentrationWeight: 0.6,
+        minLossPct: 0.03,
+        maxLossPct: 0.45,
+      },
+      {
+        key: 'aggressive' as const,
+        label: 'Aggressive',
+        stressFactor: 0.5,
+        concentrationWeight: 0.85,
+        minLossPct: 0.05,
+        maxLossPct: 0.6,
+      },
+    ];
+
+    const scenarios: LossScenario[] = scenarioPolicies.map((scenario) => {
+      const rawLossPct =
+        (weightedCountryRiskScore / 100) *
+        scenario.stressFactor *
+        (1 + topCountryExposureShare * scenario.concentrationWeight);
+      const drawdownPct = Math.min(scenario.maxLossPct, Math.max(scenario.minLossPct, rawLossPct));
+      const potentialLossUsd = totalPortfolioValueUsd * drawdownPct;
+      const remainingValueUsd = Math.max(0, totalPortfolioValueUsd - potentialLossUsd);
+
+      return {
+        key: scenario.key,
+        label: scenario.label,
+        drawdownPct,
+        potentialLossUsd,
+        remainingValueUsd,
+      };
+    });
+
+    const autoPrimaryScenario = totalRiskScore >= 70
+      ? scenarios.find((scenario) => scenario.key === 'aggressive')
+      : totalRiskScore >= 45
+      ? scenarios.find((scenario) => scenario.key === 'base')
+      : scenarios.find((scenario) => scenario.key === 'conservative');
+
+    const primaryScenario = scenarioOverride === 'auto'
+      ? autoPrimaryScenario || scenarios[1]
+      : scenarios.find((scenario) => scenario.key === scenarioOverride) || autoPrimaryScenario || scenarios[1];
+
+    return {
+      totalPortfolioValueUsd,
+      weightedCountryRiskScore,
+      topCountryExposureShare,
+      selectedScenario: scenarioOverride,
+      autoScenario: autoPrimaryScenario?.key || 'base',
+      primaryScenario,
+      scenarios,
+      topExposureCountry: exposures[0]?.country || null,
+    };
+  };
+
   const handleGenerateReport = async () => {
     const selectedKeys = (Object.keys(selectedPages) as ReportPageKey[]).filter((key) => selectedPages[key]);
     if (selectedKeys.length === 0) {
@@ -104,6 +215,7 @@ export function ExportReports({
     setSuccessMessage('');
 
     try {
+      const potentialLossAnalysis = computePotentialLossAnalysis(selectedLossScenario);
       const exportData = {
         portfolioSummary: selectedPages.portfolioSummary
           ? {
@@ -138,6 +250,7 @@ export function ExportReports({
         topRiskAssets: selectedPages.portfolioSummary ? portfolioSummary?.topRiskAssets : undefined,
         topRiskCountries: selectedPages.countryAnalysis ? portfolioSummary?.topRiskCountries : undefined,
         weights: selectedPages.portfolioSummary ? weights : undefined,
+        potentialLossAnalysis: selectedPages.portfolioSummary ? potentialLossAnalysis : undefined,
       };
 
       switch (selectedFormat) {
@@ -154,6 +267,7 @@ export function ExportReports({
             topRiskAssets: exportData.topRiskAssets,
             topRiskCountries: exportData.topRiskCountries,
             weights: exportData.weights,
+            potentialLossAnalysis: exportData.potentialLossAnalysis,
           });
           setSuccessMessage('PDF report generated successfully!');
           break;
@@ -308,6 +422,37 @@ export function ExportReports({
                   </label>
                 </div>
               )}
+
+              {/* Loss Scenario Driver */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  Loss Scenario Driver
+                </label>
+                <div className="inline-flex flex-wrap rounded border border-zinc-800 overflow-hidden">
+                  {[
+                    { key: 'auto', label: 'Auto' },
+                    { key: 'conservative', label: 'Conservative' },
+                    { key: 'base', label: 'Base' },
+                    { key: 'aggressive', label: 'Aggressive' },
+                  ].map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setSelectedLossScenario(option.key as 'auto' | 'conservative' | 'base' | 'aggressive')}
+                      className={`px-3 py-1.5 text-xs border-r last:border-r-0 border-zinc-800 transition-colors ${
+                        selectedLossScenario === option.key
+                          ? 'bg-zinc-700 text-zinc-100'
+                          : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-zinc-500 mt-2">
+                  This sets which scenario drives the Potential Losses narrative in generated reports.
+                </p>
+              </div>
 
               {/* Generate Button */}
               <Button

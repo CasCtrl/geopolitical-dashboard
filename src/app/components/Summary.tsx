@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "./ui/card";
 import { AlertTriangle, TrendingUp, Target, Shield } from "lucide-react";
 import { RiskScoreInfo } from "./RiskScoreInfo";
@@ -31,6 +32,8 @@ export function Summary({
   dataFreshnessLabel,
   isStaleData = false,
 }: SummaryProps) {
+  const PORTFOLIO_VALUE_PLACEHOLDER_USD = 337500;
+
   // Calculate average risk
   const averageGlobalRisk = Object.values(riskData).length > 0
     ? (Object.values(riskData).reduce((a, b) => a + b, 0) / Object.values(riskData).length).toFixed(1)
@@ -53,6 +56,89 @@ export function Summary({
   }));
 
   const riskScore = portfolioAnalysis.totalRiskScore;
+
+  const totalPortfolioValueUsd = portfolio.reduce((sum, asset) => sum + asset.value, 0);
+  const totalExposureWeight = portfolioAnalysis.countryExposures.reduce(
+    (sum, exposure) => sum + Math.max(exposure.totalExposure, 0),
+    0
+  );
+  const weightedCountryRiskScore = totalExposureWeight > 0
+    ? portfolioAnalysis.countryExposures.reduce((sum, exposure) => {
+        const countryRisk = riskData[exposure.country] || 0;
+        return sum + exposure.totalExposure * countryRisk;
+      }, 0) / totalExposureWeight
+    : riskScore;
+  const topCountryExposureShare = totalExposureWeight > 0
+    ? Math.max(portfolioAnalysis.countryExposures[0]?.totalExposure || 0, 0) / totalExposureWeight
+    : 0;
+
+  // Loss-policy scenarios to tune downside assumptions by risk tolerance.
+  const lossPolicyScenarios = [
+    {
+      key: "conservative",
+      label: "Conservative",
+      stressFactor: 0.22,
+      concentrationWeight: 0.35,
+      minLossPct: 0.015,
+      maxLossPct: 0.3,
+      colorClass: "text-yellow-300",
+    },
+    {
+      key: "base",
+      label: "Base",
+      stressFactor: 0.35,
+      concentrationWeight: 0.6,
+      minLossPct: 0.03,
+      maxLossPct: 0.45,
+      colorClass: "text-orange-300",
+    },
+    {
+      key: "aggressive",
+      label: "Aggressive",
+      stressFactor: 0.5,
+      concentrationWeight: 0.85,
+      minLossPct: 0.05,
+      maxLossPct: 0.6,
+      colorClass: "text-red-300",
+    },
+  ] as const;
+
+  const lossScenarios = lossPolicyScenarios.map((scenario) => {
+    const rawLossPct =
+      (weightedCountryRiskScore / 100) *
+      scenario.stressFactor *
+      (1 + topCountryExposureShare * scenario.concentrationWeight);
+    const lossPct = Math.min(scenario.maxLossPct, Math.max(scenario.minLossPct, rawLossPct));
+    const lossUsd = totalPortfolioValueUsd * lossPct;
+    const remainingValueUsd = Math.max(0, totalPortfolioValueUsd - lossUsd);
+
+    return {
+      ...scenario,
+      lossPct,
+      lossUsd,
+      remainingValueUsd,
+    };
+  });
+
+  const autoPrimaryScenario = riskScore >= 70
+    ? lossScenarios.find((scenario) => scenario.key === "aggressive")
+    : riskScore >= 45
+    ? lossScenarios.find((scenario) => scenario.key === "base")
+    : lossScenarios.find((scenario) => scenario.key === "conservative");
+
+  const [scenarioSelection, setScenarioSelection] = useState<"auto" | "conservative" | "base" | "aggressive">("auto");
+  const primaryScenario = scenarioSelection === "auto"
+    ? autoPrimaryScenario
+    : lossScenarios.find((scenario) => scenario.key === scenarioSelection) ?? autoPrimaryScenario;
+
+  const usdFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+  const displayPortfolioValueUsd =
+    totalPortfolioValueUsd > 0 ? totalPortfolioValueUsd : PORTFOLIO_VALUE_PLACEHOLDER_USD;
+  const formatUsdWithSuffix = (amount: number): string => `${usdFormatter.format(amount)} USD`;
   
   // Generate insights
   const insights: string[] = [];
@@ -305,6 +391,88 @@ export function Summary({
               );
             })}
           </div>
+        </div>
+      </Card>
+
+      {/* Key Insights */}
+      <Card className="p-4 bg-zinc-950 border-zinc-900">
+        <div className="flex items-center gap-2 mb-3">
+          <AlertTriangle className="size-4 text-amber-400" />
+          <h3 className="text-sm font-semibold text-white">Potential Losses from Exposure</h3>
+          <RiskScoreInfo
+            meaning="Estimated downside if the portfolio is not diversified while current geopolitical stress persists."
+            calculation="Estimated loss = portfolio value × [weighted country risk × scenario stress factor], adjusted upward for concentration in the largest country exposure."
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+          <div className="bg-zinc-900/40 p-2 rounded border border-zinc-800/50">
+            <p className="text-[11px] text-zinc-500">Portfolio Value</p>
+            <p className="text-sm font-semibold text-zinc-100">{formatUsdWithSuffix(displayPortfolioValueUsd)}</p>
+          </div>
+          <div className="bg-zinc-900/40 p-2 rounded border border-zinc-800/50">
+            <p className="text-[11px] text-zinc-500">Primary Scenario</p>
+            <p className={`text-sm font-semibold ${primaryScenario?.colorClass || "text-zinc-100"}`}>
+              {primaryScenario?.label || "Base"}
+            </p>
+          </div>
+          <div className="bg-zinc-900/40 p-2 rounded border border-zinc-800/50">
+            <p className="text-[11px] text-zinc-500">Primary Loss (USD)</p>
+            <p className="text-sm font-semibold text-red-300">{usdFormatter.format(primaryScenario?.lossUsd || 0)}</p>
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <p className="text-[11px] text-zinc-500 mb-2">Scenario Driver</p>
+          <div className="inline-flex flex-wrap rounded border border-zinc-800 overflow-hidden">
+            {[
+              { key: "auto", label: `Auto (${autoPrimaryScenario?.label || "Base"})` },
+              { key: "conservative", label: "Conservative" },
+              { key: "base", label: "Base" },
+              { key: "aggressive", label: "Aggressive" },
+            ].map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setScenarioSelection(option.key as "auto" | "conservative" | "base" | "aggressive")}
+                className={`px-2 py-1 text-[11px] border-r last:border-r-0 border-zinc-800 transition-colors ${
+                  scenarioSelection === option.key
+                    ? "bg-zinc-700 text-white"
+                    : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+          {lossScenarios.map((scenario) => (
+            <div key={scenario.key} className="bg-zinc-900/40 p-2 rounded border border-zinc-800/50">
+              <p className={`text-xs font-semibold ${scenario.colorClass}`}>{scenario.label}</p>
+              <p className="text-[11px] text-zinc-500">Drawdown: {(scenario.lossPct * 100).toFixed(1)}%</p>
+              <p className="text-[11px] text-zinc-300">Loss: {usdFormatter.format(scenario.lossUsd)}</p>
+              <p className="text-[11px] text-zinc-400">Remaining: {usdFormatter.format(scenario.remainingValueUsd)}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-zinc-900/40 p-3 rounded border border-zinc-800/50 text-xs text-zinc-300 space-y-1">
+          <p>
+            Under current conditions, if diversification is not improved, this portfolio could lose approximately
+            <span className="font-semibold text-red-300"> {usdFormatter.format(primaryScenario?.lossUsd || 0)}</span>
+            {" "}from its current value of
+            <span className="font-semibold text-zinc-100"> {formatUsdWithSuffix(displayPortfolioValueUsd)}</span>.
+          </p>
+          <p>
+            That implies a stressed remaining value near
+            <span className="font-semibold text-zinc-100"> {usdFormatter.format(primaryScenario?.remainingValueUsd || totalPortfolioValueUsd)}</span>,
+            driven by an average exposure-adjusted country risk of
+            <span className="font-semibold text-zinc-100"> {weightedCountryRiskScore.toFixed(0)}</span>
+            {" "}and concentration in
+            <span className="font-semibold text-zinc-100"> {portfolioAnalysis.countryExposures[0]?.country || "your top country"}</span>.
+          </p>
         </div>
       </Card>
 

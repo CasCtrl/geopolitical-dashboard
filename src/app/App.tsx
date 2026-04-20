@@ -45,6 +45,7 @@ import { RiskLegend } from "./components/RiskLegend";
 import { putWorkspaceState } from "./data/workspaceStateApi";
 
 const API_BASE_URL = "http://localhost:5001";
+const PORTFOLIO_VALUE_PLACEHOLDER_USD = 337500;
 const MIN_ALERT_RISK_SCORE = 25;
 const HIGH_RISK_SCORE_THRESHOLD = 51;
 const CRITICAL_RISK_SCORE_THRESHOLD = 75;
@@ -950,6 +951,16 @@ export default function App() {
   }, [dashboardPortfolioAnalysis, dashboardRiskData]);
 
   const alertCount = activeRiskAlerts.length;
+
+  const homePortfolioValueDisplay = useMemo(() => {
+    const formatter = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    });
+
+    return `${formatter.format(PORTFOLIO_VALUE_PLACEHOLDER_USD)} USD`;
+  }, []);
 
   const downloadMapSnapshot = useCallback(async (mapElementId: string) => {
     try {
@@ -1857,7 +1868,7 @@ export default function App() {
               <Card className="p-1.5 bg-zinc-900/60 border-zinc-800">
                 <p className="text-[10px] text-zinc-500 leading-none">Portfolio Value</p>
                 <p className="text-sm font-bold text-white leading-tight">
-                  ${((portfolio.reduce((sum, asset) => sum + asset.value, 0) / 1000000) * 10).toFixed(1)}M
+                  {homePortfolioValueDisplay}
                 </p>
               </Card>
               <Card className="p-1.5 bg-zinc-900/60 border-zinc-800">

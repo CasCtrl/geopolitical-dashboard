@@ -10,7 +10,18 @@ interface ExportData {
   topRiskAssets?: Array<string>;
   topRiskCountries?: Array<string>;
   weights?: Record<string, number>;
+  potentialLossAnalysis?: Record<string, unknown>;
 }
+
+const formatUsdWithSuffix = (value: number): string => {
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
+
+  return `${formatter.format(value)} USD`;
+};
 
 export function exportToCSV(data: ExportData, filename: string): void {
   const csvData: string[] = [];
@@ -116,6 +127,37 @@ export function exportToCSV(data: ExportData, filename: string): void {
     Object.entries(data.weights).forEach(([factor, weight]) => {
       csvData.push(`${factor},${weight}`);
     });
+    csvData.push('');
+  }
+
+  // Potential Losses from Exposure
+  if (data.potentialLossAnalysis) {
+    csvData.push('POTENTIAL LOSSES FROM EXPOSURE');
+    const primaryScenario = (data.potentialLossAnalysis.primaryScenario || {}) as Record<string, unknown>;
+    const portfolioValueRaw = Number(data.potentialLossAnalysis.totalPortfolioValueUsd || 0);
+    const portfolioValueDisplay = portfolioValueRaw > 0 ? portfolioValueRaw : 337500;
+
+    csvData.push(`Total Portfolio Value,${formatUsdWithSuffix(portfolioValueDisplay)}`);
+    csvData.push(`Exposure Weighted Risk Score,${Number(data.potentialLossAnalysis.weightedCountryRiskScore || 0).toFixed(2)}`);
+    csvData.push(`Top Country Exposure Share %,${(Number(data.potentialLossAnalysis.topCountryExposureShare || 0) * 100).toFixed(2)}`);
+    csvData.push(`Primary Scenario,${String(primaryScenario.label || 'Base')}`);
+    csvData.push(`Primary Drawdown %,${(Number(primaryScenario.drawdownPct || 0) * 100).toFixed(2)}`);
+    csvData.push(`Primary Loss USD,${Number(primaryScenario.potentialLossUsd || 0).toFixed(2)}`);
+    csvData.push(`Primary Remaining USD,${Number(primaryScenario.remainingValueUsd || 0).toFixed(2)}`);
+    csvData.push('');
+
+    const scenarios = Array.isArray(data.potentialLossAnalysis.scenarios)
+      ? (data.potentialLossAnalysis.scenarios as Array<Record<string, unknown>>)
+      : [];
+    if (scenarios.length > 0) {
+      csvData.push('Scenario,Drawdown %,Potential Loss USD,Remaining USD');
+      scenarios.forEach((scenario) => {
+        csvData.push(
+          `${String(scenario.label || '')},${(Number(scenario.drawdownPct || 0) * 100).toFixed(2)},${Number(scenario.potentialLossUsd || 0).toFixed(2)},${Number(scenario.remainingValueUsd || 0).toFixed(2)}`
+        );
+      });
+      csvData.push('');
+    }
   }
 
   const csv = csvData.join('\n');
@@ -189,6 +231,40 @@ export function exportToExcel(data: ExportData, filename: string): void {
       Object.entries(data.weights).map(([factor, weight]) => ({ Factor: factor, Weight: weight }))
     );
     XLSX.utils.book_append_sheet(workbook, weightsSheet, 'Risk Weights');
+  }
+
+  // Potential Losses Sheet
+  if (data.potentialLossAnalysis) {
+    const primaryScenario = (data.potentialLossAnalysis.primaryScenario || {}) as Record<string, unknown>;
+    const portfolioValueRaw = Number(data.potentialLossAnalysis.totalPortfolioValueUsd || 0);
+    const portfolioValueDisplay = portfolioValueRaw > 0 ? portfolioValueRaw : 337500;
+    const scenarioRows = Array.isArray(data.potentialLossAnalysis.scenarios)
+      ? (data.potentialLossAnalysis.scenarios as Array<Record<string, unknown>>).map((scenario) => ({
+          Scenario: String(scenario.label || ''),
+          'Drawdown %': Number(scenario.drawdownPct || 0) * 100,
+          'Potential Loss USD': Number(scenario.potentialLossUsd || 0),
+          'Remaining USD': Number(scenario.remainingValueUsd || 0),
+        }))
+      : [];
+
+    const summaryRows = [
+      { Metric: 'Total Portfolio Value', Value: formatUsdWithSuffix(portfolioValueDisplay) },
+      { Metric: 'Exposure Weighted Risk Score', Value: Number(data.potentialLossAnalysis.weightedCountryRiskScore || 0) },
+      { Metric: 'Top Country Exposure Share %', Value: Number(data.potentialLossAnalysis.topCountryExposureShare || 0) * 100 },
+      { Metric: 'Primary Scenario', Value: String(primaryScenario.label || 'Base') },
+      { Metric: 'Primary Drawdown %', Value: Number(primaryScenario.drawdownPct || 0) * 100 },
+      { Metric: 'Primary Potential Loss USD', Value: Number(primaryScenario.potentialLossUsd || 0) },
+      { Metric: 'Primary Remaining USD', Value: Number(primaryScenario.remainingValueUsd || 0) },
+    ];
+
+    const lossesSheet = XLSX.utils.json_to_sheet(summaryRows);
+
+    if (scenarioRows.length > 0) {
+      XLSX.utils.sheet_add_json(lossesSheet, [{}], { origin: -1, skipHeader: true });
+      XLSX.utils.sheet_add_json(lossesSheet, scenarioRows, { origin: -1 });
+    }
+
+    XLSX.utils.book_append_sheet(workbook, lossesSheet, 'Potential Losses');
   }
 
   XLSX.writeFile(workbook, `${filename}.xlsx`);
