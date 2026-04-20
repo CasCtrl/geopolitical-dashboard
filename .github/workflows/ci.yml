@@ -63,7 +63,7 @@ jobs:
         run: npm run perf:budget
 
       - name: Run e2e smoke tests
-        run: npm run test:e2e:ci
+        run: npm run test:e2e:smoke:ci
 
       - name: Upload Playwright report
         if: always()
