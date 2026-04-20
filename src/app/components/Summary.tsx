@@ -632,11 +632,6 @@ export function Summary({
         </div>
       </Card>
 
-      <AssetLevelIntelligencePanel
-        portfolio={portfolio}
-        riskData={riskData}
-      />
-
       {/* Top Exposures */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Top Risk Assets */}
@@ -691,6 +686,11 @@ export function Summary({
           </div>
         </Card>
       </div>
+
+      <AssetLevelIntelligencePanel
+        portfolio={portfolio}
+        riskData={riskData}
+      />
     </div>
   );
 }
