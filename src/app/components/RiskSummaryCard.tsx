@@ -53,7 +53,7 @@ export function RiskSummaryCard({
             />
           </div>
           <div className="space-y-2">
-            {topRiskAssets.slice(0, 5).map((asset, index) => (
+            {topRiskAssets.slice(0, 7).map((asset, index) => (
               <div
                 key={asset}
                 className="flex items-center gap-3 text-sm bg-slate-800/50 px-3 py-2 rounded"

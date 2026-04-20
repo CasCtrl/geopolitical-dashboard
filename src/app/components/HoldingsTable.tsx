@@ -32,7 +32,8 @@ type SortKey =
   | "topDrivers"
   | "value"
   | "allocation"
-  | "riskScore";
+  | "riskScore"
+  | "potentialLoss";
 
 type SortDirection = "asc" | "desc";
 
@@ -44,6 +45,7 @@ type SortConfig = {
 type HoldingRow = {
   asset: Asset;
   riskScore: number;
+  potentialLossUsd: number;
   sectorRiskIndex: number;
   confidence: number;
   topDrivers: string;
@@ -145,6 +147,7 @@ export function HoldingsTable({
       return {
         asset,
         riskScore: assetContribution?.riskScore || 0,
+        potentialLossUsd: asset.value * Math.min(1, (assetContribution?.riskScore || 0) / 100),
         sectorRiskIndex: sectorRiskIndexMap.get(asset.sector || "Unknown") || 0,
         confidence: intelligence?.confidence ?? 60,
         topDrivers: intelligence?.topFactors?.length
@@ -177,6 +180,8 @@ export function HoldingsTable({
           return direction * (a.asset.weight - b.asset.weight);
         case "riskScore":
           return direction * (a.riskScore - b.riskScore);
+        case "potentialLoss":
+          return direction * (a.potentialLossUsd - b.potentialLossUsd);
         default:
           return 0;
       }
@@ -256,44 +261,53 @@ export function HoldingsTable({
         </div>
       ) : (
         <div className="overflow-x-auto -mx-3 md:mx-0">
-          <div className="inline-block min-w-full align-middle max-h-96 overflow-y-auto">
-            <table className="min-w-full text-left">
+          <div className="w-full align-middle max-h-96 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
+            <table className="w-full table-fixed text-left">
               <thead className="sticky top-0 bg-zinc-950/95 z-10">
                 <tr className="border-b border-zinc-900">
-                  <th className="text-left py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">{renderSortableHeader("Asset", "asset")}</th>
-                  <th className="text-left py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">{renderSortableHeader("Sector", "sector")}</th>
-                  <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">
+                  <th className="text-left py-2 px-2 text-xs text-zinc-500 whitespace-nowrap">{renderSortableHeader("Ticker", "asset")}</th>
+                  <th className="text-left py-2 px-2 text-xs text-zinc-500 whitespace-nowrap">{renderSortableHeader("Sector", "sector")}</th>
+                  <th className="text-right py-2 px-2 text-xs text-zinc-500 whitespace-nowrap">
                     <div className="inline-flex items-center gap-1">
-                      {renderSortableHeader("Sector Risk Index", "sectorRiskIndex", true)}
+                      {renderSortableHeader("Sct Risk", "sectorRiskIndex", true)}
                       <RiskScoreInfo
                         meaning="Average geopolitical risk level for assets in this sector."
                         calculation="For each asset, geo-risk is computed from country dependency weights and country risk scores; sector index is the weighted average of those asset geo-risks by portfolio weight."
                       />
                     </div>
                   </th>
-                  <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">
+                  <th className="text-right py-2 px-2 text-xs text-zinc-500 whitespace-nowrap">
                     <div className="inline-flex items-center gap-1">
-                      {renderSortableHeader("Data Confidence", "confidence", true)}
+                      {renderSortableHeader("Conf", "confidence", true)}
                       <RiskScoreInfo
                         meaning="Estimated quality confidence for each holding's risk estimate."
                         calculation="Computed as dependency-weighted average of country confidence scores used by the geopolitical model."
                       />
                     </div>
                   </th>
-                  <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">
+                  <th className="text-right py-2 px-2 text-xs text-zinc-500 whitespace-nowrap">
                     <div className="inline-flex items-center gap-1">
-                      {renderSortableHeader("Top Drivers", "topDrivers", true)}
+                      {renderSortableHeader("Drivers", "topDrivers", true)}
                       <RiskScoreInfo
                         meaning="Primary risk factors driving this holding's country exposure profile."
                         calculation="Derived from top weighted factor impacts for the dominant dependency country per holding."
                       />
                     </div>
                   </th>
-                  <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">{renderSortableHeader("Value", "value", true)}</th>
-                  <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">{renderSortableHeader("Allocation", "allocation", true)}</th>
-                  <th className="text-right py-2 px-3 text-xs text-zinc-500 whitespace-nowrap">
+                  <th className="text-right py-2 px-2 text-xs text-zinc-500 whitespace-nowrap">{renderSortableHeader("Value $", "value", true)}</th>
+                  <th className="text-right py-2 px-2 text-xs text-zinc-500 whitespace-nowrap">{renderSortableHeader("Alloc %", "allocation", true)}</th>
+                  <th className="text-right py-2 px-2 pr-4 text-xs text-zinc-500 whitespace-nowrap">
                     <div className="inline-flex items-center gap-1">
-                      {renderSortableHeader("Risk Score", "riskScore", true)}
+                      {renderSortableHeader("Loss ($)", "potentialLoss", true)}
+                      <RiskScoreInfo
+                        meaning="Estimated dollar loss for this holding under current exposure risk."
+                        calculation="Potential Loss = holding value × (asset risk score / 100), capped at 100% of holding value."
+                      />
+                    </div>
+                  </th>
+                  <th className="text-right py-2 px-2 text-xs text-zinc-500 whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1">
+                      {renderSortableHeader("Risk", "riskScore", true)}
                       <RiskScoreInfo
                         meaning="Per-asset risk contribution to portfolio geopolitical exposure."
                         calculation="Derived from each asset's country dependency risk profile and adjusted by its portfolio weight."
@@ -304,41 +318,48 @@ export function HoldingsTable({
               </thead>
               <tbody>
                 {visibleAssets.map((row) => {
-                  const { asset, riskScore, sectorRiskIndex, confidence, topDrivers, lastUpdated } = row;
+                  const { asset, riskScore, potentialLossUsd, sectorRiskIndex, confidence, topDrivers, lastUpdated } = row;
 
                   return (
                     <tr
                       key={asset.ticker}
                       className="border-b border-zinc-900/50 hover:bg-zinc-900/50 transition-colors"
                     >
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <div>
+                      <td className="py-2 px-2 whitespace-nowrap">
+                        <div className="max-w-[120px]">
                           <p className="font-mono text-xs md:text-sm text-white">{asset.ticker}</p>
-                          <p className="text-[10px] md:text-xs text-slate-400">{asset.name}</p>
+                          <p className="text-[10px] md:text-xs text-slate-400 truncate" title={asset.name}>{asset.name}</p>
                         </div>
                       </td>
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <span className="text-xs md:text-sm text-slate-300">{asset.sector}</span>
+                      <td className="py-2 px-2 whitespace-nowrap">
+                        <span className="inline-block max-w-[90px] truncate text-xs md:text-sm text-slate-300" title={asset.sector}>{asset.sector}</span>
                       </td>
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                      <td className="py-2 px-2 text-right whitespace-nowrap">
                         <span className="text-xs md:text-sm text-slate-300">{sectorRiskIndex.toFixed(1)}</span>
                       </td>
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                      <td className="py-2 px-2 text-right whitespace-nowrap">
                         <div className="text-xs md:text-sm text-slate-300">{confidence}%</div>
                         <div className="text-[10px] text-zinc-500">
                           {lastUpdated ? new Date(lastUpdated).toLocaleDateString() : "-"}
                         </div>
                       </td>
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
-                        <span className="text-xs text-zinc-300">{topDrivers}</span>
+                      <td className="py-2 px-2 text-right whitespace-nowrap">
+                        <span className="inline-block max-w-[120px] truncate text-xs text-zinc-300" title={topDrivers}>
+                          {topDrivers}
+                        </span>
                       </td>
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                      <td className="py-2 px-2 text-right whitespace-nowrap">
                         <span className="text-xs md:text-sm text-slate-300">${asset.value.toLocaleString()}</span>
                       </td>
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                      <td className="py-2 px-2 text-right whitespace-nowrap">
                         <span className="text-xs md:text-sm text-slate-300">{asset.weight}%</span>
                       </td>
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                      <td className="py-2 px-2 text-right whitespace-nowrap">
+                        <span className="text-xs md:text-sm text-red-300">
+                          ${potentialLossUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-right whitespace-nowrap">
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs md:text-sm ${getContributionColor(
                             riskScore

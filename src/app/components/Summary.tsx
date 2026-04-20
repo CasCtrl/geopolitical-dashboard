@@ -144,6 +144,42 @@ export function Summary({
   const insights: string[] = [];
   const recommendations: string[] = [];
 
+  const rankedAssetsByRiskDesc = [...portfolioAnalysis.assetContributions].sort((a, b) => b.riskScore - a.riskScore);
+  const rankedAssetsByRiskAsc = [...portfolioAnalysis.assetContributions].sort((a, b) => a.riskScore - b.riskScore);
+  const highestRiskAsset = rankedAssetsByRiskDesc[0];
+  const lowRiskAlternatives = rankedAssetsByRiskAsc
+    .filter((asset) => asset.ticker !== highestRiskAsset?.ticker)
+    .slice(0, 3);
+  const lowRiskAlternativeText =
+    lowRiskAlternatives.length > 0
+      ? lowRiskAlternatives.map((asset) => `${asset.ticker} (${asset.riskScore.toFixed(1)})`).join(", ")
+      : "the lowest-risk holdings in your portfolio";
+  const alternativeTickers =
+    lowRiskAlternatives.length > 0 ? lowRiskAlternatives.map((asset) => asset.ticker).join(", ") : "low-risk assets";
+
+  const lowRiskCountries = Object.entries(riskData)
+    .sort(([, a], [, b]) => a - b)
+    .filter(([country]) => !portfolioAnalysis.topRiskCountries.includes(country))
+    .slice(0, 3)
+    .map(([country]) => country);
+  const lowRiskCountryText = lowRiskCountries.length > 0 ? lowRiskCountries.join(", ") : "lower-risk countries";
+
+  const sectorRiskByAverage = Object.entries(
+    portfolio.reduce<Record<string, { totalRisk: number; count: number }>>((acc, asset) => {
+      const contribution = portfolioAnalysis.assetContributions.find((item) => item.ticker === asset.ticker);
+      if (!contribution) return acc;
+      const existing = acc[asset.sector] || { totalRisk: 0, count: 0 };
+      acc[asset.sector] = {
+        totalRisk: existing.totalRisk + contribution.riskScore,
+        count: existing.count + 1,
+      };
+      return acc;
+    }, {})
+  )
+    .map(([sector, stats]) => ({ sector, averageRisk: stats.totalRisk / Math.max(1, stats.count) }))
+    .sort((a, b) => a.averageRisk - b.averageRisk);
+  const lowRiskSectorText = sectorRiskByAverage.slice(0, 2).map((item) => item.sector).join(", ") || "lower-risk sectors";
+
   // Key Insights
   insights.push(
     riskScore < 40
@@ -164,19 +200,19 @@ export function Summary({
   // Recommendations for changes
   if (riskScore >= 80) {
     recommendations.push(
-      "Your portfolio is exposed to critical geopolitical risks. Take immediate action to reduce exposure to high-risk assets or regions. Consider increasing allocation to assets in stable, low-risk countries."
+      `Your portfolio is exposed to critical geopolitical risks. Alternative: cut 5-10% from the highest-risk position ${highestRiskAsset?.ticker || "currently highest-risk asset"} and reallocate toward lower-risk names like ${lowRiskAlternativeText}, with added country exposure to ${lowRiskCountryText}.`
     );
   } else if (riskScore >= 60) {
     recommendations.push(
-      "Your portfolio carries significant geopolitical risk. Review your asset allocation and implement hedging strategies for major exposures. Focus on rebalancing toward lower-risk geographic regions."
+      `Your portfolio carries significant geopolitical risk. Alternative: trim 3-7% from top-risk holdings and rotate into ${lowRiskAlternativeText}; prioritize new allocation in ${lowRiskCountryText} to reduce concentration risk.`
     );
   } else if (riskScore >= 40) {
     recommendations.push(
-      "Your portfolio shows moderate risk exposure. Monitor key geopolitical developments in your primary exposure regions, especially emerging markets and conflict zones. Maintain current diversification but stay vigilant."
+      `Your portfolio shows moderate risk exposure. Alternative: maintain core positions but shift 2-4% from high-risk names into ${lowRiskAlternativeText}, and direct incremental exposure toward ${lowRiskCountryText}.`
     );
   } else {
     recommendations.push(
-      "Your portfolio demonstrates strong resilience to geopolitical shocks. Continue maintaining diversified exposure across regions and risk factors to preserve this advantage."
+      `Your portfolio demonstrates strong resilience to geopolitical shocks. Alternative: preserve current mix by keeping higher weights in ${alternativeTickers} and only adding new exposure in lower-risk markets such as ${lowRiskCountryText}.`
     );
   }
 
@@ -184,9 +220,40 @@ export function Summary({
   if (portfolioAnalysis.topRiskCountries.length > 0) {
     const topCountry = portfolioAnalysis.topRiskCountries[0];
     const topCountryRisk = riskData[topCountry] || 0;
+    const topCountryExposure = portfolioAnalysis.countryExposures.find((entry) => entry.country === topCountry);
+    const topCountryAssets = topCountryExposure?.contributingAssets?.slice(0, 3).join(", ") || "the related holdings";
     recommendations.push(
-      `${topCountry} represents your highest geographic risk exposure with a score of ${topCountryRisk.toFixed(0)}. Review your holdings in this region and consider reducing exposure or adding hedges.`
+      `${topCountry} represents your highest geographic risk exposure with a score of ${topCountryRisk.toFixed(0)}. Alternative: reduce exposure in ${topCountryAssets} and redirect that capital into assets tied to ${lowRiskCountryText}.`
     );
+  }
+
+  // Asset replacement recommendation
+  if (portfolioAnalysis.assetContributions.length >= 2) {
+    const rankedByRisk = [...portfolioAnalysis.assetContributions].sort((a, b) => b.riskScore - a.riskScore);
+    const highestRiskAsset = rankedByRisk[0];
+    const lowestRiskAsset = [...portfolioAnalysis.assetContributions].sort((a, b) => a.riskScore - b.riskScore)[0];
+    const highestRiskHolding = portfolio.find((asset) => asset.ticker === highestRiskAsset.ticker);
+
+    const sameSectorLowerRisk = rankedByRisk
+      .slice()
+      .reverse()
+      .find((candidate) => {
+        const candidateHolding = portfolio.find((asset) => asset.ticker === candidate.ticker);
+        return (
+          candidate.ticker !== highestRiskAsset.ticker &&
+          candidateHolding?.sector === highestRiskHolding?.sector
+        );
+      });
+
+    if (sameSectorLowerRisk && highestRiskHolding) {
+      recommendations.push(
+        `Replace strategy: reduce ${highestRiskAsset.ticker} (${highestRiskAsset.riskScore.toFixed(1)} risk) and increase ${sameSectorLowerRisk.ticker} (${sameSectorLowerRisk.riskScore.toFixed(1)} risk) to keep ${highestRiskHolding.sector} exposure with lower geopolitical sensitivity.`
+      );
+    } else if (lowestRiskAsset.ticker !== highestRiskAsset.ticker) {
+      recommendations.push(
+        `Replace strategy: trim ${highestRiskAsset.ticker} (${highestRiskAsset.riskScore.toFixed(1)} risk) and add to ${lowestRiskAsset.ticker} (${lowestRiskAsset.riskScore.toFixed(1)} risk) as a direct lower-risk alternative.`
+      );
+    }
   }
 
   // Sector concentration recommendation
@@ -197,14 +264,14 @@ export function Summary({
   const mostCommonSector = Object.entries(sectorCounts).sort(([, a], [, b]) => b - a)[0];
   if (mostCommonSector && mostCommonSector[1] > portfolio.length * 0.3) {
     recommendations.push(
-      `Your portfolio has high concentration in the ${mostCommonSector[0]} sector with ${mostCommonSector[1]} assets. Diversify into other sectors to reduce sector-specific geopolitical vulnerability.`
+      `Your portfolio has high concentration in the ${mostCommonSector[0]} sector with ${mostCommonSector[1]} assets. Alternative: shift part of new buys toward ${lowRiskSectorText} and use lower-risk tickers like ${alternativeTickers}.`
     );
   }
 
   // Asset diversity recommendation
   if (portfolio.length < 5) {
     recommendations.push(
-      `Your portfolio contains only ${portfolio.length} assets, which limits diversification benefits. Consider adding more assets across different geographies and sectors to better distribute risk.`
+      `Your portfolio contains only ${portfolio.length} assets, which limits diversification benefits. Alternative: add 2-3 names from lower-risk options such as ${lowRiskAlternativeText}, across sectors like ${lowRiskSectorText}.`
     );
   }
 
@@ -214,7 +281,7 @@ export function Summary({
   );
   if (uniqueCountries.size < 3) {
     recommendations.push(
-      `Your portfolio is concentrated in only ${uniqueCountries.size} countries. Expand geographic exposure to at least 5-7 countries to reduce country-specific and regional geopolitical risk.`
+      `Your portfolio is concentrated in only ${uniqueCountries.size} countries. Alternative: add exposure to ${lowRiskCountryText} so your allocation spans at least 5-7 countries.`
     );
   }
 
@@ -527,7 +594,7 @@ export function Summary({
             />
           </div>
           <div className="space-y-2">
-            {portfolioAnalysis.topRiskAssets.slice(0, 5).map((asset) => {
+            {portfolioAnalysis.topRiskAssets.slice(0, 7).map((asset) => {
               const contrib = portfolioAnalysis.assetContributions.find((a) => a.ticker === asset);
               return (
                 <div key={asset} className="flex items-center justify-between text-xs bg-zinc-900/40 p-2 rounded border border-zinc-800/50">

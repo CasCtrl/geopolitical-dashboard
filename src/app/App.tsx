@@ -1861,7 +1861,7 @@ export default function App() {
 
       <div className="flex flex-col lg:flex-row">
         {/* Left Sidebar - Always visible */}
-        <aside className="w-full lg:w-56 bg-zinc-950 border-b lg:border-b-0 lg:border-r border-zinc-900 p-3 flex flex-col">
+        <aside className="w-full lg:w-56 lg:basis-56 lg:flex-none bg-zinc-950 border-b lg:border-b-0 lg:border-r border-zinc-900 p-3 flex flex-col">
           {/* Portfolio Stats - Order 1 on mobile */}
           <div className="order-1 lg:order-none">
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-1 gap-2 mb-4 lg:mb-0">
