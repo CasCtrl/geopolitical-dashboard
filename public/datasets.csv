@@ -24,7 +24,7 @@ default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitco
 default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,10,100000,commodities,China,0.3,macro,Mining and regulation
 default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,10,100000,commodities,Russia,0.2,macro,Sanctions and alternative currency
 default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,ETH,Ethereum ETF,10,100000,commodities,United States,0.5,macro,Regulatory and institutional demand
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,ETH,Ethereum ETF,10,100000,commodities,European Union,0.4,macro,MiCA regulatory framework
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,ETH,Ethereum ETF,10,100000,commodities,Germany,0.4,macro,MiCA regulatory framework and EU crypto policy
 default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,ETH,Ethereum ETF,10,100000,commodities,China,0.2,macro,Mining restrictions and capital controls
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AAPL,Apple Inc.,2,1000,technology,United States,0.7,direct,Headquarters and ecosystem
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AAPL,Apple Inc.,2,1000,technology,China,0.6,indirect,Manufacturing base
@@ -63,7 +63,7 @@ tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,IBM,IBM C
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PYPL,PayPal Holdings,2,1000,technology,United States,0.8,direct,Headquarters and operations
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PYPL,PayPal Holdings,2,1000,technology,India,0.2,indirect,Engineering centers
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SQ,Block Inc.,2,1000,technology,United States,0.75,direct,HQ and fintech
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SQ,Block Inc.,2,1000,technology,Nigeria,0.4,indirect,Emerging market exposure
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,SQ,Block Inc.,2,1000,technology,Australia,0.4,indirect,Afterpay acquisition and BNPL market
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NOW,ServiceNow Inc.,2,1000,technology,United States,0.8,direct,Headquarters
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,NOW,ServiceNow Inc.,2,1000,technology,Germany,0.2,indirect,European operations
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,WDAY,Workday Inc.,2,1000,technology,United States,0.75,direct,HQ and development
@@ -87,15 +87,15 @@ tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ROKU,Roku
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DASH,DoorDash Inc.,2,1000,technology,United States,0.8,direct,HQ and delivery
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,DASH,DoorDash Inc.,2,1000,technology,Japan,0.25,indirect,Wolt operations
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase,2,1000,technology,United States,0.9,direct,HQ and operations
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase,2,1000,technology,European Union,0.4,macro,Regulatory environment
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,COIN,Coinbase,2,1000,technology,Germany,0.4,macro,EU crypto regulatory environment
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CRWD,CrowdStrike,2,1000,technology,United States,0.85,direct,HQ and security platform
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,CRWD,CrowdStrike,2,1000,technology,Israel,0.2,indirect,R&D partnership
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,OKTA,Okta Inc.,2,1000,technology,United States,0.8,direct,HQ and identity platform
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,OKTA,Okta Inc.,2,1000,technology,India,0.3,indirect,Engineering centers
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PSTG,Pure Storage,2,1000,technology,United States,0.8,direct,HQ and R&D
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,PSTG,Pure Storage,2,1000,technology,China,0.3,indirect,Market exposure
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MSTR,MicroStrategy,2,1000,technology,United States,0.8,direct,HQ and Bitcoin holdings
-tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MSTR,MicroStrategy,2,1000,technology,El Salvador,0.4,macro,Bitcoin regulatory framework
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MSTR,MicroStrategy,2,1000,technology,United States,0.8,direct,HQ and Bitcoin treasury strategy
+tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MSTR,MicroStrategy,2,1000,technology,Japan,0.4,macro,Institutional Bitcoin adoption and regulatory framework
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ALRM,Alarm.com,2,1000,technology,United States,0.8,direct,HQ and smart home
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,ALRM,Alarm.com,2,1000,technology,Canada,0.1,indirect,Operations
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,FTNT,Fortinet Inc.,2,1000,technology,United States,0.7,direct,HQ and cybersecurity
@@ -141,7 +141,7 @@ renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,FSLR,F
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,BEP,Brookfield Renewable,5,32500,energy,Canada,0.8,direct,HQ and renewable assets
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,BEP,Brookfield Renewable,5,32500,energy,Brazil,0.5,indirect,Hydro power assets
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,CEG,Constellation Energy,4,26000,energy,United States,0.9,direct,Nuclear and clean energy HQ
-renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,CEG,Constellation Energy,4,26000,energy,France,0.3,indirect,Nuclear technology exchange
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,CEG,Constellation Energy,4,26000,energy,Japan,0.3,indirect,Nuclear reactor technology benchmarking and market
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,TSM,Taiwan Semiconductor,4,26000,technology,Taiwan,0.95,direct,Headquarters and manufacturing
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,TSM,Taiwan Semiconductor,4,26000,technology,United States,0.4,indirect,Key customer base
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,SEDG,Solaredge Technologies,4,26000,energy,Israel,0.9,direct,HQ and engineering
@@ -163,7 +163,7 @@ renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,MAXN,M
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,SPWR,SunPower Corporation,3,19500,energy,United States,0.7,direct,HQ and residential solar
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,SPWR,SunPower Corporation,3,19500,energy,Philippines,0.4,indirect,Manufacturing facilities
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,VST,Vistra Corp.,3,19500,energy,United States,0.85,direct,Utility and clean energy HQ
-renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,VST,Vistra Corp.,3,19500,energy,Germany,0.2,indirect,Energy market exposure
+renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,VST,Vistra Corp.,3,19500,energy,Mexico,0.3,indirect,Cross-border natural gas trade and energy grid interdependency
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,DAQO,Daqo New Energy,3,19500,energy,China,0.95,direct,HQ and polysilicon production
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,DAQO,Daqo New Energy,3,19500,energy,United States,0.2,indirect,Trade tariff risk
 renewable,Renewable Energy Focus,Focus on renewable energy and clean tech,RUN,Sunrun Inc.,2,13000,energy,United States,0.85,direct,Residential solar installation
