@@ -962,8 +962,11 @@ export default function App() {
       maximumFractionDigits: 0,
     });
 
-    return `${formatter.format(PORTFOLIO_VALUE_PLACEHOLDER_USD)} USD`;
-  }, []);
+    // Calculate actual portfolio value from loaded assets
+    const actualPortfolioValue = portfolio.reduce((sum, asset) => sum + asset.value, 0);
+    const displayValue = actualPortfolioValue > 0 ? actualPortfolioValue : PORTFOLIO_VALUE_PLACEHOLDER_USD;
+    return `${formatter.format(displayValue)} USD`;
+  }, [portfolio]);
 
   const downloadMapSnapshot = useCallback(async (mapElementId: string) => {
     try {
