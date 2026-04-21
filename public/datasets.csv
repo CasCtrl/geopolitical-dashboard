@@ -1,21 +1,31 @@
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AAPL,Apple Inc.,20,66667,technology,United States,0.7,direct,U.S. headquarters and operations
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AAPL,Apple Inc.,20,66667,technology,China,0.6,indirect,Manufacturing and supply chain
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AAPL,Apple Inc.,20,66667,technology,Taiwan,0.3,indirect,Semiconductor supply chain
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,MSFT,Microsoft Corporation,20,100000,technology,United States,0.8,direct,U.S. headquarters and operations
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,MSFT,Microsoft Corporation,20,100000,technology,India,0.2,indirect,Development centers
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NVDA,NVIDIA Corporation,15,50000,technology,United States,0.6,direct,U.S. headquarters
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NVDA,NVIDIA Corporation,15,50000,technology,Taiwan,0.9,indirect,TSMC semiconductor manufacturing
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NVDA,NVIDIA Corporation,15,50000,technology,China,0.4,indirect,Market demand
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,15,37500,energy,United States,0.7,direct,U.S. headquarters and operations
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,15,37500,energy,Saudi Arabia,0.5,indirect,OPEC energy market influence
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,15,37500,energy,United Arab Emirates,0.4,indirect,Gulf energy market
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,15,37500,energy,Iraq,0.3,indirect,Regional energy supply
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,TSLA,Tesla Inc.,15,50000,manufacturing,United States,0.6,direct,U.S. headquarters
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,TSLA,Tesla Inc.,15,50000,manufacturing,China,0.7,indirect,Shanghai Gigafactory and market
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,TSLA,Tesla Inc.,15,50000,manufacturing,Germany,0.3,indirect,Berlin Gigafactory
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,15,50000,commodities,United States,0.4,macro,Regulatory environment
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,15,50000,commodities,China,0.3,macro,Mining and regulation
-default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,15,50000,commodities,Russia,0.2,macro,Sanctions and alternative currency
+datasetId,datasetName,datasetDescription,ticker,assetName,weight,value,sector,country,dependencyWeight,dependencyType,dependencyReason
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AAPL,Apple Inc.,10,100000,technology,United States,0.7,direct,U.S. headquarters and operations
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AAPL,Apple Inc.,10,100000,technology,China,0.6,indirect,Manufacturing and supply chain
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AAPL,Apple Inc.,10,100000,technology,Taiwan,0.3,indirect,Semiconductor supply chain
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,MSFT,Microsoft Corporation,10,100000,technology,United States,0.8,direct,U.S. headquarters and operations
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,MSFT,Microsoft Corporation,10,100000,technology,India,0.2,indirect,Development centers
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NVDA,NVIDIA Corporation,10,100000,technology,United States,0.6,direct,U.S. headquarters
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NVDA,NVIDIA Corporation,10,100000,technology,Taiwan,0.9,indirect,TSMC semiconductor manufacturing
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,NVDA,NVIDIA Corporation,10,100000,technology,China,0.4,indirect,Market demand
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,GOOGL,Alphabet Inc.,10,100000,technology,United States,0.8,direct,HQ and R&D centers
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,GOOGL,Alphabet Inc.,10,100000,technology,China,0.5,indirect,Market restrictions and regulation
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AMZN,Amazon.com Inc.,10,100000,technology,United States,0.85,direct,Corporate headquarters
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,AMZN,Amazon.com Inc.,10,100000,technology,India,0.4,indirect,Cloud operations and retail
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,10,100000,energy,United States,0.7,direct,U.S. headquarters and operations
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,10,100000,energy,Saudi Arabia,0.5,indirect,OPEC energy market influence
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,XOM,Exxon Mobil,10,100000,energy,United Arab Emirates,0.4,indirect,Gulf energy market
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,CVX,Chevron Corporation,10,100000,energy,United States,0.8,direct,U.S. headquarters and operations
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,CVX,Chevron Corporation,10,100000,energy,Kazakhstan,0.4,indirect,Tengiz oil field operations
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,CVX,Chevron Corporation,10,100000,energy,Nigeria,0.3,indirect,West Africa energy assets
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,TSLA,Tesla Inc.,10,100000,manufacturing,United States,0.6,direct,U.S. headquarters
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,TSLA,Tesla Inc.,10,100000,manufacturing,China,0.7,indirect,Shanghai Gigafactory and market
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,TSLA,Tesla Inc.,10,100000,manufacturing,Germany,0.3,indirect,Berlin Gigafactory
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,10,100000,commodities,United States,0.4,macro,Regulatory environment
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,10,100000,commodities,China,0.3,macro,Mining and regulation
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,BTC,Bitcoin ETF,10,100000,commodities,Russia,0.2,macro,Sanctions and alternative currency
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,ETH,Ethereum ETF,10,100000,commodities,United States,0.5,macro,Regulatory and institutional demand
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,ETH,Ethereum ETF,10,100000,commodities,European Union,0.4,macro,MiCA regulatory framework
+default,Tech + Energy + Crypto,Global tech energy and crypto portfolio,ETH,Ethereum ETF,10,100000,commodities,China,0.2,macro,Mining restrictions and capital controls
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AAPL,Apple Inc.,2,1000,technology,United States,0.7,direct,Headquarters and ecosystem
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,AAPL,Apple Inc.,2,1000,technology,China,0.6,indirect,Manufacturing base
 tech-50,Top 50 Tech Watchlist,Diversified top 50 tech stocks portfolio,MSFT,Microsoft Corporation,2,1000,technology,United States,0.8,direct,HQ and cloud infrastructure
