@@ -11,7 +11,15 @@ import { RiskScoreInfo } from './RiskScoreInfo';
 
 interface RiskMetricsPanelProps {
   trendData: TrendDataPoint[];
-  countryRisks: { [country: string]: number };
+  countryRisks: {
+    [country: string]: {
+      political?: number;
+      economic?: number;
+      conflict?: number;
+      corruption?: number;
+      terrorism?: number;
+    };
+  };
   weights: {
     political: number;
     economic: number;

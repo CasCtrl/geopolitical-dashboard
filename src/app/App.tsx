@@ -2294,7 +2294,6 @@ export default function App() {
             <Suspense fallback={tabLoadingFallback}>
               <HistoricalTrends
                 availableCountries={Object.keys(baseRiskData)}
-                portfolio={portfolio}
                 datasetId={selectedDatasetId}
               />
             </Suspense>

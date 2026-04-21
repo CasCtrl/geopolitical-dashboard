@@ -8,7 +8,7 @@ import { AssetLevelIntelligencePanel } from "./AssetLevelIntelligencePanel";
 interface SummaryProps {
   portfolioAnalysis: {
     totalRiskScore: number;
-    countryExposures: Array<{ country: string; riskContribution: number; contributingAssets: string[] }>;
+    countryExposures: Array<{ country: string; totalExposure: number; riskContribution: number; contributingAssets: string[] }>;
     assetContributions: Array<{ ticker: string; riskScore: number; mainRisk?: string }>;
     topRiskAssets: string[];
     topRiskCountries: string[];

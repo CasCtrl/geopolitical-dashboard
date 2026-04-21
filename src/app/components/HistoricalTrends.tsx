@@ -6,19 +6,16 @@ import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { getPortfolioRiskTrend, getCountryTrend, getLatestSnapshot, getPreviousSnapshot, compareSnapshots } from '../data/historicalSnapshotManager';
 import { RiskScoreInfo } from './RiskScoreInfo';
-import { Asset } from '../data/portfolioData';
 
 interface HistoricalTrendsProps {
   availableCountries?: string[];
   onSelectCountry?: (country: string) => void;
-  portfolio?: Asset[];
   datasetId?: string;
 }
 
 export function HistoricalTrends({
   availableCountries = [],
   onSelectCountry,
-  portfolio = [],
   datasetId,
 }: HistoricalTrendsProps) {
   const [selectedCountry, setSelectedCountry] = useState<string>(availableCountries[0] || '');
