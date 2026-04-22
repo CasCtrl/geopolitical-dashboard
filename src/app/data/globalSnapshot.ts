@@ -187,9 +187,21 @@ export function getDefaultWeights(): RiskWeights {
 
 /**
  * Get the snapshot description for display
+ *
+ * @param overrideDate Optional ISO date string to display instead of the static snapshot date.
+ *                     Pass the latest refresh timestamp so the label syncs with manual refreshes.
  */
-export function getSnapshotDescription(): string {
-  return `Default weights based on ${currentGlobalSnapshot.name} (${currentGlobalSnapshot.updatedDate})`;
+export function getSnapshotDescription(overrideDate?: string): string {
+  let displayDate = currentGlobalSnapshot.updatedDate;
+
+  if (overrideDate && overrideDate !== "Never") {
+    const parsed = new Date(overrideDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      displayDate = parsed.toISOString().slice(0, 10);
+    }
+  }
+
+  return `Default weights based on ${currentGlobalSnapshot.name} (${displayDate})`;
 }
 
 /**

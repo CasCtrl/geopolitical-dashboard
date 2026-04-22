@@ -1592,6 +1592,7 @@ export default function App() {
               <button
                 onClick={async () => {
                   await forceUpdate();
+                  setUpdateStatusTick((prev) => prev + 1);
                   setShowUpdateStatus(false);
                 }}
                 className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-xs font-medium transition-colors flex items-center justify-center gap-1"
@@ -1915,7 +1916,7 @@ export default function App() {
                 </button>
               </div>
               <div className="text-[9px] text-zinc-500 mb-3 px-1 bg-zinc-900/50 p-1.5 rounded border border-zinc-800">
-                📊 {getSnapshotDescription()}
+                📊 {getSnapshotDescription(updateStatus.lastUpdated)}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-2 md:gap-3">
                 <RiskSlider
