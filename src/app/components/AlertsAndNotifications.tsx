@@ -159,7 +159,7 @@ export function AlertsAndNotifications({ activeAlertCount, activeRiskAlerts = []
           )}
         </div>
         <p className="text-[10px] text-zinc-500 mt-2">
-          Logic: includes portfolio-exposed countries with risk score &gt; {MIN_ALERT_RISK_SCORE}. High risk is {HIGH_RISK_SCORE_THRESHOLD}-74. Critical starts at {CRITICAL_RISK_SCORE_THRESHOLD}+.
+          Logic: includes portfolio-exposed countries with country risk score &gt; {MIN_ALERT_RISK_SCORE}. High risk is {HIGH_RISK_SCORE_THRESHOLD}-74. Critical starts at {CRITICAL_RISK_SCORE_THRESHOLD}+.
         </p>
         <div className="mt-2">
           <RiskLegend compact={true} showTitle={true} />
@@ -215,8 +215,8 @@ export function AlertsAndNotifications({ activeAlertCount, activeRiskAlerts = []
                     <p className="text-xs font-semibold text-zinc-100 truncate">{alert.country}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-xs font-semibold text-zinc-100">Risk Score {alert.riskScore.toFixed(0)}</p>
-                    <p className="text-[10px] text-zinc-400">Impact Weight {alert.riskContribution.toFixed(1)}%</p>
+                    <p className="text-xs font-semibold text-zinc-100">Country Risk {alert.riskScore.toFixed(0)}</p>
+                    <p className="text-[10px] text-zinc-400">Contribution {alert.riskContribution.toFixed(2)}</p>
                   </div>
                 </div>
 

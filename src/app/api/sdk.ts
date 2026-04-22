@@ -67,6 +67,16 @@ export type ApiClientOptions = {
 
 const DEFAULT_BASE_URL = "http://localhost:5001";
 
+type ApiErrorResponse = {
+  error?: {
+    code?: string;
+    message?: string;
+    details?: {
+      currentVersion?: unknown;
+    };
+  };
+};
+
 async function parseJson<T>(response: Response): Promise<T> {
   const payload = await response.json();
   if (payload && typeof payload === "object" && "data" in payload) {
@@ -86,24 +96,48 @@ export function createApiClient(options: ApiClientOptions = {}) {
       payload: TPayload,
       expectedVersion?: number
     ): Promise<WorkspaceArtifact<TPayload>> {
-      const response = await fetch(`${baseUrl}/api/workspace/state/${bucket}/${artifactKey}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...getHeaders(),
-        },
-        body: JSON.stringify({
-          payload,
-          ...(typeof expectedVersion === "number" ? { expectedVersion } : {}),
-        }),
-      });
+      const putOnce = async (candidateExpectedVersion?: number) => {
+        const response = await fetch(`${baseUrl}/api/workspace/state/${bucket}/${artifactKey}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...getHeaders(),
+          },
+          body: JSON.stringify({
+            payload,
+            ...(typeof candidateExpectedVersion === "number"
+              ? { expectedVersion: candidateExpectedVersion }
+              : {}),
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error(`Workspace state PUT failed with status ${response.status}`);
+        const parsed = await response.json().catch(() => null);
+        return { response, parsed };
+      };
+
+      const firstAttempt = await putOnce(expectedVersion);
+
+      if (firstAttempt.response.ok) {
+        return firstAttempt.parsed.artifact as WorkspaceArtifact<TPayload>;
       }
 
-      const json = await response.json();
-      return json.artifact as WorkspaceArtifact<TPayload>;
+      const firstError = firstAttempt.parsed as ApiErrorResponse | null;
+      const currentVersion = firstError?.error?.details?.currentVersion;
+      const isVersionConflict =
+        firstAttempt.response.status === 409 &&
+        firstError?.error?.code === "ARTIFACT_VERSION_CONFLICT" &&
+        typeof currentVersion === "number";
+
+      // Retry once using server-reported latest version to resolve stale local state.
+      if (isVersionConflict) {
+        const secondAttempt = await putOnce(currentVersion);
+        if (secondAttempt.response.ok) {
+          return secondAttempt.parsed.artifact as WorkspaceArtifact<TPayload>;
+        }
+        throw new Error(`Workspace state PUT failed with status ${secondAttempt.response.status}`);
+      }
+
+      throw new Error(`Workspace state PUT failed with status ${firstAttempt.response.status}`);
     },
 
     async getComplianceSummary(): Promise<ComplianceSummary> {

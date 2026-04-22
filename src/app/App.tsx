@@ -2024,7 +2024,7 @@ export default function App() {
                 {/* Country Exposures - Above Map */}
                 <Card className="p-2 bg-zinc-950 border-zinc-900">
                   <h3 className="text-xs mb-0.5 text-zinc-400 uppercase tracking-wide font-medium">
-                    Portfolio Exposure
+                    Country Risk Vs Portfolio Contribution
                   </h3>
                   {dashboardPortfolioAnalysis.countryExposures.length === 0 ? (
                     <div className="rounded border border-zinc-800 bg-zinc-900/40 p-4 text-center" role="status" aria-live="polite">
@@ -2055,11 +2055,14 @@ export default function App() {
                               </p>
                             </div>
                             <div className="text-right ml-2">
+                              <p className={`text-[10px] ${riskClasses.riskScore}`}>
+                                Country Risk
+                              </p>
                               <p className={`text-xs ${riskClasses.riskScore}`}>
                                 {risk.toFixed(0)}
                               </p>
                               <p className={`text-[10px] ${riskClasses.impactWeight}`}>
-                                Impact Weight: {exposure.riskContribution.toFixed(1)}%
+                                Contribution: {exposure.riskContribution.toFixed(2)}
                               </p>
                             </div>
                           </div>
@@ -2159,7 +2162,7 @@ export default function App() {
                       </p>
                     </div>
                     <p className="text-[10px] text-zinc-500 mb-2">
-                      Logic: alerts include portfolio-exposed countries with risk score &gt; {MIN_ALERT_RISK_SCORE}. High risk is {HIGH_RISK_SCORE_THRESHOLD}-74. Critical starts at {CRITICAL_RISK_SCORE_THRESHOLD}+.
+                      Logic: alerts include portfolio-exposed countries with country risk score &gt; {MIN_ALERT_RISK_SCORE}. High risk is {HIGH_RISK_SCORE_THRESHOLD}-74. Critical starts at {CRITICAL_RISK_SCORE_THRESHOLD}+.
                     </p>
 
                     {alertCount === 0 ? (
@@ -2236,12 +2239,12 @@ export default function App() {
         <main className="flex-1 p-3">
           <div className="max-w-[1600px] mx-auto space-y-4">
             <Summary
-              portfolioAnalysis={portfolioAnalysis}
+              portfolioAnalysis={dashboardPortfolioAnalysis}
               dataFreshnessLabel={corePanelFreshnessLabel}
               isStaleData={refreshNeedsAttention}
-              riskData={riskData}
+              riskData={dashboardRiskData}
               weights={weights}
-              portfolio={portfolio}
+              portfolio={dashboardPortfolio}
             />
           </div>
         </main>

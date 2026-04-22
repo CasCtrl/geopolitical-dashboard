@@ -657,14 +657,14 @@ export function Summary({
           </div>
         </Card>
 
-        {/* Top Risk Countries */}
+        {/* Top Countries By Portfolio Impact */}
         <Card className="p-4 bg-zinc-950 border-zinc-900">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="size-4 text-red-400" />
-            <h3 className="text-sm font-semibold text-white">Top Risk Countries</h3>
+            <h3 className="text-sm font-semibold text-white">Top Countries By Portfolio Impact</h3>
             <RiskScoreInfo
-              meaning="Countries with the highest risk impact on your current holdings."
-              calculation="Ranked by aggregated country risk contribution from all assets with exposure to each country."
+              meaning="Shows country risk severity and its actual portfolio impact separately."
+              calculation="Countries are ranked by aggregated contribution from all exposed assets; country risk score is shown alongside each contribution."
             />
           </div>
           <div className="space-y-2">
@@ -677,9 +677,14 @@ export function Summary({
                     <p className="text-zinc-300 font-medium">{country}</p>
                     <p className="text-zinc-600 text-[10px]">{exposure?.contributingAssets.join(", ")}</p>
                   </div>
-                  <span className={`font-semibold ${risk > 60 ? "text-red-400" : "text-yellow-400"}`}>
-                    {risk.toFixed(0)}
-                  </span>
+                  <div className="text-right">
+                    <p className={`font-semibold ${risk > 60 ? "text-red-400" : "text-yellow-400"}`}>
+                      Risk {risk.toFixed(0)}
+                    </p>
+                    <p className="text-[10px] text-zinc-500">
+                      Contribution {(exposure?.riskContribution || 0).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
               );
             })}
