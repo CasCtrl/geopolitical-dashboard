@@ -215,9 +215,6 @@ const normalizeDependencyType = (value: string): CountryDependency["type"] => {
   return "indirect";
 };
 
-const HistoricalTrends = lazy(() =>
-  import("./components/HistoricalTrends").then((module) => ({ default: module.HistoricalTrends }))
-);
 const AlertsAndNotifications = lazy(() =>
   import("./components/AlertsAndNotifications").then((module) => ({ default: module.AlertsAndNotifications }))
 );
@@ -1260,12 +1257,6 @@ export default function App() {
                   </ul>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white mb-1">Trends Tab</h3>
-                  <p className="text-[11px]">
-                    Track historical risk trends over time with interactive charts. View how your overall portfolio risk, country exposures, and individual assets have evolved. Identify emerging patterns and make data-driven decisions based on risk trajectory.
-                  </p>
-                </div>
-                <div>
                   <h3 className="font-semibold text-white mb-1">Alerts Tab</h3>
                   <p className="text-[11px]">
                     Monitor active alerts for your portfolio in real-time. Receive notifications when assets exceed risk thresholds, countries experience significant changes, or portfolio risk metrics cross critical levels. Dismiss individual alerts or clear all once reviewed.
@@ -1847,7 +1838,7 @@ export default function App() {
         {/* Tabs */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full md:w-auto">
-            <TabsList className="grid w-full max-w-3xl grid-cols-6 bg-zinc-900 border border-zinc-800">
+            <TabsList className="grid w-full max-w-3xl grid-cols-5 bg-zinc-900 border border-zinc-800">
               <TabsTrigger value="dashboard" className="text-xs md:text-sm">
                 Dashboard
               </TabsTrigger>
@@ -1856,9 +1847,6 @@ export default function App() {
               </TabsTrigger>
               <TabsTrigger value="advanced-metrics" className="text-xs md:text-sm">
                 Metrics
-              </TabsTrigger>
-              <TabsTrigger value="trends" className="text-xs md:text-sm">
-                Trends
               </TabsTrigger>
               <TabsTrigger value="scenarios" className="text-xs md:text-sm">
                 Scenarios
@@ -2310,18 +2298,6 @@ export default function App() {
                 </div>
               </>
             )}
-          </div>
-        </main>
-        ) : currentTab === "trends" ? (
-        /* Historical Trends Tab Content */
-        <main className="flex-1 p-3">
-          <div className="max-w-[1600px] mx-auto">
-            <Suspense fallback={tabLoadingFallback}>
-              <HistoricalTrends
-                availableCountries={Object.keys(baseRiskData)}
-                datasetId={selectedDatasetId}
-              />
-            </Suspense>
           </div>
         </main>
         ) : currentTab === "scenarios" ? (
