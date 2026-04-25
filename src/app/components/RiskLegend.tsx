@@ -9,6 +9,7 @@ export function RiskLegend({ compact = false, showTitle = true }: RiskLegendProp
     { label: 'Medium', className: 'bg-yellow-500', range: '26-50' },
     { label: 'High', className: 'bg-orange-500', range: '51-74' },
     { label: 'Critical', className: 'bg-red-500', range: '75-100' },
+    { label: 'No stocks', className: 'bg-zinc-700', range: 'N/A' },
   ];
 
   return (

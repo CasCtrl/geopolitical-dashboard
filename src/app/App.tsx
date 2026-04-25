@@ -42,6 +42,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { RiskGaugeCompact } from "./components/RiskGaugeCompact";
 import { RiskScoreInfo } from "./components/RiskScoreInfo";
 import { RiskLegend } from "./components/RiskLegend";
+import { RiskAlertDetailDialog, RiskAlertDetail } from "./components/RiskAlertDetailDialog";
 import { putWorkspaceState } from "./data/workspaceStateApi";
 
 const API_BASE_URL = "http://localhost:5001";
@@ -955,6 +956,13 @@ export default function App() {
 
   const alertCount = activeRiskAlerts.length;
 
+  const [selectedAlert, setSelectedAlert] = useState<RiskAlertDetail | null>(null);
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
+  const handleAlertClick = useCallback((alert: RiskAlertDetail) => {
+    setSelectedAlert(alert);
+    setAlertDialogOpen(true);
+  }, []);
+
   const homePortfolioValueDisplay = useMemo(() => {
     const formatter = new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -1141,6 +1149,12 @@ export default function App() {
         richColors
         closeButton={false}
         duration={1600}
+      />
+      <RiskAlertDetailDialog
+        alert={selectedAlert}
+        weights={weights}
+        open={alertDialogOpen}
+        onOpenChange={setAlertDialogOpen}
       />
       {/* Help Modal */}
       {showHelpModal && (
@@ -1779,6 +1793,7 @@ export default function App() {
                           key={alertsRefreshToken}
                           activeAlertCount={alertCount}
                           activeRiskAlerts={activeRiskAlerts}
+                          weights={weights}
                         />
                       </Suspense>
                     </div>
@@ -2171,9 +2186,12 @@ export default function App() {
                     ) : (
                       <div className="min-h-0 flex-1 overflow-y-auto pr-1 space-y-1">
                         {activeRiskAlerts.map((alert, index) => (
-                          <div
+                          <button
+                            type="button"
                             key={`${alert.country}-${alert.exposureType}-${index}`}
-                            className="flex items-start justify-between gap-2 bg-zinc-900/70 border border-zinc-800 px-2 py-1.5"
+                            onClick={() => handleAlertClick(alert as RiskAlertDetail)}
+                            className="w-full text-left flex items-start justify-between gap-2 bg-zinc-900/70 border border-zinc-800 px-2 py-1.5 hover:bg-zinc-800/70 hover:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-cyan-600/60 cursor-pointer transition-colors"
+                            aria-label={`Open risk alert details for ${alert.country}`}
                           >
                             <div className="min-w-0">
                               <p className="text-[10px] text-zinc-300 truncate">{alert.country}</p>
@@ -2215,7 +2233,7 @@ export default function App() {
                                 {alert.riskScore.toFixed(0)}
                               </p>
                             </div>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}

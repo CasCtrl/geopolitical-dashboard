@@ -35,6 +35,8 @@ type GeoMultiPolygon = GeoPolygon[];
 // GeoJSON cache to avoid refetching
 let geoJSONCache: { features: CountryFeature[] } | null = null;
 
+const NO_STOCK_COLOR = "#3f3f46"; // zinc-700 - gray for countries without an associated stock
+
 const getColor = (risk: number) => {
   if (risk >= 75) return "#dc2626"; // Critical - Red
   if (risk >= 51) return "#ea580c"; // High - Orange
@@ -80,6 +82,7 @@ interface CountryPathProps {
   index: number;
   riskData: { [key: string]: number };
   countryExposures?: { country: string; riskContribution: number; contributingAssets: string[] }[];
+  countriesWithStocks: Set<string>;
   weights: WorldMapProps['weights'];
   onTooltipChange: (content: string | null, position: { x: number; y: number }) => void;
   onCountryHighlight: (country: string) => void;
@@ -90,6 +93,7 @@ const CountryPath = memo(function CountryPath({
   index,
   riskData,
   countryExposures,
+  countriesWithStocks,
   weights,
   onTooltipChange,
   onCountryHighlight,
@@ -98,6 +102,8 @@ const CountryPath = memo(function CountryPath({
   const totalWeight = weights.political + weights.economic + weights.conflict + weights.corruption + weights.terrorism;
   const defaultRisk = totalWeight === 0 ? 0 : 30;
   const risk = riskData[countryName] !== undefined ? riskData[countryName] : defaultRisk;
+  const hasStock = countriesWithStocks.has(countryName);
+  const fillColor = hasStock ? getColor(risk) : NO_STOCK_COLOR;
   const pathData = useMemo(() => 
     coordinatesToPath(country.geometry?.coordinates, country.geometry?.type),
     [country.geometry?.coordinates, country.geometry?.type]
@@ -163,13 +169,13 @@ const CountryPath = memo(function CountryPath({
     <path
       key={`country-${index}`}
       d={pathData}
-      fill={getColor(risk)}
+      fill={fillColor}
       stroke="#18181b"
       strokeWidth="0.5"
       className="transition-all hover:opacity-80 cursor-pointer"
       role="button"
       tabIndex={0}
-      aria-label={`${countryName} risk score ${risk.toFixed(0)}`}
+      aria-label={hasStock ? `${countryName} risk score ${risk.toFixed(0)}` : `${countryName} no associated stocks`}
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -228,6 +234,18 @@ function WorldMapComponent({ riskData, countryExposures, dataFreshnessLabel, isS
     [highlightedCountry, weights]
   );
 
+  // Countries with at least one associated stock (contributing asset).
+  // Countries not in this set are rendered gray on the map.
+  const countriesWithStocks = useMemo(() => {
+    const set = new Set<string>();
+    countryExposures?.forEach((exposure) => {
+      if (exposure.contributingAssets && exposure.contributingAssets.length > 0) {
+        set.add(exposure.country);
+      }
+    });
+    return set;
+  }, [countryExposures]);
+
   if (loading) {
     return (
       <div className="w-full h-96 flex flex-col items-center justify-center gap-2 bg-zinc-950 rounded-lg border border-zinc-800" role="status" aria-live="polite">
@@ -281,6 +299,7 @@ function WorldMapComponent({ riskData, countryExposures, dataFreshnessLabel, isS
             index={index}
             riskData={riskData}
             countryExposures={countryExposures}
+            countriesWithStocks={countriesWithStocks}
             weights={weights}
             onTooltipChange={handleTooltipChange}
             onCountryHighlight={setHighlightedCountry}

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Bell, Plus, Trash2, Eye, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Bell, Plus, Trash2, Eye, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { RiskLegend } from './RiskLegend';
+import { buildAlertSummary, RiskWeights } from '../utils/riskAlertSummary';
 import {
   getAllThresholds,
   getUnreadAlertEvents,
@@ -26,7 +27,16 @@ interface AlertsAndNotificationsProps {
     riskScore: number;
     contributingAssets: string[];
   }>;
+  weights?: RiskWeights;
 }
+
+const DEFAULT_WEIGHTS: RiskWeights = {
+  political: 20,
+  economic: 20,
+  conflict: 20,
+  corruption: 20,
+  terrorism: 20,
+};
 
 type AlertUrgency = 'critical' | 'high' | 'medium' | 'low';
 const MIN_ALERT_RISK_SCORE = 25;
@@ -47,10 +57,14 @@ function getUrgencyBadgeClass(urgency: AlertUrgency): string {
   return 'bg-emerald-900/40 border-emerald-800 text-emerald-200';
 }
 
-export function AlertsAndNotifications({ activeAlertCount, activeRiskAlerts = [] }: AlertsAndNotificationsProps) {
+export function AlertsAndNotifications({ activeAlertCount, activeRiskAlerts = [], weights = DEFAULT_WEIGHTS }: AlertsAndNotificationsProps) {
   const [thresholds, setThresholds] = useState<AlertThreshold[]>(getAllThresholds());
   const [alertEvents, setAlertEvents] = useState<AlertEvent[]>(getAllAlertEvents());
   const [showCreateThreshold, setShowCreateThreshold] = useState(false);
+  const [expandedAlerts, setExpandedAlerts] = useState<Record<string, boolean>>({});
+  const toggleAlertExpanded = (key: string) => {
+    setExpandedAlerts((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
   const [newThresholdData, setNewThresholdData] = useState<{
     name: string;
     target: string;
@@ -205,52 +219,85 @@ export function AlertsAndNotifications({ activeAlertCount, activeRiskAlerts = []
           <p className="text-xs text-zinc-500 text-center py-3">No active alerts found.</p>
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-            {detailedRiskAlerts.map((alert, index) => (
-              <div
-                key={`${alert.country}-${alert.exposureType}-${index}`}
-                className="p-3 rounded-lg border bg-zinc-900/80 border-zinc-700"
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-zinc-100 truncate">{alert.country}</p>
+            {detailedRiskAlerts.map((alert, index) => {
+              const alertKey = `${alert.country}-${alert.exposureType}-${index}`;
+              const isExpanded = !!expandedAlerts[alertKey];
+              const summaryId = `risk-alert-summary-${alertKey}`;
+              return (
+                <div
+                  key={alertKey}
+                  className="p-3 rounded-lg border bg-zinc-900/80 border-zinc-700"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-zinc-100 truncate">{alert.country}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-semibold text-zinc-100">Country Risk {alert.riskScore.toFixed(0)}</p>
+                      <p className="text-[10px] text-zinc-400">Contribution {alert.riskContribution.toFixed(2)}</p>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-semibold text-zinc-100">Country Risk {alert.riskScore.toFixed(0)}</p>
-                    <p className="text-[10px] text-zinc-400">Contribution {alert.riskContribution.toFixed(2)}</p>
+
+                  <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] border border-zinc-700 bg-zinc-800 text-zinc-200">
+                      RISK ALERT
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] border ${getUrgencyBadgeClass(alert.urgency)}`}>
+                      RISK LEVEL: {alert.urgency.toUpperCase()}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] border border-zinc-700 bg-zinc-800 text-zinc-300">
+                      {alert.contributingAssets.length} stock{alert.contributingAssets.length === 1 ? '' : 's'} impacted
+                    </span>
                   </div>
-                </div>
 
-                <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                  <span className="px-1.5 py-0.5 rounded text-[10px] border border-zinc-700 bg-zinc-800 text-zinc-200">
-                    RISK ALERT
-                  </span>
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] border ${getUrgencyBadgeClass(alert.urgency)}`}>
-                    RISK LEVEL: {alert.urgency.toUpperCase()}
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] border border-zinc-700 bg-zinc-800 text-zinc-300">
-                    {alert.contributingAssets.length} stock{alert.contributingAssets.length === 1 ? '' : 's'} impacted
-                  </span>
-                </div>
+                  <div>
+                    <p className="text-[10px] text-zinc-500 mb-1">Affected Stocks</p>
+                    <div className="flex flex-wrap gap-1">
+                      {alert.contributingAssets.length > 0 ? (
+                        alert.contributingAssets.map((asset) => (
+                          <span
+                            key={`${alertKey}-${asset}`}
+                            className="px-1.5 py-0.5 rounded text-[10px] border border-zinc-700 bg-zinc-800/80 text-zinc-200"
+                          >
+                            {asset}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[10px] text-zinc-500">No stock details available</span>
+                      )}
+                    </div>
+                  </div>
 
-                <div>
-                  <p className="text-[10px] text-zinc-500 mb-1">Affected Stocks</p>
-                  <div className="flex flex-wrap gap-1">
-                    {alert.contributingAssets.length > 0 ? (
-                      alert.contributingAssets.map((asset) => (
-                        <span
-                          key={`${alert.country}-${alert.exposureType}-${asset}`}
-                          className="px-1.5 py-0.5 rounded text-[10px] border border-zinc-700 bg-zinc-800/80 text-zinc-200"
-                        >
-                          {asset}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-[10px] text-zinc-500">No stock details available</span>
+                  <div className="mt-2 border-t border-zinc-800 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleAlertExpanded(alertKey)}
+                      aria-expanded={isExpanded}
+                      aria-controls={summaryId}
+                      className="flex w-full items-center justify-between gap-2 text-left text-[11px] text-zinc-300 hover:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-600/60 rounded"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        {isExpanded ? (
+                          <ChevronDown size={12} className="text-zinc-400" />
+                        ) : (
+                          <ChevronRight size={12} className="text-zinc-400" />
+                        )}
+                        Why is this flagged?
+                      </span>
+                      <span className="text-[10px] text-zinc-500">{isExpanded ? 'Hide' : 'Show'}</span>
+                    </button>
+                    {isExpanded && (
+                      <p
+                        id={summaryId}
+                        className="mt-2 text-[12px] leading-relaxed text-zinc-200"
+                      >
+                        {buildAlertSummary(alert, weights)}
+                      </p>
                     )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
