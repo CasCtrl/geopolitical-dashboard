@@ -4,6 +4,7 @@ import { ArrowUpRight, ArrowDownRight, ArrowUpDown, ChevronDown, ChevronUp } fro
 import { useMemo, useCallback, useState } from "react";
 import { RiskScoreInfo } from "./RiskScoreInfo";
 import { computeAssetConfidence, getCountryIntelligence } from "../utils/riskIntelligence";
+import { HoldingDetailDialog } from "./HoldingDetailDialog";
 
 interface HoldingsTableProps {
   assets: Asset[];
@@ -61,6 +62,12 @@ export function HoldingsTable({
   isStaleData = false,
 }: HoldingsTableProps) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "riskScore", direction: "desc" });
+  const [selectedHolding, setSelectedHolding] = useState<{ asset: Asset; riskScore: number } | null>(null);
+  const [holdingDialogOpen, setHoldingDialogOpen] = useState(false);
+  const handleHoldingClick = useCallback((asset: Asset, riskScore: number) => {
+    setSelectedHolding({ asset, riskScore });
+    setHoldingDialogOpen(true);
+  }, []);
 
   const getContributionColor = useCallback((riskScore: number) => {
     if (riskScore >= 8) return "text-red-400 bg-red-950/30";
@@ -323,7 +330,17 @@ export function HoldingsTable({
                   return (
                     <tr
                       key={asset.ticker}
-                      className="border-b border-zinc-900/50 hover:bg-zinc-900/50 transition-colors"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open risk details for ${asset.ticker}`}
+                      onClick={() => handleHoldingClick(asset, riskScore)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleHoldingClick(asset, riskScore);
+                        }
+                      }}
+                      className="border-b border-zinc-900/50 hover:bg-zinc-900/50 cursor-pointer focus:outline-none focus:bg-zinc-900/70 focus:ring-1 focus:ring-cyan-600/50 transition-colors"
                     >
                       <td className="py-2 px-2 whitespace-nowrap">
                         <div className="max-w-[120px]">
@@ -384,6 +401,14 @@ export function HoldingsTable({
       {assets.length > ROWS_PER_PAGE && (
         <p className="text-xs text-zinc-500 mt-2">Showing {visibleAssets.length} of {assets.length} holdings (sorted)</p>
       )}
+      <HoldingDetailDialog
+        asset={selectedHolding?.asset ?? null}
+        riskScore={selectedHolding?.riskScore ?? 0}
+        countryRisks={countryRisks}
+        weights={weights}
+        open={holdingDialogOpen}
+        onOpenChange={setHoldingDialogOpen}
+      />
     </Card>
   );
 }
