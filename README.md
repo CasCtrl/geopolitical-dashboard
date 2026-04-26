@@ -661,7 +661,7 @@ The dashboard uses multiple data sources:
 
 ## Scope Notes
 
-Version 1.1 intentionally focuses on single-user analytics workflows with local/runtime configurability.
+Version 1.2 intentionally focuses on single-user analytics workflows with local/runtime configurability.
 The following items are currently out of scope and not planned in this capstone baseline:
 
 - Multi-user collaboration and shared editing
@@ -676,6 +676,37 @@ This is a capstone project for educational purposes.
 
 For issues or questions, refer to the project guidelines in the `/guidelines` folder or contact the project maintainers.
 
+
+
+## Version 1.2 Update (April 25, 2026)
+
+- Latest Version: 1.2
+- Build: 1.2
+- Last Updated: April 25, 2026
+
+### Risk Alerts
+
+- ✅ Active risk alerts in the dashboard sidebar are now clickable and open a detailed `RiskAlertDetailDialog` with a plain-English explanation of why each alert was raised.
+- ✅ Added an inline "Why is this flagged?" expandable summary on each alert card in the Alerts tab, showing severity, portfolio risk contribution, and the top contributing factors driven by the current weight sliders.
+- ✅ New shared `riskAlertSummary` utility derives the narrative from country base factors, weights, severity bands, and contributing assets — keeping the dashboard and Alerts tab in sync.
+- ✅ Alert cards now show a "stocks impacted" badge plus confidence and last-updated metadata sourced from the country intelligence model.
+- ✅ Improved keyboard and screen-reader support on alert rows (button semantics, `aria-label`, focus ring, `aria-expanded` summaries).
+
+### Global Risk Heat Map
+
+- ✅ Countries with no associated stocks in the active portfolio are now rendered in neutral gray instead of being colored by a default risk score, so the map only shows risk for exposures actually held.
+- ✅ Added a new "No stocks" entry to the map legend covering the gray fill state.
+- ✅ Map tooltips and `aria-label`s now distinguish between "risk score X" countries and "no associated stocks" countries.
+
+### Holdings & Navigation
+
+- ✅ Holdings risk analysis table rows now open a `HoldingDetailDialog` with a plain-English breakdown of why a position is weighted the way it is (top country, dependency type, dominant risk factor).
+- ✅ Removed the legacy Trends tab from the main navigation; historical trend visuals now live inside the relevant dashboard cards.
+
+### Help & Versioning
+
+- ✅ Header help button now displays the current build (`Build 1.2`) and updated `aria-label`.
+- ✅ Help modal version card and Release Notes tab updated with the 1.2 summary.
 
 
 ## Version 1.1 Update (April 19, 2026)

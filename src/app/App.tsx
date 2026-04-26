@@ -1189,13 +1189,13 @@ export default function App() {
                 <div className="bg-zinc-900/60 border border-zinc-800 rounded p-2">
                   <h3 className="font-semibold text-white mb-1">Version Information</h3>
                   <p className="text-[11px] text-zinc-300">
-                    <span className="font-semibold text-white">Latest Version:</span> 1.1
+                    <span className="font-semibold text-white">Latest Version:</span> 1.2
                   </p>
                   <p className="text-[11px] text-zinc-300">
-                    <span className="font-semibold text-white">Build:</span> 1.1
+                    <span className="font-semibold text-white">Build:</span> 1.2
                   </p>
                   <p className="text-[11px] text-zinc-300">
-                    <span className="font-semibold text-white">Last Updated:</span> April 19, 2026
+                    <span className="font-semibold text-white">Last Updated:</span> April 25, 2026
                   </p>
                 </div>
                 <div>
@@ -1312,6 +1312,33 @@ export default function App() {
 
                 <TabsContent value="release-notes" className="mt-3">
                   <div className="space-y-3 text-xs text-zinc-300">
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3">
+                      <h3 className="font-semibold text-white mb-1">Version 1.2 Quick Summary</h3>
+                      <p className="text-[11px] text-zinc-300 mb-2">
+                        <span className="font-semibold text-white">Build:</span> 1.2 | <span className="font-semibold text-white">Last Updated:</span> April 25, 2026
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 text-[11px]">
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Risk Alerts</p>
+                          <p>✅ Active risk alerts in the dashboard sidebar are now clickable and open a detailed dialog with a plain-English explanation of why each alert was raised.</p>
+                          <p>✅ Added an inline "Why is this flagged?" expandable summary on each alert card in the Alerts tab, showing severity, portfolio risk contribution, and the top contributing factors driven by your current weight sliders.</p>
+                          <p>✅ New shared <span className="font-mono">riskAlertSummary</span> utility derives the narrative from country base factors, weights, severity bands, and contributing assets — keeping the dashboard and Alerts tab in sync.</p>
+                          <p>✅ Alert cards now show a "stocks impacted" badge and confidence/last-updated metadata sourced from the country intelligence model.</p>
+                          <p>✅ Improved keyboard and screen-reader support on alert rows (button semantics, aria-label, focus ring, aria-expanded summaries).</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Global Risk Heat Map</p>
+                          <p>✅ Countries with no associated stocks in the active portfolio are now rendered in neutral gray instead of being colored by a default risk score, so the map only shows risk for exposures you actually hold.</p>
+                          <p>✅ Added a new "No stocks" entry to the map legend covering the gray fill state.</p>
+                          <p>✅ Map tooltips and aria-labels now distinguish between "risk score X" countries and "no associated stocks" countries.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Holdings & Navigation</p>
+                          <p>✅ Holdings risk analysis table rows now open a Holding Detail dialog with a plain-English breakdown of why a position is weighted the way it is (top country, dependency type, dominant risk factor).</p>
+                          <p>✅ Removed the legacy Trends tab from the main navigation; historical trend visuals now live inside the relevant dashboard cards.</p>
+                        </div>
+                      </div>
+                    </div>
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3">
                       <h3 className="font-semibold text-white mb-1">Version 1.1 Quick Summary</h3>
                       <p className="text-[11px] text-zinc-300 mb-2">
@@ -1818,8 +1845,8 @@ export default function App() {
               <button
                 onClick={() => setShowHelpModal(true)}
                 className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
-                title="Help"
-                aria-label="Open help"
+                title="Help · Build 1.2"
+                aria-label="Open help (Build 1.2)"
               >
                 <HelpCircle className="size-5" />
               </button>
