@@ -832,7 +832,7 @@ export default function App() {
       postCrash({
         message: event.message || "Unhandled frontend error",
         route: window.location.pathname,
-        release: "1.1",
+        release: "1.2",
         stack: event.error?.stack || null,
       });
     };
@@ -846,7 +846,7 @@ export default function App() {
       postCrash({
         message,
         route: window.location.pathname,
-        release: "1.1",
+        release: "1.2",
         stack: reason?.stack || null,
       });
     };
@@ -1527,8 +1527,8 @@ export default function App() {
                 <TabsContent value="general" className="mt-3 space-y-3 text-xs text-zinc-300">
                   <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-1">
                     <h3 className="font-semibold text-white mb-1">App Information</h3>
-                    <p className="text-[11px]"><span className="text-zinc-400">Version:</span> 1.1</p>
-                    <p className="text-[11px]"><span className="text-zinc-400">Build:</span> 1.1</p>
+                    <p className="text-[11px]"><span className="text-zinc-400">Version:</span> 1.2</p>
+                    <p className="text-[11px]"><span className="text-zinc-400">Build:</span> 1.2</p>
                     <p className="text-[11px]"><span className="text-zinc-400">Live Data Mode:</span> {liveDataConnected ? "Connected" : "Offline / Fallback"}</p>
                     <p className="text-[11px]"><span className="text-zinc-400">Loaded Datasets:</span> {datasets.length}</p>
                     <p className="text-[11px]"><span className="text-zinc-400">Selected Dataset:</span> {datasets.find((d) => d.id === selectedDatasetId)?.name || "Loading..."}</p>
