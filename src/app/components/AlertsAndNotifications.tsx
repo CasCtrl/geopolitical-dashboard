@@ -86,7 +86,7 @@ export function AlertsAndNotifications({ activeAlertCount, activeRiskAlerts = []
         ...alert,
         urgency: getAlertUrgency(alert.riskScore),
       }))
-      .sort((a, b) => b.riskContribution - a.riskContribution);
+      .sort((a, b) => b.riskScore - a.riskScore || b.riskContribution - a.riskContribution);
   }, [activeRiskAlerts]);
 
   const urgencyCounts = useMemo(() => {

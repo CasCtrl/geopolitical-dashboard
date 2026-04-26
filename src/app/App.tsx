@@ -948,7 +948,7 @@ export default function App() {
         riskScore: dashboardRiskData[exposure.country] || 50,
       }))
       .filter((exposure) => exposure.riskScore > MIN_ALERT_RISK_SCORE)
-      .sort((a, b) => b.riskContribution - a.riskContribution);
+      .sort((a, b) => b.riskScore - a.riskScore || b.riskContribution - a.riskContribution);
   }, [dashboardPortfolioAnalysis, dashboardRiskData]);
 
   const alertCount = activeRiskAlerts.length;
