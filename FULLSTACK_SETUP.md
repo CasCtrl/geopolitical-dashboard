@@ -105,16 +105,9 @@ Integration runtime wiring:
 - `PIPELINE_SOURCE_URLS` - comma-separated upstream pipeline source URLs.
 - `PIPELINE_SOURCE_AUTH_TOKEN` - optional bearer token for upstream pipeline calls.
 
-Pipeline sync workflow wiring (GitHub Actions):
-- Set repository/environment secrets `PIPELINE_SYNC_URL` and `PIPELINE_SYNC_API_KEY` for `.github/workflows/pipeline-sync.yml`.
-
 ## Security Hardening Controls
 
-- Secret scanning enforcement workflow: `.github/workflows/secret-scan.yml`
-- Dependency audit workflow: `.github/workflows/security-audit.yml`
-- Dependabot policy: `.github/dependabot.yml` + `.github/DEPENDENCY_UPDATE_POLICY.md`
 - Stricter backend security headers/CSP via Helmet policy in `server/server.js`
-- Release workflow emits `release-audit` artifact for each deploy execution
 - Operational audit sink runbook: `SECURITY_AUDIT_RUNBOOK.md`
 
 ## Performance Guardrails

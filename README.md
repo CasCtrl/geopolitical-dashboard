@@ -485,28 +485,16 @@ geopolitical-dashboard/
 - `npm run ci` - Run lint + tests + production build locally
 - `npm run test:contract` - Run live-server API contract tests with response metadata assertions
 - `npm run test:integration:db` - Run DB-backed backend route integration tests (requires MSSQL and `DB_INTEGRATION_TESTS=true`)
-- `npm run governance:check` - Validate governance/workflow guardrail files and required CI check names
 - `npm run playwright:install` - Install Playwright Chromium browser for e2e tests
 - `npm run test:e2e:ci` - Run Playwright critical journey + smoke tests in CI mode
 
 ## Delivery Guardrails
 
-- **CI pipeline:** GitHub Actions workflow at `.github/workflows/ci.yml` runs lint, tests, and build on push/PR.
-- **Test pyramid:** CI now includes API contract tests, DB-backed route integration tests, and critical user-journey e2e coverage.
+- **Test pyramid:** Project includes unit tests, API contract tests, DB-backed route integration tests, and critical user-journey e2e coverage.
 - **API contract:** Backend serves OpenAPI contract at `/api/openapi.yaml` and metadata at `/api/meta`.
 - **Data provenance envelope:** API endpoints return `{ data, meta }` where `meta` includes freshness, reliability scoring, and fallback provenance.
 - **Production secret checks:** Server startup validation blocks placeholder secrets in production mode.
-- **Security audit workflow:** `.github/workflows/security-audit.yml` runs scheduled/manual npm audit checks and fails on high/critical vulnerabilities.
-- **Release workflow:** `.github/workflows/release.yml` publishes deploy artifacts to GitHub Releases, deploys to remote targets, runs post-deploy health verification, and automatically rolls back on failed health checks.
-- **Deploy wiring:** Configure GitHub Environment `secrets` (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, optional `DEPLOY_HEALTHCHECK_HEADER`) and `vars` (`DEPLOY_PATH`, `DEPLOY_HEALTHCHECK_URL`, optional `DEPLOY_PORT`, `DEPLOY_RESTART_COMMAND`, `DEPLOY_HEALTH_TIMEOUT_SECONDS`).
 - **Integration runtime wiring:** Configure backend env values for external connectors and webhooks (`INTEGRATION_WEBHOOK_URL`, `BLOOMBERG_PORTFOLIO_API_URL`, optional `BLOOMBERG_API_TOKEN`, `PIPELINE_SOURCE_URLS`, optional `PIPELINE_SOURCE_AUTH_TOKEN`).
-- **Pipeline sync workflow wiring:** Configure GitHub `secrets` for `.github/workflows/pipeline-sync.yml` (`PIPELINE_SYNC_URL`, `PIPELINE_SYNC_API_KEY`).
-- **Deploy setup automation:** Use `.github/deploy/deploy.env.example` + `scripts/configure-deploy-environment.sh` to apply all required secrets/vars with GitHub CLI:
-   - `cp .github/deploy/deploy.env.example .github/deploy/deploy.staging.env`
-   - `./scripts/configure-deploy-environment.sh .github/deploy/deploy.staging.env`
-- **Branch protection runbook:** `.github/BRANCH_PROTECTION.md` includes exact required check names and merge policy recommendations.
-- **Code owner enforcement:** `.github/CODEOWNERS` and `.github/pull_request_template.md` enforce review accountability and PR validation discipline.
-- **Settings quick-start:** `.github/GITHUB_SETTINGS_CHECKLIST.md` gives click-by-click GitHub UI setup for branch protection, required checks, environments, and merge rules.
 
 ## Testing & Test-Driven Development (TDD)
 
