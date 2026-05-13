@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import { once } from 'events';
 
-const API_HEALTH_URL = 'http://localhost:5001/health';
+const API_HEALTH_URL = 'http://localhost:5050/health';
 const SERVER_START_TIMEOUT_MS = 30000;
 const HEALTH_POLL_INTERVAL_MS = 750;
 
@@ -33,15 +33,15 @@ function killChild(child) {
 }
 
 async function run() {
-  console.log('[dev:full] Starting API server (5001) and Vite client...');
+  console.log('[dev:full] Starting API server (5050) and Vite client...');
 
   let serverChild = null;
   let managesServerLifecycle = false;
 
-  // Reuse an already running backend instead of spawning a second server that collides on port 5001.
+  // Reuse an already running backend instead of spawning a second server that collides on port 5050.
   const backendAlreadyRunning = await waitForHealth(API_HEALTH_URL, 1200);
   if (backendAlreadyRunning) {
-    console.log('[dev:full] Reusing existing healthy API server on port 5001.');
+    console.log('[dev:full] Reusing existing healthy API server on port 5050.');
   } else {
     managesServerLifecycle = true;
     serverChild = spawn('node', ['server/server.js'], {

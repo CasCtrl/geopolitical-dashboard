@@ -37,6 +37,52 @@ let geoJSONCache: { features: CountryFeature[] } | null = null;
 
 const NO_STOCK_COLOR = "#3f3f46"; // zinc-700 - gray for countries without an associated stock
 
+// GeoJSON (datasets/geo-countries) uses official ISO-style names that differ from
+// the short names used in our datasets/CSV (e.g. "United States" vs
+// "United States of America"). Map GeoJSON names -> canonical dataset names so
+// risk-score and stock-exposure lookups resolve correctly on the heat map.
+const GEO_NAME_ALIASES: Record<string, string> = {
+  "United States of America": "United States",
+  "USA": "United States",
+  "Russian Federation": "Russia",
+  "Republic of Korea": "South Korea",
+  "Korea, Republic of": "South Korea",
+  "Korea (Republic of)": "South Korea",
+  "Dem. Rep. Korea": "North Korea",
+  "Democratic People's Republic of Korea": "North Korea",
+  "Iran (Islamic Republic of)": "Iran",
+  "Iran, Islamic Republic of": "Iran",
+  "Syrian Arab Republic": "Syria",
+  "Viet Nam": "Vietnam",
+  "Lao People's Democratic Republic": "Laos",
+  "Brunei Darussalam": "Brunei",
+  "Czechia": "Czech Republic",
+  "Slovak Republic": "Slovakia",
+  "Republic of Moldova": "Moldova",
+  "United Republic of Tanzania": "Tanzania",
+  "Tanzania, United Republic of": "Tanzania",
+  "Côte d'Ivoire": "Ivory Coast",
+  "Cote d'Ivoire": "Ivory Coast",
+  "Democratic Republic of the Congo": "DR Congo",
+  "Congo, Democratic Republic of the": "DR Congo",
+  "Republic of the Congo": "Congo",
+  "Congo": "Congo",
+  "Myanmar": "Myanmar",
+  "Burma": "Myanmar",
+  "Cabo Verde": "Cape Verde",
+  "Eswatini": "Swaziland",
+  "Bolivia (Plurinational State of)": "Bolivia",
+  "Venezuela (Bolivarian Republic of)": "Venezuela",
+  "Macedonia": "North Macedonia",
+  "The former Yugoslav Republic of Macedonia": "North Macedonia",
+  "Palestine, State of": "Palestine",
+  "Taiwan, Province of China": "Taiwan",
+  "Hong Kong": "Hong Kong",
+  "United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
+};
+
+const resolveCountryName = (name: string): string => GEO_NAME_ALIASES[name] ?? name;
+
 const getColor = (risk: number) => {
   if (risk >= 75) return "#dc2626"; // Critical - Red
   if (risk >= 51) return "#ea580c"; // High - Orange
@@ -99,10 +145,13 @@ const CountryPath = memo(function CountryPath({
   onCountryHighlight,
 }: CountryPathProps) {
   const countryName = country.properties?.name || "Unknown";
+  const lookupName = resolveCountryName(countryName);
   const totalWeight = weights.political + weights.economic + weights.conflict + weights.corruption + weights.terrorism;
   const defaultRisk = totalWeight === 0 ? 0 : 30;
-  const risk = riskData[countryName] !== undefined ? riskData[countryName] : defaultRisk;
-  const hasStock = countriesWithStocks.has(countryName);
+  const risk = riskData[lookupName] !== undefined
+    ? riskData[lookupName]
+    : (riskData[countryName] !== undefined ? riskData[countryName] : defaultRisk);
+  const hasStock = countriesWithStocks.has(lookupName) || countriesWithStocks.has(countryName);
   const fillColor = hasStock ? getColor(risk) : NO_STOCK_COLOR;
   const pathData = useMemo(() => 
     coordinatesToPath(country.geometry?.coordinates, country.geometry?.type),
@@ -111,7 +160,7 @@ const CountryPath = memo(function CountryPath({
 
   const handleMouseEnter = useCallback((e: React.MouseEvent<SVGPathElement>) => {
     const intelligence = getCountryIntelligence(countryName, weights);
-    const exposure = countryExposures?.find(ce => ce.country === countryName);
+    const exposure = countryExposures?.find(ce => ce.country === lookupName || ce.country === countryName);
     let tooltip = `${countryName}\nRisk Score: ${risk.toFixed(0)}`;
     tooltip += `\nConfidence: ${intelligence.confidence}%`;
     tooltip += `\nUpdated: ${new Date(intelligence.lastUpdated).toLocaleDateString()}`;
@@ -136,7 +185,7 @@ const CountryPath = memo(function CountryPath({
 
   const handleFocus = useCallback((e: React.FocusEvent<SVGPathElement>) => {
     const intelligence = getCountryIntelligence(countryName, weights);
-    const exposure = countryExposures?.find(ce => ce.country === countryName);
+    const exposure = countryExposures?.find(ce => ce.country === lookupName || ce.country === countryName);
     let tooltip = `${countryName}\nRisk Score: ${risk.toFixed(0)}`;
     tooltip += `\nConfidence: ${intelligence.confidence}%`;
     tooltip += `\nUpdated: ${new Date(intelligence.lastUpdated).toLocaleDateString()}`;

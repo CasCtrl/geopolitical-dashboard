@@ -28,7 +28,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const envSchema = z
   .object({
-    SERVER_PORT: z.coerce.number().int().min(1).max(65535).default(5001),
+    SERVER_PORT: z.coerce.number().int().min(1).max(65535).default(5050),
     APP_VERSION: z.string().default('1.1'),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 

@@ -65,7 +65,7 @@ export type ApiClientOptions = {
   getHeaders?: () => HeadersInit;
 };
 
-const DEFAULT_BASE_URL = "http://localhost:5001";
+const DEFAULT_BASE_URL = "http://localhost:5050";
 
 type ApiErrorResponse = {
   error?: {

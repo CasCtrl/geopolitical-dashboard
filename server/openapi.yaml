@@ -6,7 +6,7 @@ info:
     Core backend API for datasets, portfolio analytics support data, reports, health checks,
     and news ingestion.
 servers:
-  - url: http://localhost:5001
+  - url: http://localhost:5050
 paths:
   /health:
     get:

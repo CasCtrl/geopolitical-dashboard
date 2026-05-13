@@ -45,7 +45,7 @@ import { RiskLegend } from "./components/RiskLegend";
 import { RiskAlertDetailDialog, RiskAlertDetail } from "./components/RiskAlertDetailDialog";
 import { putWorkspaceState } from "./data/workspaceStateApi";
 
-const API_BASE_URL = "http://localhost:5001";
+const API_BASE_URL = "http://localhost:5050";
 const PORTFOLIO_VALUE_PLACEHOLDER_USD = 337500;
 const MIN_ALERT_RISK_SCORE = 25;
 const HIGH_RISK_SCORE_THRESHOLD = 51;

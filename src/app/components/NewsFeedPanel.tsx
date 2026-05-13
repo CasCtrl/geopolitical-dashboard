@@ -33,7 +33,7 @@ export function NewsFeedPanel({ countryRisks: _countryRisks, portfolioCountries,
       let baseArticles: unknown[] = [];
 
       try {
-        const response = await fetch('http://localhost:5001/api/news?limit=40');
+        const response = await fetch('http://localhost:5050/api/news?limit=40');
         if (response.ok) {
           const rawPayload = (await response.json()) as NewsApiPayload | NewsApiEnvelope;
           const payload = 'data' in rawPayload && rawPayload.data
