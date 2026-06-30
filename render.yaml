@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: geopolitical-dashboard
+    env: node
+    plan: free
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    startCommand: SERVER_PORT=$PORT node server/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_CONNECT_STRICT
+        value: false
+      - key: DB_INIT_ENABLED
+        value: false
+      - key: AUTH_REQUIRED
+        value: false
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: APP_VERSION
+        value: "1.1"
