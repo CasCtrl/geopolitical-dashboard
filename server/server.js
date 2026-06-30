@@ -259,15 +259,16 @@ app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: false,
     directives: {
-      defaultSrc: ["'none'"],
+      defaultSrc: ["'self'"],
       baseUri: ["'none'"],
       formAction: ["'self'"],
       frameAncestors: ["'none'"],
       objectSrc: ["'none'"],
-      scriptSrc: ["'none'"],
-      styleSrc: ["'none'"],
-      imgSrc: ["'self'", 'data:'],
-      connectSrc: ["'self'", ...allowedOrigins],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https:", ...allowedOrigins],
+      fontSrc: ["'self'", "data:"],
     },
   },
   referrerPolicy: {
