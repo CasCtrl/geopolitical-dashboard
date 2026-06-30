@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.env*
+screenshots
+test-results
+e2e
+**/__tests__
+*.spec.ts
+*.test.js
+*.test.ts
+README.md
+ARCHITECTURE.md
+FULLSTACK_SETUP.md
+*.md

@@ -15,6 +15,8 @@ import reportsRoutes from './routes/reports.js';
 import newsRoutes from './routes/news.js';
 import workspaceArtifactsRoutes from './routes/workspaceArtifacts.js';
 import integrationsRoutes from './routes/integrations.js';
+import externalDataRoutes from './routes/externalData.js';
+import spPerformersRoutes from './routes/spPerformers.js';
 import observability from './observability.cjs';
 import adminObservability from './adminObservability.cjs';
 import auditTrailModule from './auditTrail.cjs';
@@ -449,6 +451,8 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api', newsRoutes);
 app.use('/api', workspaceArtifactsRoutes);
 app.use('/api/integrations', integrationsRoutes);
+app.use('/api/external', externalDataRoutes);
+app.use('/api/external/sp-performers', spPerformersRoutes);
 
 app.post('/api/telemetry/frontend-crash', async (req, res, next) => {
   try {
@@ -620,6 +624,15 @@ app.get('/ready', async (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Serve built React frontend for all non-API routes in production
+if (env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '../dist');
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 app.use((err, req, res, next) => {
   void next;
