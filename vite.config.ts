@@ -19,6 +19,11 @@ export default defineConfig({
     port: 3000,
     open: true,
     middlewareMode: false,
+    proxy: {
+      '/api': 'http://localhost:5050',
+      '/health': 'http://localhost:5050',
+      '/ready': 'http://localhost:5050',
+    },
     watch: {
       usePolling: false,
       ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**'],
