@@ -24,9 +24,10 @@ function clamp(value: number, min: number, max: number): number {
 
 export function getCountryIntelligence(
   country: string,
-  weights: { political: number; economic: number; conflict: number; corruption: number; terrorism: number }
+  weights: { political: number; economic: number; conflict: number; corruption: number; terrorism: number },
+  blendedDimensions?: CountryRisk
 ) {
-  const base = baseRiskData[country] || {
+  const base = blendedDimensions || baseRiskData[country] || {
     political: 50,
     economic: 50,
     conflict: 50,
@@ -68,7 +69,7 @@ export function calculateDependencyDepth(asset: Asset) {
   return { direct, indirect, macro, maxDepth };
 }
 
-export function findSinglePointFailures(assets: Asset[]) {
+export function findSinglePointFailures(assets: Asset[], riskScores?: { [country: string]: number }) {
   const countryMap = new Map<string, { assetCount: number; aggregateWeight: number }>();
 
   assets.forEach((asset) => {
@@ -86,16 +87,17 @@ export function findSinglePointFailures(assets: Asset[]) {
       country,
       assetCount: value.assetCount,
       averageDependencyWeight: value.aggregateWeight / value.assetCount,
-      riskScore: baseRiskData[country]
-        ? Math.round(
-            (baseRiskData[country].political +
-              baseRiskData[country].economic +
-              baseRiskData[country].conflict +
-              baseRiskData[country].corruption +
-              baseRiskData[country].terrorism) /
-              5
-          )
-        : 50,
+      riskScore: riskScores?.[country] ??
+        (baseRiskData[country]
+          ? Math.round(
+              (baseRiskData[country].political +
+                baseRiskData[country].economic +
+                baseRiskData[country].conflict +
+                baseRiskData[country].corruption +
+                baseRiskData[country].terrorism) /
+                5
+            )
+          : 50),
     }))
     .filter((entry) => entry.assetCount >= 2 && entry.averageDependencyWeight >= 0.35)
     .sort((a, b) => b.averageDependencyWeight - a.averageDependencyWeight)

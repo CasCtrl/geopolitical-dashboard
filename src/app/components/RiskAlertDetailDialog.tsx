@@ -20,6 +20,7 @@ export interface RiskAlertDetail {
 interface RiskAlertDetailDialogProps {
   alert: RiskAlertDetail | null;
   weights: RiskWeights;
+  countryDimensions?: Record<string, import('../data/countryRiskData').CountryRisk>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -27,13 +28,15 @@ interface RiskAlertDetailDialogProps {
 export function RiskAlertDetailDialog({
   alert,
   weights,
+  countryDimensions,
   open,
   onOpenChange,
 }: RiskAlertDetailDialogProps) {
-  const summary = useMemo(() => (alert ? buildAlertSummary(alert, weights) : ""), [alert, weights]);
+  const dims = alert ? countryDimensions?.[alert.country] : undefined;
+  const summary = useMemo(() => (alert ? buildAlertSummary(alert, weights, dims) : ""), [alert, weights, dims]);
   const intelligence = useMemo(
-    () => (alert ? getCountryIntelligence(alert.country, weights) : null),
-    [alert, weights]
+    () => (alert ? getCountryIntelligence(alert.country, weights, dims) : null),
+    [alert, weights, dims]
   );
 
   if (!alert) return null;

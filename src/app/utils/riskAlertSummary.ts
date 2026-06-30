@@ -40,10 +40,11 @@ export function severityLabel(score: number): string {
 
 export function buildAlertSummary(
   alert: RiskAlertLike,
-  weights: RiskWeights
+  weights: RiskWeights,
+  blendedDimensions?: CountryRisk
 ): string {
   const country = alert.country;
-  const base = baseRiskData[country];
+  const base = blendedDimensions || baseRiskData[country];
   const assets = alert.contributingAssets;
   const hasAssets = assets.length > 0;
   const isOne = assets.length === 1;

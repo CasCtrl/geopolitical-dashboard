@@ -17,7 +17,7 @@ export function SupplyChainExposureMappingPanel({
   portfolio,
   riskData,
 }: SupplyChainExposureMappingPanelProps) {
-  const singlePointFailures = useMemo(() => findSinglePointFailures(portfolio), [portfolio]);
+  const singlePointFailures = useMemo(() => findSinglePointFailures(portfolio, riskData), [portfolio, riskData]);
 
   const dependencyDepthByAsset = useMemo(
     () =>

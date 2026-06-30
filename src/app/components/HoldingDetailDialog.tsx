@@ -15,6 +15,7 @@ interface HoldingDetailDialogProps {
   asset: Asset | null;
   riskScore: number;
   countryRisks: { [country: string]: number };
+  countryDimensions?: { [country: string]: CountryRisk };
   weights: RiskWeights;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -38,7 +39,8 @@ function buildAssetSummary(
   asset: Asset,
   riskScore: number,
   countryRisks: { [country: string]: number },
-  weights: RiskWeights
+  weights: RiskWeights,
+  countryDimensions?: { [country: string]: CountryRisk }
 ): string {
   const deps = asset.countryDependencies || [];
   if (deps.length === 0) {
@@ -57,7 +59,8 @@ function buildAssetSummary(
     .sort((a, b) => b.weightedRisk - a.weightedRisk);
 
   const top = ranked[0];
-  const base = baseRiskData[top.country];
+  // Use blended WB dimensions if available, fall back to base
+  const base = countryDimensions?.[top.country] || baseRiskData[top.country];
   let topFactorPlain = "country-level geopolitical pressure";
   let topFactorWeight = 0;
 
@@ -94,13 +97,14 @@ export function HoldingDetailDialog({
   asset,
   riskScore,
   countryRisks,
+  countryDimensions,
   weights,
   open,
   onOpenChange,
 }: HoldingDetailDialogProps) {
   const summary = useMemo(
-    () => (asset ? buildAssetSummary(asset, riskScore, countryRisks, weights) : ""),
-    [asset, riskScore, countryRisks, weights]
+    () => (asset ? buildAssetSummary(asset, riskScore, countryRisks, weights, countryDimensions) : ""),
+    [asset, riskScore, countryRisks, weights, countryDimensions]
   );
 
   const rankedDeps = useMemo(() => {

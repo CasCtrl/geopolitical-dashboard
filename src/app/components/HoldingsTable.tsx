@@ -10,6 +10,7 @@ interface HoldingsTableProps {
   assets: Asset[];
   assetContributions: { ticker: string; riskScore: number; mainRisk?: string }[];
   countryRisks: { [country: string]: number };
+  countryDimensions?: { [country: string]: import('../data/countryRiskData').CountryRisk };
   weights?: {
     political: number;
     economic: number;
@@ -57,6 +58,7 @@ export function HoldingsTable({
   assets,
   assetContributions,
   countryRisks,
+  countryDimensions,
   weights = defaultWeights,
   dataFreshnessLabel,
   isStaleData = false,
@@ -405,6 +407,7 @@ export function HoldingsTable({
         asset={selectedHolding?.asset ?? null}
         riskScore={selectedHolding?.riskScore ?? 0}
         countryRisks={countryRisks}
+        countryDimensions={countryDimensions}
         weights={weights}
         open={holdingDialogOpen}
         onOpenChange={setHoldingDialogOpen}

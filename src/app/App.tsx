@@ -5,7 +5,7 @@ import { RiskSlider } from "./components/RiskSlider";
 import { HoldingsTable } from "./components/HoldingsTable";
 import { DatasetSelector } from "./components/DatasetSelector";
 import { Summary } from "./components/Summary";
-import { calculateRiskIndex, baseRiskData } from "./data/countryRiskData";
+import { calculateRiskIndex, baseRiskData, CountryRisk } from "./data/countryRiskData";
 import { defaultPortfolio, calculatePortfolioRisk, Asset, CountryDependency } from "./data/portfolioData";
 import { loadDatasetsFromCSV, DatasetMetadata } from "./data/csvLoader";
 import { getDefaultWeights, getSnapshotDescription, isDefaultWeights } from "./data/globalSnapshot";
@@ -36,12 +36,18 @@ import {
   Newspaper,
   Check,
   Settings,
+  BookOpen,
+  Search,
+  PlugZap,
+  Unplug,
 } from "lucide-react";
 import { Card } from "./components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { RiskGaugeCompact } from "./components/RiskGaugeCompact";
 import { RiskScoreInfo } from "./components/RiskScoreInfo";
 import { RiskLegend } from "./components/RiskLegend";
+import { RiskMethodologyModal } from "./components/RiskMethodologyModal";
+import { SecuritySearch } from "./components/SecuritySearch";
 import { RiskAlertDetailDialog, RiskAlertDetail } from "./components/RiskAlertDetailDialog";
 import { putWorkspaceState } from "./data/workspaceStateApi";
 
@@ -253,6 +259,8 @@ export default function App() {
   const [weights, setWeights] = useState(() => readStorage(WEIGHTS_STORAGE_KEY, getDefaultWeights()));
   const [currentTab, setCurrentTab] = useState(() => readStorageString(TAB_STORAGE_KEY, "dashboard"));
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showMethodologyModal, setShowMethodologyModal] = useState(false);
+  const [focusedSecurity, setFocusedSecurity] = useState<Asset | null>(null);
   const [showUpdateStatus, setShowUpdateStatus] = useState(false);
   const [showAlertsWindow, setShowAlertsWindow] = useState(false);
   const [showNewsFeedPanel, setShowNewsFeedPanel] = useState(false);
@@ -281,6 +289,9 @@ export default function App() {
   const [newsAlertCount, setNewsAlertCount] = useState(0);
   const [updateStatusTick, setUpdateStatusTick] = useState(0);
   const [liveDataConnected, setLiveDataConnected] = useState(false);
+  const [wbApiConnected, setWbApiConnected] = useState<boolean | null>(null); // null = checking
+  // WB per-dimension overrides: { [country]: { political, economic, conflict, corruption, terrorism } }
+  const [wbRiskOverrides, setWbRiskOverrides] = useState<Record<string, Partial<CountryRisk>>>({});
 
   const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const [selectedTimeZone, setSelectedTimeZone] = useState(() => {
@@ -324,13 +335,84 @@ export default function App() {
   // Get the current portfolio based on selected dataset
   const portfolio = assetsByDataset[selectedDatasetId] || defaultPortfolio;
 
+  // Per-dimension blended data (baseRiskData + wbRiskOverrides) — used by RiskMetricsPanel,
+  // HoldingDetailDialog, RiskAlertDetailDialog, and intelligence/alert summary utils
+  const blendedCountryDimensions = useMemo((): Record<string, CountryRisk> => {
+    const result: Record<string, CountryRisk> = {};
+    for (const [country, base] of Object.entries(baseRiskData)) {
+      const wb = wbRiskOverrides[country];
+      result[country] = wb
+        ? {
+            political: wb.political ?? base.political,
+            economic: wb.economic ?? base.economic,
+            conflict: wb.conflict ?? base.conflict,
+            corruption: wb.corruption ?? base.corruption,
+            terrorism: wb.terrorism ?? base.terrorism,
+          }
+        : { ...base };
+    }
+    return result;
+  }, [wbRiskOverrides]);
+
+  // All assets across every loaded dataset, deduplicated (active dataset first)
+  const allSearchableAssets = useMemo(() => {    const seen = new Set<string>();
+    const all: Asset[] = [];
+    for (const asset of portfolio) {
+      if (!seen.has(asset.ticker)) { seen.add(asset.ticker); all.push(asset); }
+    }
+    for (const [dsId, assets] of Object.entries(assetsByDataset)) {
+      if (dsId === selectedDatasetId) continue;
+      for (const asset of assets) {
+        if (!seen.has(asset.ticker)) { seen.add(asset.ticker); all.push(asset); }
+      }
+    }
+    return all;
+  }, [portfolio, assetsByDataset, selectedDatasetId]);
+
+  // Dataset name label per ticker (for search result badges)
+  const assetDatasetLabels = useMemo(() => {
+    const labels: Record<string, string> = {};
+    const nameMap = Object.fromEntries(datasets.map((d) => [d.id, d.name]));
+    for (const [dsId, assets] of Object.entries(assetsByDataset)) {
+      const label = nameMap[dsId] ?? dsId;
+      for (const asset of assets) {
+        if (!labels[asset.ticker]) labels[asset.ticker] = label;
+      }
+    }
+    return labels;
+  }, [assetsByDataset, datasets]);
+
   const riskData = useMemo(() => {
     const data: { [key: string]: number } = {};
     Object.keys(baseRiskData).forEach((country) => {
-      data[country] = calculateRiskIndex(country, weights);
+      // Blend WB overrides into the base dimensions for this country
+      const wb = wbRiskOverrides[country];
+      const base = baseRiskData[country];
+      const blended = wb
+        ? {
+            political: wb.political ?? base.political,
+            economic: wb.economic ?? base.economic,
+            conflict: wb.conflict ?? base.conflict,
+            corruption: wb.corruption ?? base.corruption,
+            terrorism: wb.terrorism ?? base.terrorism,
+          }
+        : base;
+
+      const totalWeight =
+        weights.political + weights.economic + weights.conflict +
+        weights.corruption + weights.terrorism;
+      if (totalWeight === 0) { data[country] = 0; return; }
+      data[country] = Math.round(
+        (blended.political * weights.political +
+          blended.economic * weights.economic +
+          blended.conflict * weights.conflict +
+          blended.corruption * weights.corruption +
+          blended.terrorism * weights.terrorism) /
+        500
+      );
     });
     return data;
-  }, [weights]);
+  }, [weights, wbRiskOverrides]);
 
   const horizonDays = useMemo(() => {
     if (selectedRiskHorizon === "7d") return 7;
@@ -389,6 +471,41 @@ export default function App() {
   const dashboardPortfolioAnalysis = useMemo(() => {
     return calculatePortfolioRisk(dashboardPortfolio, dashboardRiskData);
   }, [dashboardPortfolio, dashboardRiskData]);
+
+  // Risk scores for ALL assets across ALL datasets (uses riskData which includes WB blending)
+  const allAssetRiskScores = useMemo(() => {
+    const scores: Record<string, number> = {};
+    // Seed with active portfolio scores from portfolio analysis
+    for (const contrib of dashboardPortfolioAnalysis.assetContributions) {
+      scores[contrib.ticker] = contrib.riskScore;
+    }
+    // Compute for assets in other datasets using riskData + WB overrides
+    for (const [dsId, assets] of Object.entries(assetsByDataset)) {
+      if (dsId === selectedDatasetId) continue;
+      for (const asset of assets) {
+        if (scores[asset.ticker] !== undefined) continue;
+        const deps = asset.countryDependencies;
+        if (deps.length === 0) { scores[asset.ticker] = 0; continue; }
+        const totalWeight = deps.reduce((sum, d) => sum + d.weight, 0);
+        if (totalWeight === 0) { scores[asset.ticker] = 0; continue; }
+        scores[asset.ticker] = Math.round(
+          deps.reduce((sum, d) => sum + (riskData[d.country] ?? 50) * d.weight, 0) / totalWeight
+        );
+      }
+    }
+    return scores;
+  }, [dashboardPortfolioAnalysis.assetContributions, assetsByDataset, selectedDatasetId, riskData]);
+
+  // When a security is focused, build country exposures for just that asset
+  const activeCountryExposures = useMemo(() => {
+    if (!focusedSecurity) return dashboardPortfolioAnalysis.countryExposures;
+    return focusedSecurity.countryDependencies.map((dep) => ({
+      country: dep.country,
+      exposureType: dep.type ?? 'direct',
+      riskContribution: (dashboardRiskData[dep.country] ?? 50) * dep.weight,
+      contributingAssets: [focusedSecurity.ticker],
+    }));
+  }, [focusedSecurity, dashboardPortfolioAnalysis.countryExposures, dashboardRiskData]);
 
   useEffect(() => {
     const loadDatasetHistorySeed = async () => {
@@ -541,9 +658,15 @@ export default function App() {
   // Load datasets from API on mount with paralleled requests
   useEffect(() => {
     const loadDatasets = async () => {
+      const SP_DATASET_ID = 'sp-daily-performers';
       try {
-        // Fetch datasets from API
-        const datasetsRes = await fetch(`${API_BASE_URL}/api/datasets`);
+        // Fetch datasets + S&P performers in parallel
+        const [datasetsRes, spData] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/datasets`),
+          fetch(`${API_BASE_URL}/api/external/sp-performers`)
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null),
+        ]);
         if (!datasetsRes.ok) throw new Error("Failed to fetch datasets");
         const apiDatasets = await parseApiJson<ApiDataset[]>(datasetsRes);
         setLiveDataConnected(true);
@@ -557,11 +680,51 @@ export default function App() {
           })
         );
 
-        setDatasets(mappedDatasets);
-
         // Parallelize all API calls for assets and dependencies
         const assetsByDatasetMap: { [datasetId: string]: Asset[] } = {};
-        
+
+        // ── S&P Daily Top Performers (prepend as first/default dataset) ──
+        if (spData?.assets?.length > 0) {
+          const spAssetMap = new Map<string, Asset>();
+          for (const a of spData.assets) {
+            spAssetMap.set(a.ticker, {
+              ticker: a.ticker,
+              name: a.assetName,
+              weight: a.weight,
+              value: a.value || 0,
+              sector: a.sector,
+              countryDependencies: [],
+            });
+          }
+          for (const dep of spData.dependencies) {
+            const asset = spAssetMap.get(dep.ticker);
+            if (asset) {
+              asset.countryDependencies.push({
+                country: dep.country,
+                weight: dep.dependencyWeight,
+                type: normalizeDependencyType(dep.dependencyType),
+                reason: dep.dependencyReason,
+              });
+            }
+          }
+          assetsByDatasetMap[SP_DATASET_ID] = Array.from(spAssetMap.values());
+          const fetchTime = spData.fetchedAt
+            ? new Date(spData.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : null;
+          const isStaticFallback = spData.source === 'static_fallback';
+          mappedDatasets.unshift({
+            id: SP_DATASET_ID,
+            name: 'S&P Daily Top Performers',
+            description: isStaticFallback
+              ? `Top ${spData.count} S&P 500 leaders · Sample data (market closed) · Geopolitical risk by World Bank WGI`
+              : fetchTime
+              ? `Top ${spData.count} S&P 500 gainers today · Updated ${fetchTime} · Geopolitical risk by World Bank WGI`
+              : `Top ${spData.count} S&P 500 daily gainers · Geopolitical risk by World Bank WGI`,
+          });
+        }
+
+        setDatasets(mappedDatasets);
+
         // Fetch all assets and dependencies in parallel
         const promises = apiDatasets.map(async (dataset) => {
           try {
@@ -618,8 +781,18 @@ export default function App() {
 
         setAssetsByDataset(assetsByDatasetMap);
         if (mappedDatasets.length > 0) {
-          const selectedExists = mappedDatasets.some((dataset) => dataset.id === initialSelectedDatasetId.current);
-          setSelectedDatasetId(selectedExists ? initialSelectedDatasetId.current : mappedDatasets[0].id);
+          const prior = initialSelectedDatasetId.current;
+          const selectedExists = mappedDatasets.some((dataset) => dataset.id === prior);
+          // Always land on S&P performers by default (or if prior selection was
+          // "default" / "sp-daily-performers"). Only keep a different prior
+          // selection if the user had explicitly switched to another dataset.
+          const spAvailable = !!assetsByDatasetMap[SP_DATASET_ID];
+          const priorIsDefaultish = !prior || prior === "default" || prior === SP_DATASET_ID;
+          if (spAvailable && priorIsDefaultish) {
+            setSelectedDatasetId(SP_DATASET_ID);
+          } else {
+            setSelectedDatasetId(selectedExists ? prior : (spAvailable ? SP_DATASET_ID : mappedDatasets[0].id));
+          }
         }
       } catch (error) {
         console.warn("API not available, falling back to CSV:", error);
@@ -657,6 +830,29 @@ export default function App() {
       setLiveDataConnected(false);
     }
   }, []);
+
+  // Fetch World Bank governance data and blend into risk scores
+  const fetchWBGovernanceData = useCallback(async () => {
+    setWbApiConnected(null); // show loading state immediately
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/external/governance`);
+      if (!res.ok) { setWbApiConnected(false); return; }
+      const json = await res.json();
+      if (json?.data && typeof json.data === "object") {
+        setWbRiskOverrides(json.data);
+        setWbApiConnected(true);
+      } else {
+        setWbApiConnected(false);
+      }
+    } catch {
+      setWbApiConnected(false);
+    }
+  }, []);
+
+  // Fetch WB data on mount (after backend is up)
+  useEffect(() => {
+    fetchWBGovernanceData();
+  }, [fetchWBGovernanceData]);
 
   const checkBasicHealthMetrics = useCallback(async () => {
     const timedFetch = async (url: string, init?: RequestInit) => {
@@ -942,14 +1138,14 @@ export default function App() {
   }, [riskData]);
 
   const activeRiskAlerts = useMemo(() => {
-    return dashboardPortfolioAnalysis.countryExposures
+    return activeCountryExposures
       .map((exposure) => ({
         ...exposure,
         riskScore: dashboardRiskData[exposure.country] || 50,
       }))
       .filter((exposure) => exposure.riskScore > MIN_ALERT_RISK_SCORE)
       .sort((a, b) => b.riskScore - a.riskScore || b.riskContribution - a.riskContribution);
-  }, [dashboardPortfolioAnalysis, dashboardRiskData]);
+  }, [activeCountryExposures, dashboardRiskData]);
 
   const alertCount = activeRiskAlerts.length;
 
@@ -1150,9 +1346,12 @@ export default function App() {
       <RiskAlertDetailDialog
         alert={selectedAlert}
         weights={weights}
+        countryDimensions={blendedCountryDimensions}
         open={alertDialogOpen}
         onOpenChange={setAlertDialogOpen}
       />
+      {/* Methodology Modal */}
+      <RiskMethodologyModal open={showMethodologyModal} onClose={() => setShowMethodologyModal(false)} />
       {/* Help Modal */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
@@ -1189,13 +1388,13 @@ export default function App() {
                 <div className="bg-zinc-900/60 border border-zinc-800 rounded p-2">
                   <h3 className="font-semibold text-white mb-1">Version Information</h3>
                   <p className="text-[11px] text-zinc-300">
-                    <span className="font-semibold text-white">Latest Version:</span> 1.2
+                    <span className="font-semibold text-white">Latest Version:</span> 1.3
                   </p>
                   <p className="text-[11px] text-zinc-300">
-                    <span className="font-semibold text-white">Build:</span> 1.2
+                    <span className="font-semibold text-white">Build:</span> 1.3
                   </p>
                   <p className="text-[11px] text-zinc-300">
-                    <span className="font-semibold text-white">Last Updated:</span> April 25, 2026
+                    <span className="font-semibold text-white">Last Updated:</span> June 30, 2026
                   </p>
                 </div>
                 <div>
@@ -1280,6 +1479,18 @@ export default function App() {
                     In the Global Risk Heat Map card, use the download icon in the top-right corner to save a PNG snapshot of the currently rendered map. A toast confirms success or failure after each capture.
                   </p>
                 </div>
+                <div>
+                  <h3 className="font-semibold text-white mb-1">Single Security Search</h3>
+                  <p className="text-[11px]">
+                    Use the search box in the header (to the left of the dataset dropdown) to look up any holding by ticker or company name. Selecting a security scopes the entire dashboard — map, country exposure cards, risk alerts, and holdings table — to that single asset. Click the × on the badge or "Clear" on the map banner to return to full portfolio view.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white mb-1">Risk Score Methodology</h3>
+                  <p className="text-[11px]">
+                    Click the book icon in the header (next to the Help button) to open the Risk Score Methodology modal. It explains the 5-dimension framework (Political, Economic, Conflict, Corruption, Terrorism), the weighted calculation formulas, risk tier bands (Low/Medium/High/Critical), and all five weight preset profiles. Also accessible from the Risk Score Legend and the Portfolio Snapshot card.
+                  </p>
+                </div>
                     <div>
                       <h3 className="font-semibold text-white mb-1">Tools Tab</h3>
                       <p className="text-[11px] mb-2 font-semibold text-blue-300">Advanced Portfolio Management Features:</p>
@@ -1312,6 +1523,41 @@ export default function App() {
 
                 <TabsContent value="release-notes" className="mt-3">
                   <div className="space-y-3 text-xs text-zinc-300">
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3">
+                      <h3 className="font-semibold text-white mb-1">Version 1.3 Quick Summary</h3>
+                      <p className="text-[11px] text-zinc-300 mb-2">
+                        <span className="font-semibold text-white">Build:</span> 1.3 | <span className="font-semibold text-white">Last Updated:</span> June 30, 2026
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 text-[11px]">
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">S&amp;P Daily Top Performers</p>
+                          <p>✅ Added a new default watchlist — <span className="font-semibold text-zinc-200">S&amp;P Daily Top Performers</span> — that loads automatically on startup.</p>
+                          <p>✅ Displays the top 25 S&amp;P 500 daily gainers ranked by daily % change, each enriched with per-company country dependency maps.</p>
+                          <p>✅ Live data is fetched via Yahoo Finance v8/chart on the server. When markets are closed or the feed is unavailable, a curated sample list loads automatically and the dataset label shows "Sample data (market closed)" — the dashboard never shows an empty watchlist.</p>
+                          <p>✅ Dataset description shows the fetch timestamp and count when live, or a "Sample data" label when using the static fallback.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">World Bank Live Data</p>
+                          <p>✅ Added a live data indicator pill in the header — shows a blue "Live" badge when connected to the World Bank Governance Indicators (WGI) API, or "Offline" when disconnected.</p>
+                          <p>✅ The WGI API enriches all five risk dimensions (Political, Economic, Conflict, Corruption, Terrorism) with real governance scores for every country in your portfolio.</p>
+                          <p>✅ Settings → APIs tab shows a Disconnect / Reconnect bar at the top so you can toggle live data enrichment at any time.</p>
+                          <p>✅ All dashboard panels (Risk Metrics, Holding Detail, Alert Detail) use the blended WB data when connected.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Risk Methodology</p>
+                          <p>✅ Added a full Risk Score Methodology modal, accessible via the BookOpen icon in the header.</p>
+                          <p>✅ Explains the 5-dimension framework, the weighted calculation chain, risk tier bands (Low / Medium / High / Critical), and all weight preset profiles.</p>
+                          <p>✅ Also accessible from the Risk Score Legend and the Portfolio Snapshot card.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Single Security View &amp; Cross-Dataset Search</p>
+                          <p>✅ Added a security search input in the header — search any holding across all loaded datasets by ticker or company name.</p>
+                          <p>✅ Selecting a security scopes the entire dashboard to that holding: map, country exposures, holdings table, and alerts all update to reflect only that security's risk profile.</p>
+                          <p>✅ Results from non-active datasets show a dataset label badge so you always know which watchlist a result comes from.</p>
+                          <p>✅ A blue banner above the map shows the focused security with a one-click "Clear" to return to full portfolio view.</p>
+                        </div>
+                      </div>
+                    </div>
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3">
                       <h3 className="font-semibold text-white mb-1">Version 1.2 Quick Summary</h3>
                       <p className="text-[11px] text-zinc-300 mb-2">
@@ -1424,6 +1670,37 @@ export default function App() {
                 </TabsList>
 
                 <TabsContent value="apis" className="mt-3 space-y-3 text-xs text-zinc-300">
+                  {/* World Bank disconnect / reconnect */}
+                  <div className="flex items-center justify-between gap-3 bg-zinc-900/80 border border-zinc-800 rounded p-3">
+                    <div className="flex items-center gap-2">
+                      {wbApiConnected
+                        ? <PlugZap className="size-4 text-blue-400 flex-shrink-0" />
+                        : <Unplug className="size-4 text-zinc-500 flex-shrink-0" />
+                      }
+                      <div>
+                        <p className="text-[11px] text-white font-medium">
+                          World Bank API — {wbApiConnected === null ? "Checking…" : wbApiConnected ? `Connected · ${Object.keys(wbRiskOverrides).length} countries` : "Disconnected"}
+                        </p>
+                        <p className="text-[10px] text-zinc-500">Risk scores use live WGI governance data when connected</p>
+                      </div>
+                    </div>
+                    {wbApiConnected
+                      ? <button
+                          onClick={() => { setWbApiConnected(false); setWbRiskOverrides({}); }}
+                          className="flex-shrink-0 px-2.5 py-1.5 bg-red-900/30 hover:bg-red-900/50 border border-red-700/40 rounded text-red-300 text-[10px] font-medium transition-colors"
+                        >
+                          Disconnect
+                        </button>
+                      : <button
+                          onClick={fetchWBGovernanceData}
+                          disabled={wbApiConnected === null}
+                          className="flex-shrink-0 px-2.5 py-1.5 bg-blue-900/30 hover:bg-blue-900/50 border border-blue-700/40 rounded text-blue-300 text-[10px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {wbApiConnected === null ? "Connecting…" : "Reconnect"}
+                        </button>
+                    }
+                  </div>
+
                   <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
                     <h3 className="font-semibold text-white">Current Connected APIs</h3>
                     <div className="flex items-center justify-between gap-3">
@@ -1452,6 +1729,46 @@ export default function App() {
                     >
                       Recheck API Status
                     </button>
+                  </div>
+
+                  {/* World Bank External Data */}
+                  <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] text-white font-medium flex items-center gap-1.5">
+                          {wbApiConnected
+                            ? <PlugZap className="size-3 text-blue-400" />
+                            : <Unplug className="size-3 text-zinc-500" />
+                          }
+                          World Bank Governance API
+                        </p>
+                        <p className="text-[11px] text-zinc-400">api.worldbank.org · WGI indicators · Free, no auth</p>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">
+                          Enriches Political, Economic, Conflict, Corruption &amp; Terrorism scores with live governance data.
+                          {wbApiConnected && ` ${Object.keys(wbRiskOverrides).length} countries loaded.`}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${
+                          wbApiConnected === null
+                            ? "bg-zinc-900/60 text-zinc-500 border-zinc-700"
+                            : wbApiConnected
+                            ? "bg-blue-900/30 text-blue-300 border-blue-700/40"
+                            : "bg-red-900/30 text-red-300 border-red-700/40"
+                        }`}>
+                          <span className={`size-1.5 rounded-full ${
+                            wbApiConnected === null ? "bg-zinc-500 animate-pulse" : wbApiConnected ? "bg-blue-400" : "bg-red-400"
+                          }`} />
+                          {wbApiConnected === null ? "Checking…" : wbApiConnected ? "Connected" : "Unavailable"}
+                        </span>
+                        <button
+                          onClick={fetchWBGovernanceData}
+                          className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 rounded text-white text-[10px] font-medium transition-colors"
+                        >
+                          Refresh
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
@@ -1527,9 +1844,10 @@ export default function App() {
                 <TabsContent value="general" className="mt-3 space-y-3 text-xs text-zinc-300">
                   <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-1">
                     <h3 className="font-semibold text-white mb-1">App Information</h3>
-                    <p className="text-[11px]"><span className="text-zinc-400">Version:</span> 1.2</p>
-                    <p className="text-[11px]"><span className="text-zinc-400">Build:</span> 1.2</p>
+                    <p className="text-[11px]"><span className="text-zinc-400">Version:</span> 1.3</p>
+                    <p className="text-[11px]"><span className="text-zinc-400">Build:</span> 1.3</p>
                     <p className="text-[11px]"><span className="text-zinc-400">Live Data Mode:</span> {liveDataConnected ? "Connected" : "Offline / Fallback"}</p>
+                    <p className="text-[11px]"><span className="text-zinc-400">World Bank Data:</span> {wbApiConnected === null ? "Checking…" : wbApiConnected ? `Connected · ${Object.keys(wbRiskOverrides).length} countries` : "Unavailable"}</p>
                     <p className="text-[11px]"><span className="text-zinc-400">Loaded Datasets:</span> {datasets.length}</p>
                     <p className="text-[11px]"><span className="text-zinc-400">Selected Dataset:</span> {datasets.find((d) => d.id === selectedDatasetId)?.name || "Loading..."}</p>
                   </div>
@@ -1647,21 +1965,30 @@ export default function App() {
                 <h1 className="text-xs md:text-sm font-semibold text-white">
                   Geopolitical Risk Dashboard
                 </h1>
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] md:text-[10px] font-medium ${
+                {/* Live data plug icon */}
+                <button
+                  type="button"
+                  onClick={() => setShowSettingsModal(true)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] md:text-[10px] font-medium transition-colors ${
                     liveDataConnected
-                      ? "bg-emerald-900/30 text-emerald-300 border-emerald-700/40"
-                      : "bg-red-900/30 text-red-300 border-red-700/40"
+                      ? "bg-emerald-900/30 text-emerald-300 border-emerald-700/40 hover:bg-emerald-900/50"
+                      : "bg-zinc-900/60 text-zinc-500 border-zinc-700/40 hover:bg-zinc-800/60"
                   }`}
-                  title={liveDataConnected ? "Connected to live data" : "Not connected to live data"}
+                  title={
+                    liveDataConnected
+                      ? `Backend connected${wbApiConnected ? " · World Bank data loaded" : wbApiConnected === null ? " · Loading WB data…" : " · World Bank unavailable"} — click for settings`
+                      : "Backend offline — click to open settings"
+                  }
                 >
-                  <span
-                    className={`size-1.5 rounded-full ${
-                      liveDataConnected ? "bg-emerald-400" : "bg-red-400"
-                    }`}
-                  />
+                  {liveDataConnected
+                    ? <PlugZap className="size-3" />
+                    : <Unplug className="size-3" />
+                  }
                   {liveDataConnected ? "Live" : "Offline"}
-                </span>
+                  {wbApiConnected && (
+                    <span className="size-1.5 rounded-full bg-blue-400" title="World Bank data active" />
+                  )}
+                </button>
               </div>
               <p className="text-[9px] md:text-[10px] text-zinc-600">
                 {datasets.find((d) => d.id === selectedDatasetId)?.description || "Loading..."}
@@ -1670,13 +1997,31 @@ export default function App() {
           </div>
           <div className="flex items-end gap-2 w-full md:w-auto justify-end">
             <div className="flex items-center gap-1.5">
-              {!isLoading && datasets.length > 0 && (
-                <DatasetSelector
-                  datasets={datasets}
-                  selectedDataset={selectedDatasetId}
-                  onDatasetChange={setSelectedDatasetId}
+              {/* Security search / Portfolio dataset — mutually exclusive map views */}
+              <div className="flex items-center gap-1.5">
+                <SecuritySearch
+                  assets={allSearchableAssets}
+                  assetRiskScores={allAssetRiskScores}
+                  assetDatasetLabels={assetDatasetLabels}
+                  activeDatasetName={datasets.find((d) => d.id === selectedDatasetId)?.name}
+                  selectedAsset={focusedSecurity}
+                  onSelect={setFocusedSecurity}
+                  dimmed={focusedSecurity === null ? false : false}
                 />
-              )}
+                <span className="text-[10px] text-zinc-600 font-medium select-none px-0.5">or</span>
+                <div className={`transition-opacity ${focusedSecurity ? "opacity-40 pointer-events-none" : ""}`}>
+                  {!isLoading && datasets.length > 0 && (
+                    <DatasetSelector
+                      datasets={datasets}
+                      selectedDataset={selectedDatasetId}
+                      onDatasetChange={(id) => {
+                        setFocusedSecurity(null);
+                        setSelectedDatasetId(id);
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
               <div className="relative">
                 <button
                   onClick={() => {
@@ -1843,10 +2188,18 @@ export default function App() {
                 )}
               </button>
               <button
+                onClick={() => setShowMethodologyModal(true)}
+                className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
+                title="Risk score methodology"
+                aria-label="Open risk score methodology"
+              >
+                <BookOpen className="size-5" />
+              </button>
+              <button
                 onClick={() => setShowHelpModal(true)}
                 className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-200"
-                title="Help · Build 1.2"
-                aria-label="Open help (Build 1.2)"
+                title="Help · Build 1.3"
+                aria-label="Open help (Build 1.3)"
               >
                 <HelpCircle className="size-5" />
               </button>
@@ -2037,9 +2390,18 @@ export default function App() {
                   </div>
                 </div>
                 <div id="global-risk-map-mobile">
+                  {focusedSecurity && (
+                    <div className="flex items-center gap-2 px-2 py-1.5 bg-blue-950/40 border-b border-blue-900/50">
+                      <Search className="size-3 text-blue-400 flex-shrink-0" />
+                      <p className="text-[10px] text-blue-200">
+                        Showing <span className="font-semibold">{focusedSecurity.ticker}</span> · {focusedSecurity.name} country exposure
+                      </p>
+                      <button type="button" onClick={() => setFocusedSecurity(null)} className="ml-auto text-blue-400 hover:text-blue-100 text-[10px] underline">Clear</button>
+                    </div>
+                  )}
                   <WorldMap
                     riskData={dashboardRiskData}
-                    countryExposures={dashboardPortfolioAnalysis.countryExposures}
+                    countryExposures={activeCountryExposures}
                     dataFreshnessLabel={corePanelFreshnessLabel}
                     isStaleData={refreshNeedsAttention}
                     weights={weights}
@@ -2054,17 +2416,30 @@ export default function App() {
               <div className="lg:col-span-4 space-y-3">
                 {/* Country Exposures - Above Map */}
                 <Card className="p-2 bg-zinc-950 border-zinc-900">
-                  <h3 className="text-xs mb-0.5 text-zinc-400 uppercase tracking-wide font-medium">
-                    Country Risk Vs Portfolio Contribution
-                  </h3>
-                  {dashboardPortfolioAnalysis.countryExposures.length === 0 ? (
+                  <div className="flex items-center justify-between mb-0.5">
+                    <h3 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
+                      {focusedSecurity
+                        ? `${focusedSecurity.ticker} · Country Exposure`
+                        : "Country Risk Vs Portfolio Contribution"}
+                    </h3>
+                    {focusedSecurity && (
+                      <button
+                        type="button"
+                        onClick={() => setFocusedSecurity(null)}
+                        className="text-[10px] text-blue-400 hover:text-blue-200 underline"
+                      >
+                        ← Back to portfolio
+                      </button>
+                    )}
+                  </div>
+                  {activeCountryExposures.length === 0 ? (
                     <div className="rounded border border-zinc-800 bg-zinc-900/40 p-4 text-center" role="status" aria-live="polite">
                       <p className="text-sm text-zinc-300">No country exposures available for this selection.</p>
                       <p className="text-xs text-zinc-500 mt-1">Try changing dataset or clearing dashboard filters.</p>
                     </div>
                   ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
-                    {dashboardPortfolioAnalysis.countryExposures
+                    {activeCountryExposures
                     .slice(0, 6)
                     .map((exposure) => {
                       const risk = dashboardRiskData[exposure.country] || 50;
@@ -2144,9 +2519,18 @@ export default function App() {
                     </div>
                   </div>
                   <div id="global-risk-map-desktop">
+                    {focusedSecurity && (
+                      <div className="flex items-center gap-2 px-2 py-1.5 bg-blue-950/40 border-b border-blue-900/50">
+                        <Search className="size-3 text-blue-400 flex-shrink-0" />
+                        <p className="text-[10px] text-blue-200">
+                          Showing <span className="font-semibold">{focusedSecurity.ticker}</span> · {focusedSecurity.name} country exposure
+                        </p>
+                        <button type="button" onClick={() => setFocusedSecurity(null)} className="ml-auto text-blue-400 hover:text-blue-100 text-[10px] underline">Clear</button>
+                      </div>
+                    )}
                     <WorldMap
                       riskData={dashboardRiskData}
-                      countryExposures={dashboardPortfolioAnalysis.countryExposures}
+                      countryExposures={activeCountryExposures}
                       dataFreshnessLabel={corePanelFreshnessLabel}
                       isStaleData={refreshNeedsAttention}
                       weights={weights}
@@ -2203,7 +2587,7 @@ export default function App() {
                         {activeRiskAlerts.map((alert, index) => (
                           <button
                             type="button"
-                            key={`${alert.country}-${alert.exposureType}-${index}`}
+                            key={`${alert.country}-${(alert as {exposureType?: string}).exposureType ?? index}-${index}`}
                             onClick={() => handleAlertClick(alert as RiskAlertDetail)}
                             className="w-full text-left flex items-start justify-between gap-2 bg-zinc-900/70 border border-zinc-800 px-2 py-1.5 hover:bg-zinc-800/70 hover:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-cyan-600/60 cursor-pointer transition-colors"
                             aria-label={`Open risk alert details for ${alert.country}`}
@@ -2259,11 +2643,15 @@ export default function App() {
 
             {/* Holdings Table */}
             <HoldingsTable
-              assets={dashboardPortfolio}
-              assetContributions={dashboardPortfolioAnalysis.assetContributions}
+              assets={focusedSecurity ? [focusedSecurity] : dashboardPortfolio}
+              assetContributions={focusedSecurity
+                ? dashboardPortfolioAnalysis.assetContributions.filter((a) => a.ticker === focusedSecurity.ticker)
+                : dashboardPortfolioAnalysis.assetContributions
+              }
               dataFreshnessLabel={corePanelFreshnessLabel}
               isStaleData={refreshNeedsAttention}
               countryRisks={dashboardRiskData}
+              countryDimensions={blendedCountryDimensions}
               weights={weights}
             />
           </div>
@@ -2290,7 +2678,7 @@ export default function App() {
               <>
                 <RiskMetricsPanel
                   trendData={getPortfolioRiskTrend(30, selectedDatasetId)}
-                  countryRisks={baseRiskData}
+                  countryRisks={blendedCountryDimensions}
                   weights={weights}
                   portfolioRisk={portfolioAnalysis.totalRiskScore}
                   portfolioExposures={portfolioAnalysis.countryExposures.map(exp => ({

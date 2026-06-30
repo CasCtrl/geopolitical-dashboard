@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Card } from "./ui/card";
-import { AlertTriangle, TrendingUp, Target, Shield } from "lucide-react";
+import { AlertTriangle, TrendingUp, Target, Shield, BookOpen } from "lucide-react";
 import { RiskScoreInfo } from "./RiskScoreInfo";
+import { RiskMethodologyModal } from "./RiskMethodologyModal";
 import { Asset } from "../data/portfolioData";
 import { AssetLevelIntelligencePanel } from "./AssetLevelIntelligencePanel";
 
@@ -129,6 +130,7 @@ export function Summary({
     : lossScenarios.find((scenario) => scenario.key === "conservative");
 
   const [scenarioSelection, setScenarioSelection] = useState<"auto" | "conservative" | "base" | "aggressive">("auto");
+  const [methodologyOpen, setMethodologyOpen] = useState(false);
   const primaryScenario = scenarioSelection === "auto"
     ? autoPrimaryScenario
     : lossScenarios.find((scenario) => scenario.key === scenarioSelection) ?? autoPrimaryScenario;
@@ -384,6 +386,15 @@ export function Summary({
             <p className="text-xs text-zinc-500">Risk assessment based on current weights and global conditions</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMethodologyOpen(true)}
+              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-600 transition-colors"
+              aria-label="View risk score methodology"
+            >
+              <BookOpen className="size-3" />
+              Methodology
+            </button>
             <div className={`px-3 py-1 rounded text-xs font-semibold ${riskLevel.color} ${riskLevel.bg}`}>
               {riskLevel.label}
             </div>
@@ -696,6 +707,7 @@ export function Summary({
         portfolio={portfolio}
         riskData={riskData}
       />
+      <RiskMethodologyModal open={methodologyOpen} onClose={() => setMethodologyOpen(false)} />
     </div>
   );
 }
