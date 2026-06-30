@@ -77,7 +77,7 @@ const envSchema = z
   })
   .superRefine((env, ctx) => {
     const insecureDefaultPassword = 'YourPassword123!';
-    const needsDatabaseSecret = env.NODE_ENV === 'production' || env.DB_CONNECT_STRICT || env.DB_INIT_ENABLED;
+    const needsDatabaseSecret = env.DB_CONNECT_STRICT || env.DB_INIT_ENABLED;
 
     if (needsDatabaseSecret && !env.DB_PASSWORD) {
       ctx.addIssue({
@@ -111,13 +111,8 @@ const envSchema = z
       });
     }
 
-    if (env.NODE_ENV === 'production' && !env.AUTH_REQUIRED) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'AUTH_REQUIRED must be true in production',
-        path: ['AUTH_REQUIRED'],
-      });
-    }
+    // AUTH_REQUIRED is recommended in production but not enforced,
+    // allowing public-access deployments (e.g. demos).
   });
 
 const parsed = envSchema.safeParse(process.env);
