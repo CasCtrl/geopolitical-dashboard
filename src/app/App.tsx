@@ -1383,13 +1383,13 @@ export default function App() {
                 <div className="bg-zinc-900/60 border border-zinc-800 rounded p-2">
                   <h3 className="font-semibold text-white mb-1">Version Information</h3>
                   <p className="text-[11px] text-zinc-300">
-                    <span className="font-semibold text-white">Latest Version:</span> 1.3
+                    <span className="font-semibold text-white">Latest Version:</span> 1.4
                   </p>
                   <p className="text-[11px] text-zinc-300">
-                    <span className="font-semibold text-white">Build:</span> 1.3
+                    <span className="font-semibold text-white">Build:</span> 1.4
                   </p>
                   <p className="text-[11px] text-zinc-300">
-                    <span className="font-semibold text-white">Last Updated:</span> June 30, 2026
+                    <span className="font-semibold text-white">Last Updated:</span> July 1, 2026
                   </p>
                 </div>
                 <div>
@@ -1519,7 +1519,44 @@ export default function App() {
                 <TabsContent value="release-notes" className="mt-3">
                   <div className="space-y-3 text-xs text-zinc-300">
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3">
-                      <h3 className="font-semibold text-white mb-1">Version 1.3 Quick Summary</h3>
+                  <h3 className="font-semibold text-white mb-1">Version 1.4 Quick Summary</h3>
+                      <p className="text-[11px] text-zinc-300 mb-2">
+                        <span className="font-semibold text-white">Build:</span> 1.4 | <span className="font-semibold text-white">Last Updated:</span> July 1, 2026
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 text-[11px]">
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Country Risk &amp; Heat Map</p>
+                          <p>✅ All country cards in <em>Country Risk vs Portfolio Contribution</em> are now clickable — opens the risk detail dialog for any country regardless of alert status.</p>
+                          <p>✅ Every country card now shows a severity chip (LOW / MEDIUM / HIGH / CRITICAL) in the appropriate colour.</p>
+                          <p>✅ Added pagination (6 per page) with Prev / Next controls to the country cards panel so all countries are reachable.</p>
+                          <p>✅ Added sort controls to the country panel — sort by Risk score or by number of Stocks, ascending or descending.</p>
+                          <p>✅ Clicking any country on the Global Risk Heat Map now opens the same risk detail dialog.</p>
+                          <p>✅ Added info tooltips (ⓘ) next to <em>Country Risk vs Portfolio Contribution</em>, <em>Global Risk Heat Map</em>, and <em>Risk Factor Weights</em> headings.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Risk Alert Detail Dialog</p>
+                          <p>✅ Completely redesigned — replaced the wall-of-text paragraph with a structured layout: quick-facts grid (portfolio share, risk level, confidence, last updated), flagged holdings chips, a per-factor impact bar chart, and a one-line action tip.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Holdings Risk Analysis</p>
+                          <p>✅ Table now shows all holdings (no 10-row cap) inside a tall scrollable container.</p>
+                          <p>✅ Added a <em>Download CSV</em> button in the table header — exports all sorted rows with ticker, sector, risk scores, value, allocation, potential loss, and top drivers.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Watchlist Popover</p>
+                          <p>✅ Added a list icon (⊞) next to the dataset selector — clicking it opens a popover showing all tickers in the active watchlist as chips.</p>
+                          <p>✅ Clicking any ticker in the popover instantly scopes the dashboard to that security.</p>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-2">
+                          <p className="font-semibold text-white">Navigation &amp; Layout</p>
+                          <p>✅ Sticky header — the top bar stays pinned while scrolling.</p>
+                          <p>✅ Added a footer with app description, feature list, version, and contact details (cas@cascain.com).</p>
+                          <p>✅ Removed the <em>No stocks / N/A</em> entry from the risk score legend.</p>
+                          <p>✅ Active risk alerts panel is paginated (8 per page) with always-visible Prev / Next controls.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3">
                       <p className="text-[11px] text-zinc-300 mb-2">
                         <span className="font-semibold text-white">Build:</span> 1.3 | <span className="font-semibold text-white">Last Updated:</span> June 30, 2026
                       </p>
@@ -1839,7 +1876,7 @@ export default function App() {
                 <TabsContent value="general" className="mt-3 space-y-3 text-xs text-zinc-300">
                   <div className="bg-zinc-900/60 border border-zinc-800 rounded p-3 space-y-1">
                     <h3 className="font-semibold text-white mb-1">App Information</h3>
-                    <p className="text-[11px]"><span className="text-zinc-400">Version:</span> 1.3</p>
+                    <p className="text-[11px]"><span className="text-zinc-400">Version:</span> 1.4</p>
                     <p className="text-[11px]"><span className="text-zinc-400">Build:</span> 1.3</p>
                     <p className="text-[11px]"><span className="text-zinc-400">Live Data Mode:</span> {liveDataConnected ? "Connected" : "Offline / Fallback"}</p>
                     <p className="text-[11px]"><span className="text-zinc-400">World Bank Data:</span> {wbApiConnected === null ? "Checking…" : wbApiConnected ? `Connected · ${Object.keys(wbRiskOverrides).length} countries` : "Unavailable"}</p>
@@ -3052,7 +3089,7 @@ export default function App() {
                 <div className="space-y-1">
                   <p className="text-zinc-800 font-semibold uppercase tracking-wide text-[10px]">Version &amp; Contact</p>
                   <ul className="space-y-0.5 leading-relaxed text-zinc-600">
-                    <li>Version <span className="text-zinc-800">1.3</span> &mdash; Last updated June 30, 2026</li>
+                    <li>Version <span className="text-zinc-800">1.4</span> &mdash; Last updated July 1, 2026</li>
                     <li>Data refreshed daily from geopolitical indices</li>
                     <li className="pt-1">
                       Questions or feedback?{" "}
