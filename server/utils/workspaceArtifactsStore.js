@@ -146,35 +146,50 @@ export async function putArtifactVersion(pool, {
   request.input('isDeleted', sql.Bit, 0);
   request.input('traceId', sql.NVarChar(120), traceId || null);
 
-  const inserted = await request.query(`
-    INSERT INTO UserWorkspaceArtifacts (
-      userId,
-      workspaceId,
-      ownerUserId,
-      ownershipRole,
-      artifactType,
-      artifactKey,
-      version,
-      isDeleted,
-      payload,
-      traceId
-    )
-    OUTPUT INSERTED.*
-    VALUES (
-      @userId,
-      @workspaceId,
-      @ownerUserId,
-      @ownershipRole,
-      @artifactType,
-      @artifactKey,
-      @version,
-      @isDeleted,
-      @payload,
-      @traceId
-    )
-  `);
+  try {
+    const inserted = await request.query(`
+      INSERT INTO UserWorkspaceArtifacts (
+        userId,
+        workspaceId,
+        ownerUserId,
+        ownershipRole,
+        artifactType,
+        artifactKey,
+        version,
+        isDeleted,
+        payload,
+        traceId
+      )
+      OUTPUT INSERTED.*
+      VALUES (
+        @userId,
+        @workspaceId,
+        @ownerUserId,
+        @ownershipRole,
+        @artifactType,
+        @artifactKey,
+        @version,
+        @isDeleted,
+        @payload,
+        @traceId
+      )
+    `);
 
-  return mapRecord(inserted.recordset[0]);
+    return mapRecord(inserted.recordset[0]);
+  } catch (err) {
+    // SQL Server error 2627 = UNIQUE KEY violation from concurrent write
+    // Both writes carry identical prefs — return the one that won the race
+    if (err?.number === 2627 || (err?.message && err.message.includes('UNIQUE KEY'))) {
+      const winner = await getLatestArtifact(pool, {
+        userId: context.userId,
+        workspaceId: context.workspaceId,
+        artifactType,
+        artifactKey,
+      });
+      if (winner) return winner;
+    }
+    throw err;
+  }
 }
 
 export async function deleteArtifact(pool, {

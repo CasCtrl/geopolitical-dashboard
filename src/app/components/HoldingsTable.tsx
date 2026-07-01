@@ -1,6 +1,6 @@
 import { Card } from "./ui/card";
 import { Asset } from "../data/portfolioData";
-import { ArrowUpRight, ArrowDownRight, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ArrowUpDown, ChevronDown, ChevronUp, Download } from "lucide-react";
 import { useMemo, useCallback, useState } from "react";
 import { RiskScoreInfo } from "./RiskScoreInfo";
 import { computeAssetConfidence, getCountryIntelligence } from "../utils/riskIntelligence";
@@ -200,7 +200,7 @@ export function HoldingsTable({
   }, [holdingRows, sortConfig]);
 
   const visibleAssets = useMemo(() => {
-    return sortedRows.slice(0, ROWS_PER_PAGE);
+    return sortedRows;
   }, [sortedRows]);
 
   const handleSort = useCallback((key: SortKey) => {
@@ -248,6 +248,30 @@ export function HoldingsTable({
     [getSortIcon, handleSort]
   );
 
+  const handleDownloadCSV = useCallback(() => {
+    const headers = ["Ticker", "Name", "Sector", "Sector Risk Index", "Confidence (%)", "Top Drivers", "Value ($)", "Allocation (%)", "Potential Loss ($)", "Risk Score"];
+    const rows = sortedRows.map(({ asset, riskScore, potentialLossUsd, sectorRiskIndex, confidence, topDrivers }) => [
+      asset.ticker,
+      `"${asset.name.replace(/"/g, '""')}"`,
+      `"${asset.sector.replace(/"/g, '""')}"`,
+      sectorRiskIndex.toFixed(1),
+      confidence,
+      `"${topDrivers.replace(/"/g, '""')}"`,
+      asset.value,
+      asset.weight,
+      potentialLossUsd.toFixed(0),
+      riskScore.toFixed(2),
+    ]);
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `holdings-risk-analysis-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [sortedRows]);
+
   return (
     <Card className="p-3 md:p-4 bg-zinc-950 border-zinc-900">
       <div className="mb-3 flex items-center gap-1.5">
@@ -256,6 +280,18 @@ export function HoldingsTable({
           meaning="Each holding is scored by how exposed it is to country-level geopolitical risk."
           calculation="Asset risk uses weighted country dependencies per asset; sector risk index is the weighted average of asset geo-risk within each sector."
         />
+        <div className="ml-auto">
+          <button
+            type="button"
+            onClick={handleDownloadCSV}
+            disabled={sortedRows.length === 0}
+            className="inline-flex items-center gap-1.5 px-2 py-1 text-[10px] text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/40 hover:bg-zinc-800/60 transition-colors rounded disabled:opacity-30 disabled:cursor-not-allowed"
+            aria-label="Download holdings risk analysis as CSV"
+          >
+            <Download className="size-3" />
+            Download CSV
+          </button>
+        </div>
       </div>
       {dataFreshnessLabel && (
         <div className="mb-3 inline-flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-[11px]">
@@ -270,7 +306,7 @@ export function HoldingsTable({
         </div>
       ) : (
         <div className="overflow-x-auto -mx-3 md:mx-0">
-          <div className="w-full align-middle max-h-96 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
+          <div className="w-full align-middle max-h-[600px] overflow-y-auto pr-2 [scrollbar-gutter:stable]">
             <table className="w-full table-fixed text-left">
               <thead className="sticky top-0 bg-zinc-950/95 z-10">
                 <tr className="border-b border-zinc-900">
@@ -400,9 +436,7 @@ export function HoldingsTable({
           </div>
         </div>
       )}
-      {assets.length > ROWS_PER_PAGE && (
-        <p className="text-xs text-zinc-500 mt-2">Showing {visibleAssets.length} of {assets.length} holdings (sorted)</p>
-      )}
+
       <HoldingDetailDialog
         asset={selectedHolding?.asset ?? null}
         riskScore={selectedHolding?.riskScore ?? 0}

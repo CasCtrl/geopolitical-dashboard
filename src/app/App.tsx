@@ -40,6 +40,7 @@ import {
   Search,
   PlugZap,
   Unplug,
+  LayoutList,
 } from "lucide-react";
 import { Card } from "./components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
@@ -72,27 +73,7 @@ type CountryExposureRiskClasses = {
   impactWeight: string;
 };
 
-const getCountryExposureRiskClasses = (riskScore: number): CountryExposureRiskClasses => {
-  if (riskScore >= CRITICAL_RISK_SCORE_THRESHOLD) {
-    return {
-      card: "bg-red-950/30 border-red-900/50",
-      countryName: "text-red-300",
-      contributingAssets: "text-red-400/80",
-      riskScore: "text-red-300",
-      impactWeight: "text-red-400",
-    };
-  }
-
-  if (riskScore >= HIGH_RISK_SCORE_THRESHOLD) {
-    return {
-      card: "bg-orange-950/30 border-orange-900/50",
-      countryName: "text-orange-300",
-      contributingAssets: "text-orange-400/80",
-      riskScore: "text-orange-300",
-      impactWeight: "text-orange-400",
-    };
-  }
-
+const getCountryExposureRiskClasses = (_riskScore: number): CountryExposureRiskClasses => {
   return {
     card: "bg-zinc-900/80 border-zinc-800",
     countryName: "text-white",
@@ -987,8 +968,12 @@ export default function App() {
     }
   }, [selectedDatasetId]);
 
+  const saveAdvancedPrefsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window === "undefined") return;
+    if (saveAdvancedPrefsTimer.current) clearTimeout(saveAdvancedPrefsTimer.current);
+    saveAdvancedPrefsTimer.current = setTimeout(() => {
       void putWorkspaceState("advancedPrefs", "dashboard", {
         selectedTimeZone,
         weights,
@@ -996,7 +981,10 @@ export default function App() {
         selectedDatasetId,
         selectedRiskHorizon,
       }, getAdvancedPrefsVersion()).then(setAdvancedPrefsVersion);
-    }
+    }, 600);
+    return () => {
+      if (saveAdvancedPrefsTimer.current) clearTimeout(saveAdvancedPrefsTimer.current);
+    };
   }, [
     selectedTimeZone,
     weights,
@@ -1151,6 +1139,13 @@ export default function App() {
 
   const [selectedAlert, setSelectedAlert] = useState<RiskAlertDetail | null>(null);
   const [alertDialogOpen, setAlertDialogOpen] = useState(false);
+  const [alertsVisibleCount, setAlertsVisibleCount] = useState(8);
+  const [alertsPage, setAlertsPage] = useState(0);
+  const ALERTS_PAGE_SIZE = 8;
+  const [showWatchlistPopover, setShowWatchlistPopover] = useState(false);
+  const [countriesPage, setCountriesPage] = useState(0);
+  const COUNTRIES_PAGE_SIZE = 6;
+  const [countriesSort, setCountriesSort] = useState<{ by: 'risk' | 'stocks'; dir: 'desc' | 'asc' }>({ by: 'risk', dir: 'desc' });
   const handleAlertClick = useCallback((alert: RiskAlertDetail) => {
     setSelectedAlert(alert);
     setAlertDialogOpen(true);
@@ -1956,7 +1951,7 @@ export default function App() {
       )}
 
       {/* Header */}
-      <header className="bg-zinc-950 border-b border-zinc-900 px-3 md:px-4 py-3 md:py-4">
+      <header className="sticky top-0 z-40 bg-zinc-950 border-b border-zinc-900 px-3 md:px-4 py-3 md:py-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2 md:gap-3">
             <Shield className="size-4 md:size-5 text-zinc-600 flex-shrink-0" />
@@ -2011,14 +2006,66 @@ export default function App() {
                 <span className="text-[10px] text-zinc-600 font-medium select-none px-0.5">or</span>
                 <div className={`transition-opacity ${focusedSecurity ? "opacity-40 pointer-events-none" : ""}`}>
                   {!isLoading && datasets.length > 0 && (
-                    <DatasetSelector
-                      datasets={datasets}
-                      selectedDataset={selectedDatasetId}
-                      onDatasetChange={(id) => {
-                        setFocusedSecurity(null);
-                        setSelectedDatasetId(id);
-                      }}
-                    />
+                    <div className="flex items-center gap-1">
+                      <DatasetSelector
+                        datasets={datasets}
+                        selectedDataset={selectedDatasetId}
+                        onDatasetChange={(id) => {
+                          setFocusedSecurity(null);
+                          setSelectedDatasetId(id);
+                        }}
+                      />
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowWatchlistPopover((p) => !p)}
+                          className={`h-9 w-9 flex items-center justify-center rounded border transition-colors ${
+                            showWatchlistPopover
+                              ? 'bg-zinc-700 border-zinc-600 text-zinc-100'
+                              : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+                          }`}
+                          title="View watchlist stocks"
+                          aria-label="View all stocks in current watchlist"
+                        >
+                          <LayoutList className="size-4" />
+                        </button>
+                        {showWatchlistPopover && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setShowWatchlistPopover(false)} />
+                            <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-zinc-900 border border-zinc-800 rounded shadow-xl">
+                              <div className="px-3 py-2 border-b border-zinc-800 flex items-center justify-between">
+                                <p className="text-xs font-medium text-zinc-200">
+                                  {datasets.find((d) => d.id === selectedDatasetId)?.name ?? 'Watchlist'}
+                                </p>
+                                <span className="text-[10px] text-zinc-500">{portfolio.length} stocks</span>
+                              </div>
+                              <div className="max-h-64 overflow-y-auto p-2">
+                                {portfolio.length === 0 ? (
+                                  <p className="text-xs text-zinc-500 text-center py-4">No stocks in this watchlist.</p>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {portfolio.map((asset) => (
+                                      <button
+                                        key={asset.ticker}
+                                        type="button"
+                                        onClick={() => {
+                                          setFocusedSecurity(asset);
+                                          setShowWatchlistPopover(false);
+                                        }}
+                                        title={`${asset.name} · ${asset.weight}%`}
+                                        className="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-xs text-zinc-300 font-mono hover:bg-zinc-700 hover:text-white transition-colors"
+                                      >
+                                        {asset.ticker}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -2286,9 +2333,15 @@ export default function App() {
           <div className="order-3 lg:order-none lg:pt-6">
             <div>
               <div className="flex items-center justify-between mb-2 px-1">
-                <h3 className="text-xs text-zinc-400 uppercase tracking-wide">
-                  Risk Factor Weights
-                </h3>
+                <div className="flex items-center gap-1">
+                  <h3 className="text-xs text-zinc-400 uppercase tracking-wide">
+                    Risk Factor Weights
+                  </h3>
+                  <RiskScoreInfo
+                    meaning="Controls how much each geopolitical risk dimension contributes to the overall country and portfolio risk scores."
+                    calculation="Weights must sum to 100%. Each factor (Political, Economic, Conflict, Corruption, Terrorism) scales its raw country score proportionally before aggregation into the final risk index."
+                  />
+                </div>
                 <button
                   onClick={resetToDefaults}
                   disabled={isUsingDefaults}
@@ -2353,9 +2406,15 @@ export default function App() {
             <div className="lg:hidden">
               <Card className="p-3 bg-zinc-950 border-zinc-900">
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
-                    Global Risk Heat Map
-                  </h2>
+                  <div className="flex items-center gap-1">
+                    <h2 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
+                      Global Risk Heat Map
+                    </h2>
+                    <RiskScoreInfo
+                      meaning="A choropleth map colouring each country by its current geopolitical risk score."
+                      calculation="Country risk scores are derived from political stability, economic fragility, active conflicts, corruption, and terrorism indices, blended using the current weight settings."
+                    />
+                  </div>
                   <div className="flex items-center gap-2">
                     <div className="inline-flex rounded border border-zinc-800 overflow-hidden">
                       {[
@@ -2405,6 +2464,9 @@ export default function App() {
                     dataFreshnessLabel={corePanelFreshnessLabel}
                     isStaleData={refreshNeedsAttention}
                     weights={weights}
+                    onCountryClick={(country, riskScore, riskContribution, contributingAssets) =>
+                      handleAlertClick({ country, riskScore, riskContribution, contributingAssets })
+                    }
                   />
                 </div>
               </Card>
@@ -2417,11 +2479,17 @@ export default function App() {
                 {/* Country Exposures - Above Map */}
                 <Card className="p-2 bg-zinc-950 border-zinc-900">
                   <div className="flex items-center justify-between mb-0.5">
-                    <h3 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
-                      {focusedSecurity
-                        ? `${focusedSecurity.ticker} · Country Exposure`
-                        : "Country Risk Vs Portfolio Contribution"}
-                    </h3>
+                    <div className="flex items-center gap-1">
+                      <h3 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
+                        {focusedSecurity
+                          ? `${focusedSecurity.ticker} · Country Exposure`
+                          : "Country Risk Vs Portfolio Contribution"}
+                      </h3>
+                      <RiskScoreInfo
+                        meaning="Shows how each country contributes to the overall portfolio geopolitical risk."
+                        calculation="Each country's risk score is weighted by the combined allocation of holdings with dependencies on that country, then normalised to a 0–100 contribution scale."
+                      />
+                    </div>
                     {focusedSecurity && (
                       <button
                         type="button"
@@ -2431,6 +2499,34 @@ export default function App() {
                         ← Back to portfolio
                       </button>
                     )}
+                    {!focusedSecurity && (
+                      <div className="flex items-center gap-1">
+                        {(['risk', 'stocks'] as const).map((key) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => {
+                              setCountriesSort((prev) =>
+                                prev.by === key
+                                  ? { by: key, dir: prev.dir === 'desc' ? 'asc' : 'desc' }
+                                  : { by: key, dir: 'desc' }
+                              );
+                              setCountriesPage(0);
+                            }}
+                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] rounded border transition-colors ${
+                              countriesSort.by === key
+                                ? 'bg-zinc-700 border-zinc-600 text-zinc-200'
+                                : 'bg-zinc-900/40 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+                            }`}
+                          >
+                            {key === 'risk' ? 'Risk' : 'Stocks'}
+                            {countriesSort.by === key && (
+                              <span>{countriesSort.dir === 'desc' ? ' ↓' : ' ↑'}</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   {activeCountryExposures.length === 0 ? (
                     <div className="rounded border border-zinc-800 bg-zinc-900/40 p-4 text-center" role="status" aria-live="polite">
@@ -2438,23 +2534,57 @@ export default function App() {
                       <p className="text-xs text-zinc-500 mt-1">Try changing dataset or clearing dashboard filters.</p>
                     </div>
                   ) : (
+                  <div className="flex flex-col gap-1.5">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
-                    {activeCountryExposures
-                    .slice(0, 6)
+                    {[...activeCountryExposures]
+                    .sort((a, b) => {
+                      const riskA = dashboardRiskData[a.country] || 50;
+                      const riskB = dashboardRiskData[b.country] || 50;
+                      const val = countriesSort.by === 'risk'
+                        ? riskB - riskA
+                        : b.contributingAssets.length - a.contributingAssets.length;
+                      return countriesSort.dir === 'desc' ? val : -val;
+                    })
+                    .slice(countriesPage * COUNTRIES_PAGE_SIZE, (countriesPage + 1) * COUNTRIES_PAGE_SIZE)
                     .map((exposure) => {
                       const risk = dashboardRiskData[exposure.country] || 50;
                       const riskClasses = getCountryExposureRiskClasses(risk);
                       return (
                         <div
                           key={exposure.country}
-                          className={`p-1.5 border ${riskClasses.card}`}
+                          className={`p-1.5 border ${riskClasses.card} cursor-pointer hover:border-zinc-600 transition-colors`}
+                          onClick={() => handleAlertClick({ country: exposure.country, riskScore: risk, riskContribution: exposure.riskContribution, contributingAssets: exposure.contributingAssets })}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleAlertClick({ country: exposure.country, riskScore: risk, riskContribution: exposure.riskContribution, contributingAssets: exposure.contributingAssets }); }}
+                          aria-label={`View details for ${exposure.country}`}
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <div className="mb-0.5">
+                              <div className="mb-0.5 flex items-center gap-1.5 flex-wrap">
                                 <p className={`text-xs ${riskClasses.countryName}`}>
                                   {exposure.country}
                                 </p>
+                                {risk >= CRITICAL_RISK_SCORE_THRESHOLD && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] border bg-red-900/40 border-red-800 text-red-200 leading-none">
+                                    CRITICAL
+                                  </span>
+                                )}
+                                {risk >= HIGH_RISK_SCORE_THRESHOLD && risk < CRITICAL_RISK_SCORE_THRESHOLD && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] border bg-orange-900/40 border-orange-800 text-orange-200 leading-none">
+                                    HIGH
+                                  </span>
+                                )}
+                                {risk > MIN_ALERT_RISK_SCORE && risk < HIGH_RISK_SCORE_THRESHOLD && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] border bg-yellow-900/40 border-yellow-800 text-yellow-200 leading-none">
+                                    MEDIUM
+                                  </span>
+                                )}
+                                {risk <= MIN_ALERT_RISK_SCORE && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] border bg-emerald-900/40 border-emerald-800 text-emerald-200 leading-none">
+                                    LOW
+                                  </span>
+                                )}
                               </div>
                               <p className={`text-[10px] ${riskClasses.contributingAssets}`}>
                                 {exposure.contributingAssets.join(", ")}
@@ -2476,15 +2606,45 @@ export default function App() {
                       );
                     })}
                   </div>
+                  {activeCountryExposures.length > COUNTRIES_PAGE_SIZE && (
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800">
+                      <button
+                        type="button"
+                        onClick={() => setCountriesPage((p) => Math.max(0, p - 1))}
+                        disabled={countriesPage === 0}
+                        className="px-2 py-1 text-[10px] text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/40 hover:bg-zinc-800/60 transition-colors rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        ← Prev
+                      </button>
+                      <span className="text-[10px] text-zinc-500">
+                        {countriesPage + 1} / {Math.ceil(activeCountryExposures.length / COUNTRIES_PAGE_SIZE)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCountriesPage((p) => Math.min(Math.ceil(activeCountryExposures.length / COUNTRIES_PAGE_SIZE) - 1, p + 1))}
+                        disabled={(countriesPage + 1) * COUNTRIES_PAGE_SIZE >= activeCountryExposures.length}
+                        className="px-2 py-1 text-[10px] text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/40 hover:bg-zinc-800/60 transition-colors rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
+                  </div>
                   )}
                 </Card>
 
                 {/* DESKTOP ONLY - Large Map */}
                 <Card className="p-3 bg-zinc-950 border-zinc-900 hidden lg:block">
                   <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
-                      Global Risk Heat Map
-                    </h2>
+                    <div className="flex items-center gap-1">
+                      <h2 className="text-xs text-zinc-400 uppercase tracking-wide font-medium">
+                        Global Risk Heat Map
+                      </h2>
+                      <RiskScoreInfo
+                        meaning="A choropleth map colouring each country by its current geopolitical risk score."
+                        calculation="Country risk scores are derived from political stability, economic fragility, active conflicts, corruption, and terrorism indices, blended using the current weight settings."
+                      />
+                    </div>
                     <div className="flex items-center gap-2">
                       <div className="inline-flex rounded border border-zinc-800 overflow-hidden">
                         {[
@@ -2534,6 +2694,9 @@ export default function App() {
                       dataFreshnessLabel={corePanelFreshnessLabel}
                       isStaleData={refreshNeedsAttention}
                       weights={weights}
+                      onCountryClick={(country, riskScore, riskContribution, contributingAssets) =>
+                        handleAlertClick({ country, riskScore, riskContribution, contributingAssets })
+                      }
                     />
                   </div>
                 </Card>
@@ -2583,8 +2746,9 @@ export default function App() {
                     {alertCount === 0 ? (
                       <p className="text-[10px] text-zinc-500">No active risk alerts.</p>
                     ) : (
-                      <div className="min-h-0 flex-1 overflow-y-auto pr-1 space-y-1">
-                        {activeRiskAlerts.map((alert, index) => (
+                      <div className="flex flex-col gap-1">
+                        <div className="space-y-1">
+                          {activeRiskAlerts.slice(alertsPage * ALERTS_PAGE_SIZE, (alertsPage + 1) * ALERTS_PAGE_SIZE).map((alert, index) => (
                           <button
                             type="button"
                             key={`${alert.country}-${(alert as {exposureType?: string}).exposureType ?? index}-${index}`}
@@ -2634,6 +2798,30 @@ export default function App() {
                             </div>
                           </button>
                         ))}
+                        </div>
+                        {activeRiskAlerts.length > ALERTS_PAGE_SIZE && (
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800">
+                            <button
+                              type="button"
+                              onClick={() => setAlertsPage((p) => Math.max(0, p - 1))}
+                              disabled={alertsPage === 0}
+                              className="px-2 py-1 text-[10px] text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/40 hover:bg-zinc-800/60 transition-colors rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              ← Prev
+                            </button>
+                            <span className="text-[10px] text-zinc-500">
+                              {alertsPage + 1} / {Math.ceil(activeRiskAlerts.length / ALERTS_PAGE_SIZE)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setAlertsPage((p) => Math.min(Math.ceil(activeRiskAlerts.length / ALERTS_PAGE_SIZE) - 1, p + 1))}
+                              disabled={(alertsPage + 1) * ALERTS_PAGE_SIZE >= activeRiskAlerts.length}
+                              className="px-2 py-1 text-[10px] text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/40 hover:bg-zinc-800/60 transition-colors rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              Next →
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2654,6 +2842,7 @@ export default function App() {
               countryDimensions={blendedCountryDimensions}
               weights={weights}
             />
+            <div className="pb-12" />
           </div>
         </main>
         ) : currentTab === "summary" ? (
@@ -2831,6 +3020,58 @@ export default function App() {
         </main>
         ) : null}
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-zinc-200 bg-zinc-100">
+        <div className="flex flex-col lg:flex-row">
+          {/* Sidebar spacer — matches the sidebar width so content lines up */}
+          <div className="hidden lg:block lg:w-56 lg:basis-56 lg:flex-none" />
+          <div className="flex-1 px-3 py-5">
+            <div className="max-w-[1600px] mx-auto space-y-4 text-[11px] text-zinc-500">
+              {/* Top row: about + features + version side by side */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <p className="text-zinc-800 font-semibold uppercase tracking-wide text-[10px]">About</p>
+                  <p className="leading-relaxed text-zinc-600">
+                    Geopolitical Dashboard maps country-level geopolitical exposure across your portfolio,
+                    blending political stability, economic fragility, conflict, corruption, and terrorism
+                    indicators into a unified, weight-adjustable risk score.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-zinc-800 font-semibold uppercase tracking-wide text-[10px]">Features</p>
+                  <ul className="space-y-0.5 leading-relaxed text-zinc-600">
+                    <li>· Country risk heat map &amp; paginated exposure cards</li>
+                    <li>· Per-holding risk scoring, sortable table, CSV export</li>
+                    <li>· Adjustable risk factor weights</li>
+                    <li>· CSV upload &amp; custom portfolio support</li>
+                    <li>· Monte Carlo &amp; scenario stress testing</li>
+                    <li>· Risk alert notifications with detail dialogs</li>
+                  </ul>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-zinc-800 font-semibold uppercase tracking-wide text-[10px]">Version &amp; Contact</p>
+                  <ul className="space-y-0.5 leading-relaxed text-zinc-600">
+                    <li>Version <span className="text-zinc-800">1.3</span> &mdash; Last updated June 30, 2026</li>
+                    <li>Data refreshed daily from geopolitical indices</li>
+                    <li className="pt-1">
+                      Questions or feedback?{" "}
+                      <a href="mailto:cas@cascain.com" className="text-cyan-600 hover:text-cyan-800 underline transition-colors">
+                        cas@cascain.com
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              {/* Bottom strip */}
+              <p className="pt-3 text-zinc-400">
+                &copy; {new Date().getFullYear()} Geopolitical Dashboard. For informational purposes only. Not financial advice.
+              </p>
+            </div>
+          </div>
+        </div>
+      </footer>
+
     </div>
   );
 }

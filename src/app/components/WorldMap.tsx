@@ -14,6 +14,7 @@ interface WorldMapProps {
     corruption: number;
     terrorism: number;
   };
+  onCountryClick?: (country: string, riskScore: number, riskContribution: number, contributingAssets: string[]) => void;
 }
 
 interface CountryFeature {
@@ -132,6 +133,7 @@ interface CountryPathProps {
   weights: WorldMapProps['weights'];
   onTooltipChange: (content: string | null, position: { x: number; y: number }) => void;
   onCountryHighlight: (country: string) => void;
+  onCountryClick?: (country: string, riskScore: number, riskContribution: number, contributingAssets: string[]) => void;
 }
 
 const CountryPath = memo(function CountryPath({
@@ -143,6 +145,7 @@ const CountryPath = memo(function CountryPath({
   weights,
   onTooltipChange,
   onCountryHighlight,
+  onCountryClick,
 }: CountryPathProps) {
   const countryName = country.properties?.name || "Unknown";
   const lookupName = resolveCountryName(countryName);
@@ -209,8 +212,21 @@ const CountryPath = memo(function CountryPath({
         x: bounds.left + bounds.width / 2,
         y: bounds.top + bounds.height / 2,
       });
+      const exposure = countryExposures?.find(ce => ce.country === lookupName || ce.country === countryName);
+      onCountryClick?.(lookupName, risk, exposure?.riskContribution ?? 0, exposure?.contributingAssets ?? []);
     }
-  }, [countryName, onTooltipChange, risk]);
+  }, [countryName, lookupName, onTooltipChange, onCountryClick, risk, countryExposures]);
+
+  const handleClick = useCallback(() => {
+    const exposure = countryExposures?.find(ce => ce.country === lookupName || ce.country === countryName);
+    onCountryClick?.(lookupName, risk, exposure?.riskContribution ?? 0, exposure?.contributingAssets ?? []);
+  }, [countryName, lookupName, risk, countryExposures, onCountryClick]);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent<SVGPathElement>) => {
+    // Prevent Radix UI dialogs from detecting this as an outside-click,
+    // which would immediately close a dialog we're about to open.
+    e.stopPropagation();
+  }, []);
 
   if (!pathData) return null;
 
@@ -231,11 +247,13 @@ const CountryPath = memo(function CountryPath({
       onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
+      onPointerDown={handlePointerDown}
+      onClick={handleClick}
     />
   );
 });
 
-function WorldMapComponent({ riskData, countryExposures, dataFreshnessLabel, isStaleData = false, weights }: WorldMapProps) {
+function WorldMapComponent({ riskData, countryExposures, dataFreshnessLabel, isStaleData = false, weights, onCountryClick }: WorldMapProps) {
   const [tooltipContent, setTooltipContent] = useState("");
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [countries, setCountries] = useState<CountryFeature[]>([]);
@@ -352,6 +370,7 @@ function WorldMapComponent({ riskData, countryExposures, dataFreshnessLabel, isS
             weights={weights}
             onTooltipChange={handleTooltipChange}
             onCountryHighlight={setHighlightedCountry}
+            onCountryClick={onCountryClick}
           />
         ))}
       </svg>
