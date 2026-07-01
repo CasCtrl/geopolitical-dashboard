@@ -3,6 +3,7 @@ import { Toaster, toast } from "sonner";
 import { WorldMap } from "./components/WorldMap";
 import { RiskSlider } from "./components/RiskSlider";
 import { HoldingsTable } from "./components/HoldingsTable";
+import { ShortInterestPanel } from "./components/ShortInterestPanel";
 import { DatasetSelector } from "./components/DatasetSelector";
 import { Summary } from "./components/Summary";
 import { calculateRiskIndex, baseRiskData, CountryRisk } from "./data/countryRiskData";
@@ -2865,6 +2866,11 @@ export default function App() {
                 </div>
               </Card>
             </div>
+
+            {/* Short Interest Panel — shown only for the short-25 dataset */}
+            {selectedDatasetId === "short-25" && (
+              <ShortInterestPanel apiBaseUrl={API_BASE_URL} />
+            )}
 
             {/* Holdings Table */}
             <HoldingsTable
