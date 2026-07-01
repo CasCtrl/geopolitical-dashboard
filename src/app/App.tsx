@@ -705,6 +705,13 @@ export default function App() {
           });
         }
 
+        // Pin short-25 immediately after the SP performers entry (index 1)
+        const short25Idx = mappedDatasets.findIndex(d => d.id === 'short-25');
+        if (short25Idx > 1) {
+          const [short25] = mappedDatasets.splice(short25Idx, 1);
+          mappedDatasets.splice(1, 0, short25);
+        }
+
         setDatasets(mappedDatasets);
 
         // Fetch all assets and dependencies in parallel
@@ -783,6 +790,9 @@ export default function App() {
         try {
           const { datasets: loadedDatasets, assetsByDataset: loadedAssets } =
             await loadDatasetsFromCSV("/datasets.csv");
+          // Pin short-25 to index 1 in CSV fallback path too
+          const s25 = loadedDatasets.findIndex(d => d.id === 'short-25');
+          if (s25 > 1) { const [e] = loadedDatasets.splice(s25, 1); loadedDatasets.splice(1, 0, e); }
           setDatasets(loadedDatasets);
           setAssetsByDataset(loadedAssets);
           if (loadedDatasets.length > 0) {
