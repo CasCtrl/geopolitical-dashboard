@@ -10,6 +10,7 @@
 
 import express from 'express';
 import https from 'https';
+import { sendDataWithMeta, buildMetadata } from '../utils/responseMetadata.js';
 
 const router = express.Router();
 
@@ -223,12 +224,26 @@ function buildResponse(rawList, source, fetchedAt) {
   return { source, fetchedAt, count: assets.length, assets, dependencies };
 }
 
-// ─── Route ────────────────────────────────────────────────────────────────────
+function sendPerformers(res, payload) {
+  const { source, fetchedAt, count, assets, dependencies } = payload;
+  return sendDataWithMeta(
+    res,
+    { assets, dependencies, count, source, fetchedAt },
+    buildMetadata({
+      source: 'yahoo.spperformers',
+      sourceType: source === 'yahoo_finance' ? 'api' : (source === 'static_fallback' ? 'fallback' : 'generated'),
+      freshness: { generatedAt: fetchedAt, lastSuccessfulRefreshAt: fetchedAt, isStale: String(source).includes('stale') },
+      fallback: source === 'static_fallback' ? { used: true, reason: 'static_fallback' } : { used: false },
+    })
+  );
+}
+
+// ─── Route ──────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
     const now = Date.now();
     if (spCache && now - spCacheTime < CACHE_TTL_MS) {
-      return res.json({ ...spCache, source: 'cache' });
+      return sendPerformers(res, { ...spCache, source: 'cache' });
     }
 
     const CONCURRENCY = 15;
@@ -246,19 +261,19 @@ router.get('/', async (req, res) => {
       const result = buildResponse(ranked, 'yahoo_finance', new Date().toISOString());
       spCache = result;
       spCacheTime = now;
-      return res.json(result);
+      return sendPerformers(res, result);
     }
 
-    if (spCache) return res.json({ ...spCache, source: 'stale_cache' });
+    if (spCache) return sendPerformers(res, { ...spCache, source: 'stale_cache' });
 
     console.warn('[spPerformers] Live fetch failed — serving static fallback');
     const result = buildResponse(STATIC_PERFORMERS, 'static_fallback', new Date().toISOString());
     spCache = result;
     spCacheTime = now - CACHE_TTL_MS + 5 * 60 * 1000; // retry in 5 min
-    return res.json(result);
+    return sendPerformers(res, result);
   } catch (err) {
     console.error('[spPerformers] Unhandled error:', err.message);
-    return res.json(buildResponse(STATIC_PERFORMERS, 'static_fallback', new Date().toISOString()));
+    return sendPerformers(res, buildResponse(STATIC_PERFORMERS, 'static_fallback', new Date().toISOString()));
   }
 });
 

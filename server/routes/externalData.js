@@ -15,6 +15,8 @@
  */
 
 import express from 'express';
+import { ApiError } from '../middleware/apiError.js';
+import { sendDataWithMeta, buildMetadata } from '../utils/responseMetadata.js';
 
 const router = express.Router();
 
@@ -60,7 +62,10 @@ async function fetchWGIIndicator(indicator) {
   const url =
     `https://api.worldbank.org/v2/country/all/indicator/${indicator}` +
     `?format=json&mrv=1&per_page=300`;
-  const response = await fetch(url, { signal: AbortSignal.timeout(12000) });
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(12000),
+    headers: { 'User-Agent': 'geopolitical-dashboard/1.1 (+server)' },
+  });
   if (!response.ok) throw new Error(`World Bank API returned ${response.status} for ${indicator}`);
   const body = await response.json();
   // WB API returns [metadata, dataArray]
@@ -72,17 +77,19 @@ async function fetchWGIIndicator(indicator) {
  * Returns normalized 0-100 risk scores per dimension for all mapped countries.
  * Results are cached for 6 hours.
  */
-router.get('/governance', async (req, res) => {
+router.get('/governance', async (req, res, next) => {
   try {
     const now = Date.now();
 
     // Return cached data if still fresh
     if (wgiCache && now - wgiCacheTime < WGI_CACHE_TTL_MS) {
-      return res.json({
-        source: 'cache',
-        cachedAt: new Date(wgiCacheTime).toISOString(),
-        data: wgiCache,
-      });
+      const cachedAt = new Date(wgiCacheTime).toISOString();
+      return sendDataWithMeta(res, wgiCache, buildMetadata({
+        source: 'worldbank.wgi',
+        sourceType: 'api',
+        freshness: { generatedAt: cachedAt, lastSuccessfulRefreshAt: cachedAt },
+        reliability: { methodologyVersion: 'wgi-v1' },
+      }));
     }
 
     // Fetch all 5 WGI indicators in parallel (GOV_WGI_ prefix required since 2025 WB API update)
@@ -142,18 +149,16 @@ router.get('/governance', async (req, res) => {
     wgiCache = result;
     wgiCacheTime = now;
 
-    res.json({
-      source: 'worldbank',
-      fetchedAt: new Date().toISOString(),
-      countriesLoaded: Object.keys(result).length,
-      data: result,
-    });
+    const fetchedAt = new Date().toISOString();
+    sendDataWithMeta(res, result, buildMetadata({
+      source: 'worldbank.wgi',
+      sourceType: 'api',
+      freshness: { generatedAt: fetchedAt, lastSuccessfulRefreshAt: fetchedAt },
+      reliability: { methodologyVersion: 'wgi-v1' },
+    }));
   } catch (err) {
-    console.error('[externalData] WGI fetch error:', err.message);
-    res.status(503).json({
-      error: 'World Bank API unavailable',
-      message: err.message,
-    });
+    console.error('[externalData] WGI fetch error:', err);
+    next(new ApiError(502, 'WGI_FETCH_FAILED', 'Failed to fetch governance indicators'));
   }
 });
 

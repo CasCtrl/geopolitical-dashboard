@@ -74,7 +74,7 @@ The Geopolitical Risk Dashboard is a full-stack web application designed to help
 - [x] Implement data validation and error handling
 - [x] Write unit tests for core services
 
-**Deliverables:** Functional API endpoints, working data services, unit tests, API server running on localhost:5001
+**Deliverables:** Functional API endpoints, working data services, unit tests, API server running on localhost:5050
 
 ### Week 5: Sprint 2 - Frontend Core Components
 **Objective:** Build primary UI components and state management
@@ -87,7 +87,7 @@ The Geopolitical Risk Dashboard is a full-stack web application designed to help
 - [x] Set up React component architecture and hooks
 - [x] Implement responsive CSS with Tailwind
 
-**Deliverables:** Working React components, frontend running on localhost:5173, responsive UI, component library
+**Deliverables:** Working React components, frontend running on localhost:3000, responsive UI, component library
 
 ### Week 6: Sprint 3 - Advanced Visualizations & Integration
 **Objective:** Implement complex visualizations and frontend-backend integration
@@ -178,10 +178,10 @@ The Geopolitical Risk Dashboard is a full-stack web application designed to help
 - **Time Commitment:** 8 weeks, full-time engagement
 - **Stakeholder Availability:** Weekly reviews (Week 1-2), bi-weekly feedback (Weeks 3-8)
 - **Technology Stack:**
-  - Frontend: React 18+, TypeScript, Tailwind CSS, Vite
-  - Backend: Node.js, Express-like routing, TypeScript
+  - Frontend: React 19, TypeScript, Tailwind CSS, Vite
+  - Backend: Node.js, Express 5, JavaScript (ESM)
   - Database: SQL Server 2022 Express
-  - Testing: Jest, TypeScript
+  - Testing: Jest (backend tests in JavaScript `.js`)
   - Deployment: Docker, docker-compose, Git
 
 ## Risk Management
@@ -225,6 +225,6 @@ The Geopolitical Risk Dashboard project successfully delivered a production-read
 - Build: 1.1
 - Last Updated: April 19, 2026
 - Plan baseline now reflects delivered v1.1 items: map snapshot export and refresh-status signaling.
-- Operational delivery context updated for backend API on localhost:5001 in local development.
+- Operational delivery context updated for backend API on localhost:5050 in local development.
 - Documentation workstream updated to include synchronized Help modal and tools guidance.
 - Data reliability objective is now backed by stronger DB bootstrap and dataset loading behavior.

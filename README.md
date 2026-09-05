@@ -40,7 +40,7 @@ This starts a SQL Server 2022 container on `localhost:1433`. First startup may t
 npm run dev:full
 ```
 
-This launches the API first (waits for `http://localhost:5001/health`), then the frontend on `http://localhost:5173`. If either process exits, the launcher stops the other.
+This launches the API first (waits for `http://localhost:5050/health`), then the frontend on `http://localhost:3000`. If either process exits, the launcher stops the other.
 
 The backend automatically:
 - Connects to SQL Server
@@ -52,16 +52,16 @@ The backend automatically:
 In two terminals:
 
 ```bash
-# Terminal 1 — backend (http://localhost:5001)
+# Terminal 1 — backend (http://localhost:5050)
 npm run dev:server
 
-# Terminal 2 — frontend (http://localhost:5173)
+# Terminal 2 — frontend (http://localhost:3000)
 npm run dev
 ```
 
 ## Using the App
 
-Open `http://localhost:5173` in a browser. The dashboard loads the seeded portfolio automatically.
+Open `http://localhost:3000` in a browser. The dashboard loads the seeded portfolio automatically.
 
 ## Stopping
 
@@ -108,7 +108,7 @@ The e2e tests start their own dev server automatically (see `playwright.config.t
 
 ## Troubleshooting
 
-- **Port already in use (5001 / 5173 / 1433):** stop the process using that port or change the port via env vars (`SERVER_PORT`, Vite dev server flags, `docker-compose.yml`).
+- **Port already in use (5050 / 3000 / 1433):** stop the process using that port or change the port via env vars (`SERVER_PORT`, Vite dev server flags, `docker-compose.yml`).
 - **Database not ready / connection refused:** wait ~60 seconds after `docker compose up -d`, then retry. Check status with `docker compose ps`.
 - **`npm install` fails on peer deps:** ensure `--legacy-peer-deps` is included.
 - **Reset the database:** `docker compose down -v && docker compose up -d`, then restart the backend so it re-seeds.

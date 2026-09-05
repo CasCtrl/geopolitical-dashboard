@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Card } from "./ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { PortfolioExposure } from "../data/portfolioData";
@@ -27,25 +28,27 @@ const REGION_MAP: { [key: string]: string } = {
 
 export function RegionalExposureChart({ countryExposures }: RegionalExposureChartProps) {
   // Aggregate by region
-  const regionMap = new Map<string, number>();
+  const data = useMemo(() => {
+    const regionMap = new Map<string, number>();
 
-  countryExposures.forEach((exposure) => {
-    const region = REGION_MAP[exposure.country] || "Other";
-    regionMap.set(region, (regionMap.get(region) || 0) + exposure.totalExposure);
-  });
+    countryExposures.forEach((exposure) => {
+      const region = REGION_MAP[exposure.country] || "Other";
+      regionMap.set(region, (regionMap.get(region) || 0) + exposure.totalExposure);
+    });
 
-  const sortedData = Array.from(regionMap.entries())
-    .map(([region, exposure]) => ({
-      region,
-      exposure: Math.round(exposure * 10) / 10,
-    }))
-    .sort((a, b) => b.exposure - a.exposure);
+    const sortedData = Array.from(regionMap.entries())
+      .map(([region, exposure]) => ({
+        region,
+        exposure: Math.round(exposure * 10) / 10,
+      }))
+      .sort((a, b) => b.exposure - a.exposure);
 
-  // Re-index after sorting to ensure unique keys
-  const data = sortedData.map((item, index) => ({
-    ...item,
-    id: `region-${index}`,
-  }));
+    // Re-index after sorting to ensure unique keys
+    return sortedData.map((item, index) => ({
+      ...item,
+      id: `region-${index}`,
+    }));
+  }, [countryExposures]);
 
   const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4"];
 

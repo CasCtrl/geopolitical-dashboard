@@ -143,14 +143,22 @@ Country Risk Index = (10 + 15 + 5 + 18 + 12) / 5 = 60 / 5 = 12.0
 
 Individual risk scores are often insufficient for portfolio decisions. The weighted risk index allows portfolio managers to emphasize certain risk dimensions based on investment thesis and risk tolerance.
 
+The implemented index (`calculateRiskIndex` in `src/app/data/countryRiskData.ts`) is a weighted sum of the five dimensions divided by a **fixed constant of 500** — not by the sum of the weights. The 500 represents the theoretical maximum (5 dimensions × 100 max weight), so the result is a deliberately *compressed* score rather than a weight-normalized average.
+
 **Formula:**
 ```
-Weighted Risk Index = Σ(Country Risk Dimension × Weight) / Σ(Weights)
+Weighted Risk Index = round( Σ(Country Risk Dimension × Weight) / 500 )
 
 Where:
   Country Risk Dimension = Individual score (Political, Economic, etc.)
   Weight = User-assigned weight (0-100) for each dimension
+  500 = Fixed normalization constant (5 dimensions × 100 max weight)
 ```
+
+**Edge cases (as implemented):**
+- If the sum of all weights is `0`, the function returns `0`.
+- If the country is not present in the base risk database, it returns a default of `30`.
+- The result is rounded to the nearest integer.
 
 **Example with Conservative Weights:**
 ```
@@ -161,10 +169,15 @@ Conflict Risk:         40    × Weight: 20 = 800
 Corruption Risk:       42    × Weight: 15 = 630
 Terrorism Risk:        25    × Weight: 10 = 250
 
-Weighted Risk = (1500 + 875 + 800 + 630 + 250) / (30 + 25 + 20 + 15 + 10)
-              = 4055 / 100
-              = 40.55
+Weighted Risk = (1500 + 875 + 800 + 630 + 250) / 500
+              = 4055 / 500
+              = 8.11
+              → round = 8
 ```
+
+**Compressed scale.** Because the divisor is the fixed constant 500, scores are much smaller than the raw 0–100 dimension inputs. With the standard presets below (whose weights sum to 100), a country whose every dimension is a maximal `100` would score only `(100 × 100) / 500 = 20`. In practice, typical country indices therefore land well under 20, and the map/gauge thresholds are tuned to this compressed range.
+
+> **Note:** The same `/ 500` computation is mirrored inline in `src/app/App.tsx` where per-country risk is derived from blended base data and World Bank overrides, so both code paths stay consistent.
 
 **Weight Distribution Presets:**
 
@@ -182,38 +195,39 @@ Weighted Risk = (1500 + 875 + 800 + 630 + 250) / (30 + 25 + 20 + 15 + 10)
 
 ### 3.1 Portfolio Risk Score
 
-Once individual asset risks are calculated, they are aggregated into a single portfolio risk metric using weighted averaging.
+Once individual asset risks are calculated, they are aggregated into a single portfolio risk metric. The implemented aggregation (`calculatePortfolioRisk` in `src/app/data/portfolioData.ts`) is an **un-normalized weighted exposure sum** across every asset's country dependencies — it is *not* a weight-normalized average. Each dependency contributes `(asset.weight / 100) × dependency.weight × countryRisk`, all contributions are summed, and the final score is clamped with `Math.min(100, Math.round(total))`.
 
 **Formula:**
 ```
-Portfolio Risk Score = Σ(Asset Risk × Asset Weight) / Σ(Asset Weights)
+Portfolio Risk Score = min( 100, round( Σ_assets Σ_deps (asset.weight / 100) × dep.weight × countryRisk ) )
 
 Where:
-  Asset Risk = Weighted risk score for the asset's country
-  Asset Weight = Market value or allocation percentage of asset
+  asset.weight  = Asset allocation as a percentage (0-100), divided by 100 here
+  dep.weight    = Country dependency weight for that asset (0-1 fraction)
+  countryRisk   = Compressed country risk index for the dependency country
 ```
+
+**Edge cases (as implemented):**
+- A dependency whose country has an `undefined` risk score contributes `0` (the country risk is treated as `0`).
+- An empty `assets` array yields a total of `0`.
+- Because contributions are summed rather than averaged, the raw total can exceed 100; the `Math.min(100, …)` clamp caps it at 100.
 
 **Example Portfolio Calculation:**
 ```
-Portfolio: Tech-Heavy
-Total Value: $100,000
+Portfolio: two assets, compressed country risk indices
 
-Asset 1: Apple (USA)
-  Risk Score: 15
-  Value: $30,000
-  Contribution: 15 × (30000/100000) = 4.5
+Asset A: weight 40 (%), dependencies:
+  United States  dep 0.6, country risk 5  → (40/100) × 0.6 × 5  = 1.20
+  China          dep 0.4, country risk 8  → (40/100) × 0.4 × 8  = 1.28
+  Asset A contribution = 2.48
 
-Asset 2: TSMC (Taiwan)
-  Risk Score: 28
-  Value: $35,000
-  Contribution: 28 × (35000/100000) = 9.8
+Asset B: weight 60 (%), dependencies:
+  Taiwan         dep 0.7, country risk 10 → (60/100) × 0.7 × 10 = 4.20
+  Japan          dep 0.3, country risk 4  → (60/100) × 0.3 × 4  = 0.72
+  Asset B contribution = 4.92
 
-Asset 3: Samsung (South Korea)
-  Risk Score: 22
-  Value: $35,000
-  Contribution: 22 × (35000/100000) = 7.7
-
-Portfolio Risk = (4.5 + 9.8 + 7.7) / 1.0 = 22.0
+Total = 2.48 + 4.92 = 7.40
+Portfolio Risk = min(100, round(7.40)) = 7
 ```
 
 ### 3.2 Risk Distribution Analysis
@@ -552,19 +566,22 @@ Where:
 ```typescript
 calculateRiskIndex(country: string, weights: RiskWeights): number
   - Input: Country name, weight distribution
-  - Output: Weighted risk score (0-100)
-  - Logic: Weighted average of 5 dimensions
-
-getRiskColor(riskScore: number): RiskLevel
-  - Input: Risk score (0-100)
-  - Output: Color and risk level
-  - Logic: Returns Green/Yellow/Orange/Red based on ranges
-
-calculatePortfolioRisk(assets: Asset[], weights: RiskWeights): number
-  - Input: Array of assets, weight distribution
-  - Output: Aggregated portfolio risk (0-100)
-  - Logic: Weighted average by asset value
+  - Output: Compressed weighted risk score (Σ(dimension × weight) / 500, rounded)
+  - Logic: Fixed /500 normalization; zero total weight → 0; unknown country → 30
 ```
+
+`getRiskColor` is **not** part of the data layer. It is a small per-component UI
+helper (duplicated in components such as `AssetScreener`, `BacktestPanel`,
+`MonteCarloPanel`, `SectorBreakdown`, etc.) that maps a numeric score to a
+Tailwind color class.
+
+`calculatePortfolioRisk` lives in `src/app/data/portfolioData.ts` (see §10.2),
+not in this module.
+
+> **Note:** The advanced statistical measures in `src/app/data/advancedMetrics.ts`
+> (Sharpe ratio, VaR, CVaR, Sortino, and related ratios) are standard financial
+> statistics and are **intentionally not clamped to a 0–100 scale** — they retain
+> their natural units and sign.
 
 ### 10.2 Portfolio Aggregation Service
 
@@ -572,6 +589,12 @@ calculatePortfolioRisk(assets: Asset[], weights: RiskWeights): number
 
 **Key Functions:**
 ```typescript
+calculatePortfolioRisk(assets: Asset[], countryRiskScores: { [country: string]: number })
+  - Input: Array of assets, map of country → compressed risk score
+  - Output: { totalRiskScore, countryExposures, assetContributions,
+              topRiskCountries, topRiskAssets }
+  - Logic: Un-normalized weighted exposure sum, clamped with min(100, round(total))
+
 getPortfolioRiskMetrics(portfolio: Portfolio): RiskMetrics
   - Calculates total risk, dimension breakdown, country exposure
   - Returns comprehensive risk analysis

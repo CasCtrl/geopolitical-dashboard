@@ -2,9 +2,11 @@ import express from 'express';
 import { getPool } from '../db/config.js';
 import { ApiError } from '../middleware/apiError.js';
 import { z, validateBody, validateParams, validateQuery } from '../middleware/validate.js';
+import { sendDataWithMeta, buildMetadata } from '../utils/responseMetadata.js';
 import {
   ARTIFACT_BUCKETS,
   resolveActorContext,
+  assertActorOwnsArtifact,
   getLatestArtifact,
   listLatestArtifacts,
   putArtifactVersion,
@@ -45,6 +47,10 @@ function normalizeVersionConflict(error, next) {
     return next(new ApiError(409, 'ARTIFACT_VERSION_CONFLICT', 'Artifact version mismatch', error.details));
   }
 
+  if (error?.code === 'ARTIFACT_FORBIDDEN') {
+    return next(new ApiError(403, 'ARTIFACT_FORBIDDEN', 'You do not have access to this artifact'));
+  }
+
   return next(error);
 }
 
@@ -65,14 +71,14 @@ router.get('/workspace/state/:bucket', validateParams(bucketParamsSchema), valid
       includeDeleted: req.query.includeDeleted,
     });
 
-    res.json({
+    sendDataWithMeta(res, {
       bucket: req.params.bucket,
       artifactType,
       userId: context.userId,
       workspaceId: context.workspaceId,
       artifacts,
       timestamp: new Date().toISOString(),
-    });
+    }, buildMetadata({ source: 'workspace.artifacts', sourceType: 'database', reliability: { methodologyVersion: 'v1' } }));
   } catch (error) {
     next(error);
   }
@@ -99,13 +105,18 @@ router.get('/workspace/state/:bucket/:artifactKey', validateParams(bucketParamsS
       throw new ApiError(404, 'ARTIFACT_NOT_FOUND', 'Artifact not found');
     }
 
-    res.json({
+    assertActorOwnsArtifact(latest, context);
+
+    sendDataWithMeta(res, {
       bucket: req.params.bucket,
       artifactType,
       artifact: latest,
       timestamp: new Date().toISOString(),
-    });
+    }, buildMetadata({ source: 'workspace.artifacts', sourceType: 'database', reliability: { methodologyVersion: 'v1' } }));
   } catch (error) {
+    if (error?.code === 'ARTIFACT_FORBIDDEN') {
+      return next(new ApiError(403, 'ARTIFACT_FORBIDDEN', 'You do not have access to this artifact'));
+    }
     next(error);
   }
 });
@@ -129,12 +140,12 @@ router.put('/workspace/state/:bucket/:artifactKey', validateParams(bucketParamsS
       traceId: req.traceId,
     });
 
-    res.status(201).json({
+    sendDataWithMeta(res, {
       bucket: req.params.bucket,
       artifactType,
       artifact: updated,
       timestamp: new Date().toISOString(),
-    });
+    }, buildMetadata({ source: 'workspace.artifacts', sourceType: 'database', reliability: { methodologyVersion: 'v1' } }), 201);
   } catch (error) {
     normalizeVersionConflict(error, next);
   }
@@ -161,12 +172,12 @@ router.delete('/workspace/state/:bucket/:artifactKey', validateParams(bucketPara
       throw new ApiError(404, 'ARTIFACT_NOT_FOUND', 'Artifact not found');
     }
 
-    res.json({
+    sendDataWithMeta(res, {
       bucket: req.params.bucket,
       artifactType,
       artifact: deleted,
       timestamp: new Date().toISOString(),
-    });
+    }, buildMetadata({ source: 'workspace.artifacts', sourceType: 'database', reliability: { methodologyVersion: 'v1' } }));
   } catch (error) {
     normalizeVersionConflict(error, next);
   }

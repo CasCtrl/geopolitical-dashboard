@@ -624,7 +624,7 @@ Access to XMLHttpRequest at 'http://localhost:5000/api/portfolio/1'
 from origin 'http://localhost:5173' has been blocked
 ```
 
-Note: This endpoint is from a historical log entry before the API was moved to port 5001.
+Note: This endpoint is from a historical log entry before the API was moved to port 5050.
 
 ### Root Cause
 Backend API did not include CORS headers in responses.
@@ -766,5 +766,5 @@ Database connections were not being properly closed after queries, exhausting th
 - Last Updated: April 19, 2026
 - Resolved operational blockers with improved DB bootstrap behavior and dataset insertion reliability.
 - Added user-facing operational feedback (snapshot toasts and refresh freshness indicators).
-- Current local runtime baseline is backend API on port 5001.
+- Current local runtime baseline is backend API on port 5050.
 - Remaining tracked non-blocking issue: CSS import-order warning surfaced by PostCSS in dev.

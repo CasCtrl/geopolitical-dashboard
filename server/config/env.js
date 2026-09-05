@@ -39,6 +39,9 @@ const envSchema = z
     DB_PORT: z.coerce.number().int().min(1).max(65535).default(1433),
     DB_CONNECT_STRICT: envBoolean.default(false),
     DB_INIT_ENABLED: envBoolean.default(true),
+    // When unset, trustServerCertificate defaults to (NODE_ENV !== 'production') in db/config.js.
+    DB_TRUST_SERVER_CERT: envBoolean.optional(),
+    DB_ENCRYPT: envBoolean.optional(),
 
     AUTH_REQUIRED: envBoolean.default(false),
     API_TOKEN: z.string().optional(),
@@ -71,6 +74,8 @@ const envSchema = z
     PORTFOLIO_INTEGRATION_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(10000),
     PIPELINE_SOURCE_URLS: z.string().default(''),
     PIPELINE_SOURCE_AUTH_TOKEN: z.string().optional(),
+    // Comma-separated hostname allowlist for outbound pipeline fetches. Empty = deny all external hosts.
+    PIPELINE_ALLOWED_HOSTS: z.string().default(''),
     PRIVACY_POLICY_URL: z.string().url().optional().or(z.literal('')),
     TERMS_OF_USE_URL: z.string().url().optional().or(z.literal('')),
     DATA_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),

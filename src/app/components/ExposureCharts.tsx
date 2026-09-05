@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Card } from "./ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import { sectors } from "../data/sectorData";
@@ -14,20 +15,28 @@ export function ExposureCharts({
   riskData,
 }: ExposureChartsProps) {
   // Top country exposures
-  const countryData = Object.entries(countryExposure)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 8)
-    .map(([country, exposure]) => ({
-      country: country.length > 15 ? country.substring(0, 15) + "..." : country,
-      exposure: Math.round(exposure * 10) / 10,
-      risk: riskData[country] || 30,
-    }));
+  const countryData = useMemo(
+    () =>
+      Object.entries(countryExposure)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 8)
+        .map(([country, exposure]) => ({
+          country: country.length > 15 ? country.substring(0, 15) + "..." : country,
+          exposure: Math.round(exposure * 10) / 10,
+          risk: riskData[country] || 30,
+        })),
+    [countryExposure, riskData]
+  );
 
   // Sector breakdown
-  const sectorData = Object.entries(sectorRisk).map(([sectorKey, risk]) => ({
-    sector: sectors[sectorKey]?.name || sectorKey,
-    risk: Math.round(risk * 10) / 10,
-  }));
+  const sectorData = useMemo(
+    () =>
+      Object.entries(sectorRisk).map(([sectorKey, risk]) => ({
+        sector: sectors[sectorKey]?.name || sectorKey,
+        risk: Math.round(risk * 10) / 10,
+      })),
+    [sectorRisk]
+  );
 
   const getColorByRisk = (risk: number) => {
     if (risk > 80) return "#991b1b";

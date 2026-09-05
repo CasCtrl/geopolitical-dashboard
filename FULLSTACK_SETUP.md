@@ -12,8 +12,11 @@
 
 ```bash
 npm install --legacy-peer-deps
-npm install --save-dev concurrently
 ```
+
+This installs all runtime and dev dependencies from `package.json`. No extra
+packages are required — `npm run dev:full` is driven by the supervised launcher
+at `scripts/dev-full.mjs`, not by a separate `concurrently` install step.
 
 ### 2. Start SQL Server (macOS/Linux)
 
@@ -35,7 +38,7 @@ The server will:
 - Connect to SQL Server
 - Create the database schema
 - Load data from `public/datasets.csv`
-- Start the API on `http://localhost:5001`
+- Start the API on `http://localhost:5050`
 
 **Expected output:**
 ```
@@ -47,7 +50,7 @@ Inserting X sectors...
 Inserting X datasets...
 [... data loading ...]
 ✓ CSV data loaded successfully
-✓ Server running on http://localhost:5001
+✓ Server running on http://localhost:5050
 ```
 
 ### 4. Start the Frontend (in another terminal)
@@ -56,7 +59,7 @@ Inserting X datasets...
 npm run dev
 ```
 
-The frontend will start on `http://localhost:5173`
+The frontend will start on `http://localhost:3000`
 
 ### 5. Or Run Both Together
 
@@ -64,9 +67,9 @@ The frontend will start on `http://localhost:5173`
 npm run dev:full
 ```
 
-This uses a supervised launcher that starts the API first, waits for `http://localhost:5001/health`, then starts the frontend.
+This uses a supervised launcher that starts the API first, waits for `http://localhost:5050/health`, then starts the frontend.
 If either process exits unexpectedly, the launcher stops the other process and returns a non-zero exit code.
-If the API is already running on port 5001, the launcher reuses it and only starts the frontend.
+If the API is already running on port 5050, the launcher reuses it and only starts the frontend.
 
 ## API Endpoints
 
@@ -81,12 +84,20 @@ If the API is already running on port 5001, the launcher reuses it and only star
 - `GET /api/countries` - Get all countries and base risk scores
 - `GET /api/portfolio/:datasetId` - Complete portfolio data
 
+Additional route groups (see `server/openapi.yaml` for the full contract):
+- `/api/news` - Geopolitical news feed aggregation
+- `/api/reports` - Report generation, email delivery, and scheduling
+- `/api/integrations` - Portfolio import providers and workspace artifacts
+- `/api/external` - External data sources (e.g. World Bank governance indicators)
+- `/api/external/sp-performers` - S&P 500 daily gainers/losers
+- `/api/short-interest` - Most-shorted stocks / short-squeeze data
+
 ## Configuration
 
 Edit `server/.env` to change:
 - `DB_SERVER` - SQL Server host (default: localhost)
 - `DB_PASSWORD` - SQL Server password (default: YourPassword123!)
-- `SERVER_PORT` - Backend port (default: 5001)
+- `SERVER_PORT` - Backend port (default: 5050)
 
 Copy `server/.env.example` to `server/.env` for a complete baseline config.
 
@@ -140,7 +151,7 @@ Stop the servers:
 
 ### Frontend Doesn't Show Data
 - Check browser console for CORS errors
-- Ensure backend is running on port 5001
+- Ensure backend is running on port 5050
 - Check Network tab to see if API calls are succeeding
 
 Development CORS note:
@@ -170,7 +181,7 @@ For production:
 - Latest Version: 1.1
 - Build: 1.1
 - Last Updated: April 19, 2026
-- Local backend/API endpoint references are updated to port 5001.
+- Local backend/API endpoint references are updated to port 5050.
 - Setup flow reflects improved DB startup with auto-create behavior for missing target database.
 - Runtime notes align with the current map snapshot export and refresh-state UX updates.
 - Known non-blocking dev warning remains: CSS import-order warning in src/styles/index.css.

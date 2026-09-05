@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Filter, RotateCcw, AlertCircle } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -24,16 +24,20 @@ export function AssetScreener({ assets, countryRisks, onScreenedAssetsChange }: 
   const [maxAssetValue, setMaxAssetValue] = useState<number>(1000000);
   const [showResults, setShowResults] = useState(false);
 
-  const sectors = getSectorsFromAssets(assets);
-  const countries = getCountriesFromAssets(assets);
-  const screened = screenAssets(assets, countryRisks, {
-    ...criteria,
-    sectors: selectedSectors.length > 0 ? selectedSectors : undefined,
-    countries: selectedCountries.length > 0 ? selectedCountries : undefined,
-    assetValue: { min: minAssetValue, max: maxAssetValue },
-  });
+  const sectors = useMemo(() => getSectorsFromAssets(assets), [assets]);
+  const countries = useMemo(() => getCountriesFromAssets(assets), [assets]);
+  const screened = useMemo(
+    () =>
+      screenAssets(assets, countryRisks, {
+        ...criteria,
+        sectors: selectedSectors.length > 0 ? selectedSectors : undefined,
+        countries: selectedCountries.length > 0 ? selectedCountries : undefined,
+        assetValue: { min: minAssetValue, max: maxAssetValue },
+      }),
+    [assets, countryRisks, criteria, selectedSectors, selectedCountries, minAssetValue, maxAssetValue]
+  );
 
-  const handleApplyScreening = () => {
+  const handleApplyScreening = useCallback(() => {
     setCriteria({
       minRisk: criteria.minRisk,
       maxRisk: criteria.maxRisk,
@@ -43,9 +47,9 @@ export function AssetScreener({ assets, countryRisks, onScreenedAssetsChange }: 
     });
     onScreenedAssetsChange?.(screened);
     setShowResults(true);
-  };
+  }, [criteria.minRisk, criteria.maxRisk, selectedSectors, selectedCountries, minAssetValue, maxAssetValue, onScreenedAssetsChange, screened]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setCriteria({});
     setSelectedSectors([]);
     setSelectedCountries([]);
@@ -53,7 +57,7 @@ export function AssetScreener({ assets, countryRisks, onScreenedAssetsChange }: 
     setMaxAssetValue(1000000);
     setShowResults(false);
     onScreenedAssetsChange?.(assets);
-  };
+  }, [assets, onScreenedAssetsChange]);
 
   const getRiskColor = (risk: number) => {
     if (risk < 30) return 'bg-green-950 text-green-300';

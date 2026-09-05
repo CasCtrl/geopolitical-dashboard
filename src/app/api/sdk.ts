@@ -118,7 +118,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
       const firstAttempt = await putOnce(expectedVersion);
 
       if (firstAttempt.response.ok) {
-        return firstAttempt.parsed.artifact as WorkspaceArtifact<TPayload>;
+        return firstAttempt.parsed.data.artifact as WorkspaceArtifact<TPayload>;
       }
 
       const firstError = firstAttempt.parsed as ApiErrorResponse | null;
@@ -132,7 +132,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
       if (isVersionConflict) {
         const secondAttempt = await putOnce(currentVersion);
         if (secondAttempt.response.ok) {
-          return secondAttempt.parsed.artifact as WorkspaceArtifact<TPayload>;
+          return secondAttempt.parsed.data.artifact as WorkspaceArtifact<TPayload>;
         }
         throw new Error(`Workspace state PUT failed with status ${secondAttempt.response.status}`);
       }

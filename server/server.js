@@ -10,6 +10,7 @@ import env from './config/env.js';
 import { getPool } from './db/config.js';
 import { initializeDatabase } from './db/init.js';
 import { ApiError, sendApiError } from './middleware/apiError.js';
+import { z, validateBody, validateQuery } from './middleware/validate.js';
 import assetsRoutes from './routes/assets.js';
 import reportsRoutes from './routes/reports.js';
 import newsRoutes from './routes/news.js';
@@ -215,9 +216,22 @@ function getRequestRole(req) {
   return 'viewer';
 }
 
+// Resolve the caller's role WITHOUT trusting the client-supplied X-User-Role header in production.
+// - production: role is derived from the authenticated principal only. A valid API-token holder
+//   possesses the server credential and is treated as an admin principal; open (unauthenticated)
+//   access always resolves to the non-privileged 'viewer' role (never admin).
+// - development/test: preserve the header-based convenience so local admin panels keep working.
+function resolveRole(req, authMode) {
+  if (env.NODE_ENV === 'production') {
+    return authMode === 'token' ? ADMIN_ROLE : 'viewer';
+  }
+
+  return getRequestRole(req);
+}
+
 function authMiddleware(req, res, next) {
   if (!AUTH_REQUIRED) {
-    req.user = { role: getRequestRole(req), authMode: 'open' };
+    req.user = { role: resolveRole(req, 'open'), authMode: 'open' };
     return next();
   }
 
@@ -235,7 +249,7 @@ function authMiddleware(req, res, next) {
     });
   }
 
-  req.user = { role: getRequestRole(req), authMode: 'token' };
+  req.user = { role: resolveRole(req, 'token'), authMode: 'token' };
   return next();
 }
 
@@ -458,7 +472,18 @@ app.use('/api/external', externalDataRoutes);
 app.use('/api/external/sp-performers', spPerformersRoutes);
 app.use('/api/short-interest', shortInterestRoutes);
 
-app.post('/api/telemetry/frontend-crash', async (req, res, next) => {
+const frontendCrashSchema = z.object({
+  release: z.string().max(120).optional(),
+  message: z.string().max(2000).optional(),
+  route: z.string().max(512).optional(),
+  stack: z.string().max(8000).optional(),
+});
+
+const adminLimitQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
+
+app.post('/api/telemetry/frontend-crash', validateBody(frontendCrashSchema), async (req, res, next) => {
   try {
     const release = typeof req.body?.release === 'string' && req.body.release.trim()
       ? req.body.release.trim()
@@ -466,7 +491,6 @@ app.post('/api/telemetry/frontend-crash', async (req, res, next) => {
     const message = typeof req.body?.message === 'string' && req.body.message.trim()
       ? req.body.message.trim()
       : 'frontend crash reported';
-
     recordFrontendCrash(requestMetrics, { release });
 
     await incidentTracker.capture({
@@ -537,9 +561,8 @@ app.get('/api/admin/alerts', requireRoles([ADMIN_ROLE]), async (req, res) => {
   res.json(buildAdminAlertsPayload({ ready, requestMetrics, thresholds }));
 });
 
-app.get('/api/admin/audit-trail', requireRoles([ADMIN_ROLE]), async (req, res) => {
-  const rawLimit = Number.parseInt(String(req.query.limit ?? '100'), 10);
-  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
+app.get('/api/admin/audit-trail', requireRoles([ADMIN_ROLE]), validateQuery(adminLimitQuerySchema), async (req, res) => {
+  const limit = req.query.limit;
 
   res.json({
     entries: auditTrail.listRecent({ limit }),
@@ -548,9 +571,8 @@ app.get('/api/admin/audit-trail', requireRoles([ADMIN_ROLE]), async (req, res) =
   });
 });
 
-app.get('/api/admin/incidents', requireRoles([ADMIN_ROLE]), async (req, res) => {
-  const rawLimit = Number.parseInt(String(req.query.limit ?? '100'), 10);
-  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 100;
+app.get('/api/admin/incidents', requireRoles([ADMIN_ROLE]), validateQuery(adminLimitQuerySchema), async (req, res) => {
+  const limit = req.query.limit;
 
   res.json({
     incidents: incidentTracker.list({ limit }),

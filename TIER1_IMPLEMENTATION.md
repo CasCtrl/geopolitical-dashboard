@@ -225,4 +225,4 @@ Successfully implemented 7 major Tier 1 features adding institutional-grade anal
 - Tier 1 analytics implementation remains intact; v1.1 primarily adds UX and operational enhancements.
 - Export workflow is improved via map snapshot PNG capture for sharing/reporting.
 - Refresh recency indicators now communicate whether analytics views are current.
-- Environment and docs alignment updated for backend runtime on port 5001.
+- Environment and docs alignment updated for backend runtime on port 5050.

@@ -18,6 +18,8 @@
 
 import express from 'express';
 import https from 'https';
+import { ApiError } from '../middleware/apiError.js';
+import { sendDataWithMeta, buildMetadata } from '../utils/responseMetadata.js';
 
 const router = express.Router();
 
@@ -118,14 +120,24 @@ async function fetchLiveShortData() {
   }
 }
 
+// ─── Enveloped response helper ────────────────────────────────────────────────
+function sendShortInterest(res, { entries, fetchedAt, isLive }) {
+  return sendDataWithMeta(res, entries, buildMetadata({
+    source: 'yahoo.shortinterest',
+    sourceType: isLive ? 'api' : 'fallback',
+    freshness: { generatedAt: fetchedAt, lastSuccessfulRefreshAt: fetchedAt, isStale: !isLive },
+    fallback: isLive ? { used: false } : { used: true, reason: 'static_fallback' },
+  }));
+}
+
 // ─── GET /api/short-interest ──────────────────────────────────────────────────
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const now = Date.now();
 
     // Serve from cache if still fresh
     if (siCache && now - siCacheTime < CACHE_TTL_MS) {
-      return res.json(siCache);
+      return sendShortInterest(res, siCache);
     }
 
     // Attempt live fetch
@@ -141,24 +153,23 @@ router.get('/', async (req, res) => {
         return fallback ? { ...fallback, source: 'static' } : null;
       }).filter(Boolean);
 
-      siCache = { data: merged, fetchedAt: new Date().toISOString(), source: 'live' };
+      siCache = { entries: merged, fetchedAt: new Date().toISOString(), isLive: true };
       siCacheTime = now;
-      return res.json(siCache);
+      return sendShortInterest(res, siCache);
     }
 
     // Full static fallback
-    const staticResult = {
-      data: STATIC_DATA.map(d => ({ ...d, source: 'static' })),
+    siCache = {
+      entries: STATIC_DATA.map(d => ({ ...d, source: 'static' })),
       fetchedAt: new Date().toISOString(),
-      source: 'static',
+      isLive: false,
     };
-    siCache = staticResult;
     siCacheTime = now;
-    return res.json(staticResult);
+    return sendShortInterest(res, siCache);
 
   } catch (err) {
-    console.error('[short-interest] Error:', err.message);
-    return res.status(500).json({ error: 'Failed to fetch short interest data' });
+    console.error('[short-interest] Error:', err);
+    next(new ApiError(502, 'SHORT_INTEREST_FETCH_FAILED', 'Failed to fetch short interest data'));
   }
 });
 

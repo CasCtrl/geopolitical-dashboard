@@ -78,4 +78,4 @@ npm run lint
 - Design guidance now reflects map snapshot export affordance in the heat map card UI.
 - Control-state guidance includes freshness icon semantics (check for current, alert for overdue).
 - UX feedback standards now include toast messaging for snapshot success/failure.
-- Local runtime assumptions in docs are aligned to backend API on port 5001.
+- Local runtime assumptions in docs are aligned to backend API on port 5050.

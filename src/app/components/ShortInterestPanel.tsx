@@ -61,9 +61,12 @@ export function ShortInterestPanel({ apiBaseUrl }: ShortInterestPanelProps) {
     try {
       const res = await fetch(`${apiBaseUrl}/api/short-interest`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json: ShortInterestResponse = await res.json();
-      setResult(json);
-      setFetchedAt(json.fetchedAt);
+      const env = await res.json();
+      const rows = (env?.data ?? []) as ShortEntry[];
+      const isLive = !(env?.meta?.provenance?.fallback?.used);
+      const fetchedAtValue = env?.meta?.freshness?.generatedAt ?? new Date().toISOString();
+      setResult({ data: rows, fetchedAt: fetchedAtValue, source: isLive ? "live" : "static" });
+      setFetchedAt(fetchedAtValue);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {

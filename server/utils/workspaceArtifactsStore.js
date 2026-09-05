@@ -1,4 +1,5 @@
 import sql from 'mssql';
+import env from '../config/env.js';
 
 export const ARTIFACT_BUCKETS = {
   scenarioOutputs: 'scenario_outputs',
@@ -8,23 +9,61 @@ export const ARTIFACT_BUCKETS = {
   advancedPrefs: 'advanced_prefs',
 };
 
+const PRIVILEGED_OWNERSHIP_ROLES = new Set(['owner', 'admin']);
+
 export function resolveActorContext(req) {
+  const principal = req.user || {};
+  // In production (or when auth is required) identity MUST come from the authenticated
+  // principal; client-supplied X-User-Id / X-Workspace-Id headers are ignored to prevent
+  // cross-tenant access (IDOR). In development/test the header-based behavior is preserved.
+  const trustPrincipalOnly = env.NODE_ENV === 'production' || env.AUTH_REQUIRED;
+
   const userIdHeader = req.headers['x-user-id'];
   const workspaceIdHeader = req.headers['x-workspace-id'];
 
-  const userId = typeof userIdHeader === 'string' && userIdHeader.trim()
+  const headerUserId = typeof userIdHeader === 'string' && userIdHeader.trim()
     ? userIdHeader.trim()
-    : 'anonymous';
-  const workspaceId = typeof workspaceIdHeader === 'string' && workspaceIdHeader.trim()
+    : null;
+  const headerWorkspaceId = typeof workspaceIdHeader === 'string' && workspaceIdHeader.trim()
     ? workspaceIdHeader.trim()
-    : 'default';
+    : null;
+
+  const principalUserId = principal.id || principal.userId || null;
+  const principalWorkspaceId = principal.workspaceId || null;
+
+  const userId = trustPrincipalOnly
+    ? (principalUserId || 'authenticated')
+    : (headerUserId || 'anonymous');
+  const workspaceId = trustPrincipalOnly
+    ? (principalWorkspaceId || 'default')
+    : (headerWorkspaceId || 'default');
 
   return {
     userId,
     workspaceId,
-    ownerUserId: req.user?.id || userId,
-    ownershipRole: req.user?.role || 'owner',
+    ownerUserId: principalUserId || userId,
+    ownershipRole: principal.role || 'owner',
   };
+}
+
+// Explicit ownership guard: ensure the resolved actor owns the artifact, or holds a
+// privileged ownership role. Throws an ARTIFACT_FORBIDDEN error otherwise.
+export function assertActorOwnsArtifact(record, context) {
+  if (!record || !record.ownerUserId) {
+    return;
+  }
+
+  if (record.ownerUserId === context.ownerUserId) {
+    return;
+  }
+
+  if (PRIVILEGED_OWNERSHIP_ROLES.has(String(context.ownershipRole || '').toLowerCase())) {
+    return;
+  }
+
+  const error = new Error('Artifact access denied');
+  error.code = 'ARTIFACT_FORBIDDEN';
+  throw error;
 }
 
 function parsePayload(value) {
@@ -125,6 +164,8 @@ export async function putArtifactVersion(pool, {
     artifactKey,
   });
 
+  assertActorOwnsArtifact(latest, context);
+
   const currentVersion = latest?.version ?? 0;
 
   if (typeof expectedVersion === 'number' && expectedVersion !== currentVersion) {
@@ -209,6 +250,8 @@ export async function deleteArtifact(pool, {
   if (!latest || latest.isDeleted) {
     return null;
   }
+
+  assertActorOwnsArtifact(latest, context);
 
   if (typeof expectedVersion === 'number' && expectedVersion !== latest.version) {
     const error = new Error('Artifact version conflict');

@@ -98,7 +98,12 @@ router.get('/news', validateQuery(newsQuerySchema), async (req, res, next) => {
 
   try {
     const responses = await Promise.allSettled(
-      BLOOMBERG_FEEDS.map((url) => fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }))
+      BLOOMBERG_FEEDS.map((url) =>
+        fetch(url, {
+          signal: AbortSignal.timeout(10000),
+          headers: { 'User-Agent': 'geopolitical-dashboard/1.1 (+server)' },
+        })
+      )
     );
 
     const xmlPayloads = await Promise.all(

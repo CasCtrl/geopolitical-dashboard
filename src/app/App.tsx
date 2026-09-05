@@ -643,12 +643,14 @@ export default function App() {
       const SP_DATASET_ID = 'sp-daily-performers';
       try {
         // Fetch datasets + S&P performers in parallel
-        const [datasetsRes, spData] = await Promise.all([
+        const [datasetsRes, spRaw] = await Promise.all([
           fetch(`${API_BASE_URL}/api/datasets`),
           fetch(`${API_BASE_URL}/api/external/sp-performers`)
             .then((r) => (r.ok ? r.json() : null))
             .catch(() => null),
         ]);
+        // Unwrap { data, meta } envelope; informational fields live inside data
+        const spData = spRaw?.data ?? spRaw;
         if (!datasetsRes.ok) throw new Error("Failed to fetch datasets");
         const apiDatasets = await parseApiJson<ApiDataset[]>(datasetsRes);
         setLiveDataConnected(true);

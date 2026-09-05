@@ -13,7 +13,8 @@ const config = {
     idleTimeoutMillis: 30000,
   },
   options: {
-    trustServerCertificate: true,
+    encrypt: env.DB_ENCRYPT ?? false,
+    trustServerCertificate: env.DB_TRUST_SERVER_CERT ?? (env.NODE_ENV !== 'production'),
   },
 };
 

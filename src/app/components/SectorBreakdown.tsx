@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { Card } from './ui/card';
 import { calculateSectorData, HoldingAsset } from '../utils/portfolioFilters';
@@ -8,8 +9,11 @@ interface SectorBreakdownProps {
 }
 
 export function SectorBreakdown({ assets, countryRisks }: SectorBreakdownProps) {
-  const sectorData = calculateSectorData(assets, countryRisks);
-  const totalPortfolioValue = sectorData.reduce((sum, s) => sum + s.totalValue, 0);
+  const sectorData = useMemo(() => calculateSectorData(assets, countryRisks), [assets, countryRisks]);
+  const totalPortfolioValue = useMemo(
+    () => sectorData.reduce((sum, s) => sum + s.totalValue, 0),
+    [sectorData]
+  );
 
   const getRiskColor = (risk: number) => {
     if (risk < 30) return 'text-green-400';

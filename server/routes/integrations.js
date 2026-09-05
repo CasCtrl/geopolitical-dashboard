@@ -1,4 +1,6 @@
 import express from 'express';
+import dns from 'dns/promises';
+import net from 'net';
 import { ApiError } from '../middleware/apiError.js';
 import { z, validateBody } from '../middleware/validate.js';
 import { buildMetadata, sendDataWithMeta } from '../utils/responseMetadata.js';
@@ -13,6 +15,7 @@ import {
 const router = express.Router();
 const IMPORT_ARTIFACT_TYPE = 'portfolio_imports';
 const PIPELINE_ARTIFACT_TYPE = 'pipeline_runs';
+const OUTBOUND_USER_AGENT = 'GeopoliticalDashboard-Integration/1.0';
 
 const importPortfolioSchema = z.object({
   provider: z.enum(['bloomberg', 'csv', 'manual']),
@@ -39,6 +42,86 @@ function parsePipelineSources() {
     .filter(Boolean);
 }
 
+function parseAllowedHosts() {
+  return String(env.PIPELINE_ALLOWED_HOSTS || '')
+    .split(',')
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isBlockedIpv4(ip) {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part))) {
+    return true;
+  }
+
+  const [a, b] = parts;
+  if (a === 0) return true; // 0.0.0.0/8
+  if (a === 127) return true; // 127.0.0.0/8 loopback
+  if (a === 10) return true; // 10.0.0.0/8 private
+  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12 private
+  if (a === 192 && b === 168) return true; // 192.168.0.0/16 private
+  if (a === 169 && b === 254) return true; // 169.254.0.0/16 link-local
+  return false;
+}
+
+function isBlockedIpv6(ip) {
+  const addr = ip.toLowerCase();
+  if (addr === '::1' || addr === '::') return true; // loopback / unspecified
+  if (addr.startsWith('fc') || addr.startsWith('fd')) return true; // fc00::/7 unique-local
+  if (addr.startsWith('fe80')) return true; // link-local
+
+  const mapped = addr.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) {
+    return isBlockedIpv4(mapped[1]);
+  }
+
+  return false;
+}
+
+function isBlockedAddress(ip) {
+  return net.isIPv4(ip) ? isBlockedIpv4(ip) : isBlockedIpv6(ip);
+}
+
+function pipelineSourceBlocked(reason) {
+  const error = new Error(reason);
+  error.code = 'PIPELINE_SOURCE_BLOCKED';
+  return error;
+}
+
+// SSRF guard: only allow http(s) URLs whose hostname is explicitly allowlisted and whose
+// resolved address is not in a private/loopback/link-local range. An empty allowlist denies
+// all external hosts (safe default).
+async function assertAllowedPipelineSource(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw pipelineSourceBlocked('invalid_source_url');
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw pipelineSourceBlocked('unsupported_scheme');
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (!parseAllowedHosts().includes(host)) {
+    throw pipelineSourceBlocked('host_not_allowlisted');
+  }
+
+  let candidates;
+  if (net.isIP(host)) {
+    candidates = [host];
+  } else {
+    const resolved = await dns.lookup(host, { all: true });
+    candidates = resolved.map((entry) => entry.address);
+  }
+
+  if (candidates.length === 0 || candidates.some((ip) => isBlockedAddress(ip))) {
+    throw pipelineSourceBlocked('blocked_network_target');
+  }
+}
+
 function normalizePosition(position, index) {
   return {
     id: position?.id || `position-${index + 1}`,
@@ -56,7 +139,10 @@ async function fetchJson(url, { token, timeoutMs = 10000 } = {}) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers = {
+      'User-Agent': OUTBOUND_USER_AGENT,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
     const response = await fetch(url, {
       headers,
       signal: controller.signal,
@@ -241,7 +327,17 @@ router.post('/portfolio/import', validateBody(importPortfolioSchema), async (req
     if (error?.code === 'ARTIFACT_VERSION_CONFLICT') {
       return next(new ApiError(409, 'ARTIFACT_VERSION_CONFLICT', 'Artifact version mismatch', error.details));
     }
-    return next(new ApiError(502, 'PORTFOLIO_IMPORT_FAILED', 'Portfolio integration import failed', error?.message));
+    if (error?.code === 'ARTIFACT_FORBIDDEN') {
+      return next(new ApiError(403, 'ARTIFACT_FORBIDDEN', 'You do not have access to this artifact'));
+    }
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'portfolio_import_failed',
+      reason: error instanceof Error ? error.message : String(error),
+      requestId: req.requestId,
+      traceId: req.traceId,
+    }));
+    return next(new ApiError(502, 'PORTFOLIO_IMPORT_FAILED', 'Portfolio integration import failed'));
   }
 });
 
@@ -284,7 +380,14 @@ router.get('/pipelines/status', async (req, res, next) => {
       })
     );
   } catch (error) {
-    next(new ApiError(500, 'PIPELINE_STATUS_FAILED', 'Failed to fetch pipeline status', error?.message));
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'pipeline_status_failed',
+      reason: error instanceof Error ? error.message : String(error),
+      requestId: req.requestId,
+      traceId: req.traceId,
+    }));
+    next(new ApiError(500, 'PIPELINE_STATUS_FAILED', 'Failed to fetch pipeline status'));
   }
 });
 
@@ -316,23 +419,41 @@ router.post('/pipelines/run', validateBody(runPipelineSchema), async (req, res, 
       );
     }
 
-    const results = await Promise.allSettled(sources.map((source) => fetchJson(source, {
-      token: env.PIPELINE_SOURCE_AUTH_TOKEN || undefined,
-      timeoutMs: env.PORTFOLIO_INTEGRATION_TIMEOUT_MS,
-    })));
+    const results = await Promise.allSettled(sources.map(async (source) => {
+      // Validate against the SSRF allowlist BEFORE attaching the bearer token or fetching.
+      await assertAllowedPipelineSource(source);
+      return fetchJson(source, {
+        token: env.PIPELINE_SOURCE_AUTH_TOKEN || undefined,
+        timeoutMs: env.PORTFOLIO_INTEGRATION_TIMEOUT_MS,
+      });
+    }));
 
     const runSummary = {
       startedAt: new Date().toISOString(),
       totalSources: sources.length,
       successCount: results.filter((result) => result.status === 'fulfilled').length,
       failureCount: results.filter((result) => result.status === 'rejected').length,
-      sources: results.map((result, index) => ({
-        source: sources[index],
-        status: result.status,
-        error: result.status === 'rejected'
-          ? (result.reason instanceof Error ? result.reason.message : String(result.reason))
-          : null,
-      })),
+      sources: results.map((result, index) => {
+        if (result.status === 'fulfilled') {
+          return { source: sources[index], status: result.status, error: null };
+        }
+
+        // Log the real reason server-side; never echo raw upstream error text to clients.
+        console.error(JSON.stringify({
+          level: 'error',
+          message: 'pipeline_source_failed',
+          source: sources[index],
+          reason: result.reason instanceof Error ? result.reason.message : String(result.reason),
+          requestId: req.requestId,
+          traceId: req.traceId,
+        }));
+
+        return {
+          source: sources[index],
+          status: result.status,
+          error: result.reason?.code === 'PIPELINE_SOURCE_BLOCKED' ? 'source_blocked' : 'source_fetch_failed',
+        };
+      }),
     };
 
     const persistence = await persistArtifact({
@@ -376,9 +497,20 @@ router.post('/pipelines/run', validateBody(runPipelineSchema), async (req, res, 
     if (error?.code === 'ARTIFACT_VERSION_CONFLICT') {
       return next(new ApiError(409, 'ARTIFACT_VERSION_CONFLICT', 'Artifact version mismatch', error.details));
     }
-    next(error instanceof ApiError
-      ? error
-      : new ApiError(500, 'PIPELINE_RUN_FAILED', 'Pipeline execution failed', error?.message));
+    if (error?.code === 'ARTIFACT_FORBIDDEN') {
+      return next(new ApiError(403, 'ARTIFACT_FORBIDDEN', 'You do not have access to this artifact'));
+    }
+    if (error instanceof ApiError) {
+      return next(error);
+    }
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'pipeline_run_failed',
+      reason: error instanceof Error ? error.message : String(error),
+      requestId: req.requestId,
+      traceId: req.traceId,
+    }));
+    next(new ApiError(500, 'PIPELINE_RUN_FAILED', 'Pipeline execution failed'));
   }
 });
 

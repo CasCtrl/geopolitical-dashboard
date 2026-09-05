@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "./ui/card";
 import { AlertTriangle, TrendingUp, Target, Shield, BookOpen } from "lucide-react";
 import { RiskScoreInfo } from "./RiskScoreInfo";
@@ -60,80 +60,89 @@ export function Summary({
 
   const riskScore = portfolioAnalysis.totalRiskScore;
 
-  const totalPortfolioValueUsd = portfolio.reduce((sum, asset) => sum + asset.value, 0);
-  const totalExposureWeight = portfolioAnalysis.countryExposures.reduce(
-    (sum, exposure) => sum + Math.max(exposure.totalExposure, 0),
-    0
-  );
-  const weightedCountryRiskScore = totalExposureWeight > 0
-    ? portfolioAnalysis.countryExposures.reduce((sum, exposure) => {
-        const countryRisk = riskData[exposure.country] || 0;
-        return sum + exposure.totalExposure * countryRisk;
-      }, 0) / totalExposureWeight
-    : riskScore;
-  const topCountryExposureShare = totalExposureWeight > 0
-    ? Math.max(portfolioAnalysis.countryExposures[0]?.totalExposure || 0, 0) / totalExposureWeight
-    : 0;
-
-  // Loss-policy scenarios to tune downside assumptions by risk tolerance.
-  const lossPolicyScenarios = [
-    {
-      key: "conservative",
-      label: "Conservative",
-      stressFactor: 0.22,
-      concentrationWeight: 0.35,
-      minLossPct: 0.015,
-      maxLossPct: 0.3,
-      colorClass: "text-yellow-300",
-    },
-    {
-      key: "base",
-      label: "Base",
-      stressFactor: 0.35,
-      concentrationWeight: 0.6,
-      minLossPct: 0.03,
-      maxLossPct: 0.45,
-      colorClass: "text-orange-300",
-    },
-    {
-      key: "aggressive",
-      label: "Aggressive",
-      stressFactor: 0.5,
-      concentrationWeight: 0.85,
-      minLossPct: 0.05,
-      maxLossPct: 0.6,
-      colorClass: "text-red-300",
-    },
-  ] as const;
-
-  const lossScenarios = lossPolicyScenarios.map((scenario) => {
-    const rawLossPct =
-      (weightedCountryRiskScore / 100) *
-      scenario.stressFactor *
-      (1 + topCountryExposureShare * scenario.concentrationWeight);
-    const lossPct = Math.min(scenario.maxLossPct, Math.max(scenario.minLossPct, rawLossPct));
-    const lossUsd = totalPortfolioValueUsd * lossPct;
-    const remainingValueUsd = Math.max(0, totalPortfolioValueUsd - lossUsd);
-
-    return {
-      ...scenario,
-      lossPct,
-      lossUsd,
-      remainingValueUsd,
-    };
-  });
-
-  const autoPrimaryScenario = riskScore >= 70
-    ? lossScenarios.find((scenario) => scenario.key === "aggressive")
-    : riskScore >= 45
-    ? lossScenarios.find((scenario) => scenario.key === "base")
-    : lossScenarios.find((scenario) => scenario.key === "conservative");
-
   const [scenarioSelection, setScenarioSelection] = useState<"auto" | "conservative" | "base" | "aggressive">("auto");
   const [methodologyOpen, setMethodologyOpen] = useState(false);
-  const primaryScenario = scenarioSelection === "auto"
-    ? autoPrimaryScenario
-    : lossScenarios.find((scenario) => scenario.key === scenarioSelection) ?? autoPrimaryScenario;
+
+  const { totalPortfolioValueUsd, weightedCountryRiskScore, lossScenarios, autoPrimaryScenario } = useMemo(() => {
+    const totalPortfolioValueUsd = portfolio.reduce((sum, asset) => sum + asset.value, 0);
+    const totalExposureWeight = portfolioAnalysis.countryExposures.reduce(
+      (sum, exposure) => sum + Math.max(exposure.totalExposure, 0),
+      0
+    );
+    const weightedCountryRiskScore = totalExposureWeight > 0
+      ? portfolioAnalysis.countryExposures.reduce((sum, exposure) => {
+          const countryRisk = riskData[exposure.country] || 0;
+          return sum + exposure.totalExposure * countryRisk;
+        }, 0) / totalExposureWeight
+      : riskScore;
+    const topCountryExposureShare = totalExposureWeight > 0
+      ? Math.max(portfolioAnalysis.countryExposures[0]?.totalExposure || 0, 0) / totalExposureWeight
+      : 0;
+
+    // Loss-policy scenarios to tune downside assumptions by risk tolerance.
+    const lossPolicyScenarios = [
+      {
+        key: "conservative",
+        label: "Conservative",
+        stressFactor: 0.22,
+        concentrationWeight: 0.35,
+        minLossPct: 0.015,
+        maxLossPct: 0.3,
+        colorClass: "text-yellow-300",
+      },
+      {
+        key: "base",
+        label: "Base",
+        stressFactor: 0.35,
+        concentrationWeight: 0.6,
+        minLossPct: 0.03,
+        maxLossPct: 0.45,
+        colorClass: "text-orange-300",
+      },
+      {
+        key: "aggressive",
+        label: "Aggressive",
+        stressFactor: 0.5,
+        concentrationWeight: 0.85,
+        minLossPct: 0.05,
+        maxLossPct: 0.6,
+        colorClass: "text-red-300",
+      },
+    ] as const;
+
+    const lossScenarios = lossPolicyScenarios.map((scenario) => {
+      const rawLossPct =
+        (weightedCountryRiskScore / 100) *
+        scenario.stressFactor *
+        (1 + topCountryExposureShare * scenario.concentrationWeight);
+      const lossPct = Math.min(scenario.maxLossPct, Math.max(scenario.minLossPct, rawLossPct));
+      const lossUsd = totalPortfolioValueUsd * lossPct;
+      const remainingValueUsd = Math.max(0, totalPortfolioValueUsd - lossUsd);
+
+      return {
+        ...scenario,
+        lossPct,
+        lossUsd,
+        remainingValueUsd,
+      };
+    });
+
+    const autoPrimaryScenario = riskScore >= 70
+      ? lossScenarios.find((scenario) => scenario.key === "aggressive")
+      : riskScore >= 45
+      ? lossScenarios.find((scenario) => scenario.key === "base")
+      : lossScenarios.find((scenario) => scenario.key === "conservative");
+
+    return { totalPortfolioValueUsd, weightedCountryRiskScore, lossScenarios, autoPrimaryScenario };
+  }, [portfolio, portfolioAnalysis.countryExposures, riskData, riskScore]);
+
+  const primaryScenario = useMemo(
+    () =>
+      scenarioSelection === "auto"
+        ? autoPrimaryScenario
+        : lossScenarios.find((scenario) => scenario.key === scenarioSelection) ?? autoPrimaryScenario,
+    [scenarioSelection, autoPrimaryScenario, lossScenarios]
+  );
 
   const usdFormatter = new Intl.NumberFormat("en-US", {
     style: "currency",

@@ -161,7 +161,10 @@ describe('security integration smoke tests', () => {
     const response = await makeRequest(server.baseUrl, 'GET', '/api/health');
 
     expect(response.status).toBe(200);
-    expect(response.headers['content-security-policy']).toContain("default-src 'none'");
+    expect(response.headers['content-security-policy']).toContain("default-src 'self'");
+    expect(response.headers['content-security-policy']).toContain("object-src 'none'");
+    expect(response.headers['content-security-policy']).toContain("frame-ancestors 'none'");
+    expect(response.headers['content-security-policy']).toContain("base-uri 'none'");
     expect(response.headers['referrer-policy']).toBe('no-referrer');
     expect(response.headers['x-content-type-options']).toBe('nosniff');
     expect(response.headers['x-request-id']).toBeTruthy();
@@ -173,7 +176,9 @@ describe('security integration smoke tests', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(response.headers['content-security-policy']).toContain("default-src 'none'");
+    expect(response.headers['content-security-policy']).toContain("default-src 'self'");
+    expect(response.headers['content-security-policy']).toContain("object-src 'none'");
+    expect(response.headers['content-security-policy']).toContain("frame-ancestors 'none'");
     expect(response.headers['referrer-policy']).toBe('no-referrer');
   });
 });

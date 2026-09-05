@@ -132,27 +132,25 @@ App (Main Container)
 │   │       └── Individual Asset Risk Details
 │   ├── Summary Tab
 │   │   └── Summary (Insights & Recommendations)
-│   ├── Trends Tab
-│   │   ├── HistoricalTrends
-│   │   │   ├── Portfolio Risk Trend Chart
-│   │   │   ├── Country Risk Trend Charts
-│   │   │   └── Recent Changes Summary
-│   │   └── Time Range Selector (7/30/90 days)
-│   ├── Alerts Tab
-│   │   ├── AlertsAndNotifications
-│   │   │   ├── Alert Summary (Unread Count)
-│   │   │   ├── Recent Activity Feed
-│   │   │   ├── Risk Threshold Manager
-│   │   │   └── Create New Threshold Form
-│   │   └── Alert Event History
-│   └── Scenarios Tab
-│       ├── ScenarioAnalysis
-│       │   ├── Saved Scenarios List
-│       │   ├── Crisis Scenario Templates
-│       │   ├── Quick Asset Tests
-│       │   ├── Scenario Comparison View
-│       │   └── Rebalancing Suggestions
-│       └── What-If Testing Controls
+│   ├── Metrics Tab (value: advanced-metrics)
+│   │   ├── RiskMetricsPanel (advanced statistical metrics)
+│   │   └── CorrelationAnalysisPanel
+│   ├── Scenarios Tab
+│   │   ├── ScenarioAnalysis
+│   │   │   ├── Saved Scenarios List
+│   │   │   ├── Crisis Scenario Templates
+│   │   │   ├── Quick Asset Tests
+│   │   │   ├── Scenario Comparison View
+│   │   │   └── Rebalancing Suggestions
+│   │   ├── CustomScenarioBuilderPanel
+│   │   └── Monte Carlo Simulation
+│   └── Tools Tab
+│       └── AdvancedFilters (Portfolio + CSV Upload tabs)
+├── Header Modals (not tabs)
+│   ├── AlertsAndNotifications (risk alerts & thresholds)
+│   ├── News Feed
+│   ├── Help / Methodology Modal
+│   └── Settings Modal
 ├── Sidebar
 │   ├── Portfolio Stats
 │   ├── Risk Factor Weights
@@ -239,10 +237,6 @@ GET /api/datasets
   - List all available datasets
   - Returns: Array of { id, name, description }
 
-GET /api/datasets/:datasetId
-  - Get specific dataset details
-  - Returns: Dataset object with metadata
-
 GET /api/assets/:datasetId
   - Get assets for a dataset
   - Returns: Array of assets with risk scores
@@ -262,37 +256,57 @@ GET /api/dependencies/:datasetId
 
 ## Risk Calculation Engine
 
+See [RISK_ALGORITHMS.md](RISK_ALGORITHMS.md) §2.2 and §3.1 for the full methodology; the summary below mirrors the implementation (code is source of truth).
+
+### Country Weighted Risk Index
+
+`calculateRiskIndex` in `src/app/data/countryRiskData.ts` divides the weighted sum of the five dimensions by a **fixed constant of 500** (5 dimensions × 100 max weight) — not by the sum of the weights.
+
 ```
-Risk Index = Σ(Country Risk Score × Risk Weight) / Total Weight
+Weighted Risk Index = round( Σ(Dimension × Weight) / 500 )
 
 Where:
-  - Country Risk Score = (PoliticalRisk + EconomicRisk + ConflictRisk + CorruptionRisk + TerrorismRisk) / 5
-  - Risk Weight = Individual weight (0-100) for each risk dimension
-  - Total Weight = Sum of all weights
+  - Dimension = Base political / economic / conflict / corruption / terrorism risk (0-100)
+  - Weight    = Individual weight (0-100) for each dimension
+  - 500       = Fixed normalization constant (5 × 100), NOT the sum of the weights
 
-Example:
-  Political Weight: 25
-  Economic Weight: 20
-  Conflict Weight: 15
-  Corruption Weight: 20
-  Terrorism Weight: 20
-  Total: 100
+Edge cases:
+  - Total weight = 0            → 0
+  - Country not in database     → 30 (default)
 
-  Portfolio Risk = (CountryA Risk × 25 + CountryB Risk × 20 + ...) / 100
+Because the divisor is constant, scores are compressed: with weights summing to
+100, an all-100 country scores only (100 × 100) / 500 = 20.
+```
+
+### Portfolio Risk Score
+
+`calculatePortfolioRisk` in `src/app/data/portfolioData.ts` is an **un-normalized weighted exposure sum** across every asset's country dependencies — not a weight-normalized average.
+
+```
+Portfolio Risk = min( 100, round( Σ (asset.weight / 100) × dependency.weight × countryRisk ) )
+
+Where:
+  - asset.weight      = Portfolio weight of the asset (percent)
+  - dependency.weight = Country dependency weight for that asset
+  - countryRisk       = Country Weighted Risk Index (above); missing country → 0
+
+Contributions are summed (not averaged), so the raw total can exceed 100 and is
+clamped by Math.min(100, …).
 ```
 
 ## Technology Stack
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
-| Frontend | React | 18+ |
+| Frontend | React | 19 |
 | Frontend Language | TypeScript | 5+ |
-| Frontend Styling | Tailwind CSS | 3+ |
-| Frontend Build | Vite | 5+ |
+| Frontend Styling | Tailwind CSS | 4 |
+| Frontend Build | Vite | 8 |
 | Backend | Node.js | 18+ |
-| Backend Language | TypeScript | 5+ |
+| Backend Framework | Express | 5 |
+| Backend Language | JavaScript (ESM, `.js`) | ES2022 |
 | Database | SQL Server | 2022 |
-| Testing | Jest | 29+ |
+| Testing | Jest | 30 |
 | Containerization | Docker | Latest |
 | Orchestration | docker-compose | 3.8 |
 
@@ -330,7 +344,7 @@ Database
 │                                          │
 │  ┌──────────────┐    ┌──────────────┐   │
 │  │   Frontend   │    │  Backend API │   │
-│  │  (Port 5173) │───▶│  (Port 5001) │   │
+│  │  (Port 3000) │───▶│  (Port 5050) │   │
 │  │              │    │              │   │
 │  └──────────────┘    └──────────────┘   │
 │                            │             │
@@ -384,5 +398,5 @@ The architecture is designed for maintainability, scalability, and performance. 
 - Last Updated: April 19, 2026
 - UI architecture now includes map snapshot export (SVG-to-canvas with fallback) and toast feedback.
 - Header interaction architecture now includes refresh-status badges for fresh vs overdue states.
-- Local runtime architecture is aligned to backend API on port 5001.
+- Local runtime architecture is aligned to backend API on port 5050.
 - Data bootstrap architecture now includes target DB auto-create before schema and seed initialization.

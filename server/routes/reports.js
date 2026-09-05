@@ -332,7 +332,14 @@ router.get('/history', async (req, res, next) => {
       })
     );
   } catch (error) {
-    next(new ApiError(500, 'REPORT_HISTORY_FETCH_FAILED', 'Failed to fetch report history', error?.message));
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'report_history_fetch_failed',
+      reason: error instanceof Error ? error.message : String(error),
+      requestId: req.requestId,
+      traceId: req.traceId,
+    }));
+    next(new ApiError(500, 'REPORT_HISTORY_FETCH_FAILED', 'Failed to fetch report history'));
   }
 });
 
