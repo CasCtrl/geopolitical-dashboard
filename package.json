@@ -21,6 +21,8 @@
     "test:e2e:smoke:ci": "playwright test e2e/smoke.spec.ts --reporter=line",
     "playwright:install": "playwright install --with-deps chromium",
     "perf:budget": "node scripts/check-bundle-budget.mjs",
+    "rag:ingest": "node scripts/rag-ingest.mjs",
+    "rag:schedule": "node scripts/rag-scheduler.mjs",
     "ci": "npm run lint && npm run test:ci && npm run build"
   },
   "dependencies": {

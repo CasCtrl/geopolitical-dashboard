@@ -4,7 +4,7 @@ import { WorldMap } from "./components/WorldMap";
 import { RiskSlider } from "./components/RiskSlider";
 import { HoldingsTable } from "./components/HoldingsTable";
 import { ShortInterestPanel } from "./components/ShortInterestPanel";
-import { DatasetSelector } from "./components/DatasetSelector";
+import { AskDashboardPanel } from "./components/AskDashboardPanel";import { DatasetSelector } from "./components/DatasetSelector";
 import { Summary } from "./components/Summary";
 import { calculateRiskIndex, baseRiskData, CountryRisk } from "./data/countryRiskData";
 import { defaultPortfolio, calculatePortfolioRisk, Asset, CountryDependency } from "./data/portfolioData";
@@ -2052,6 +2052,8 @@ export default function App() {
                   selectedAsset={focusedSecurity}
                   onSelect={setFocusedSecurity}
                   dimmed={focusedSecurity === null ? false : false}
+                  apiBaseUrl={API_BASE_URL}
+                  datasetId={selectedDatasetId}
                 />
                 <span className="text-[10px] text-zinc-600 font-medium select-none px-0.5">or</span>
                 <div className={`transition-opacity ${focusedSecurity ? "opacity-40 pointer-events-none" : ""}`}>
@@ -3060,7 +3062,8 @@ export default function App() {
         ) : currentTab === "tools" ? (
         /* Advanced Tools Tab Content */
         <main className="flex-1 p-3">
-          <div className="max-w-[1600px] mx-auto">
+          <div className="max-w-[1600px] mx-auto space-y-4">
+            <AskDashboardPanel apiBaseUrl={API_BASE_URL} datasetId={selectedDatasetId} />
             <Suspense fallback={tabLoadingFallback}>
               <AdvancedFilters
                 countryRisks={riskData}

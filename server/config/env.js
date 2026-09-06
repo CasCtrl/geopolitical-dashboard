@@ -79,6 +79,14 @@ const envSchema = z
     PRIVACY_POLICY_URL: z.string().url().optional().or(z.literal('')),
     TERMS_OF_USE_URL: z.string().url().optional().or(z.literal('')),
     DATA_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
+
+    // Local, zero-key RAG (Ollama-backed embeddings + chat).
+    OLLAMA_BASE_URL: z.string().url().default('http://localhost:11434'),
+    RAG_EMBED_MODEL: z.string().default('nomic-embed-text'),
+    RAG_CHAT_MODEL: z.string().default('llama3.2'),
+    RAG_STORE_PATH: z.string().default(path.join(homedir(), '.geopolitical-dashboard', 'rag', 'index.json')),
+    RAG_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(30000),
+    RAG_REINGEST_INTERVAL_MS: z.coerce.number().int().min(60000).max(604800000).default(21600000),
   })
   .superRefine((env, ctx) => {
     const insecureDefaultPassword = 'YourPassword123!';

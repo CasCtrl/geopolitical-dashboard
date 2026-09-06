@@ -19,6 +19,7 @@ import integrationsRoutes from './routes/integrations.js';
 import externalDataRoutes from './routes/externalData.js';
 import spPerformersRoutes from './routes/spPerformers.js';
 import shortInterestRoutes from './routes/shortInterest.js';
+import ragRoutes from './routes/rag.js';
 import observability from './observability.cjs';
 import adminObservability from './adminObservability.cjs';
 import auditTrailModule from './auditTrail.cjs';
@@ -471,6 +472,7 @@ app.use('/api/integrations', integrationsRoutes);
 app.use('/api/external', externalDataRoutes);
 app.use('/api/external/sp-performers', spPerformersRoutes);
 app.use('/api/short-interest', shortInterestRoutes);
+app.use('/api/rag', ragRoutes);
 
 const frontendCrashSchema = z.object({
   release: z.string().max(120).optional(),

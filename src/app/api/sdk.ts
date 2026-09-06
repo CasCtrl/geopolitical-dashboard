@@ -65,6 +65,26 @@ export type ApiClientOptions = {
   getHeaders?: () => HeadersInit;
 };
 
+export type RagSource = {
+  id: string;
+  source: string;
+  score: number;
+  metadata?: Record<string, unknown>;
+};
+
+export type RagAnswer = {
+  answer: string | null;
+  sources: RagSource[];
+  indexed: number | null;
+  liveContextUsed?: boolean;
+};
+
+export type RagQueryInput = {
+  question: string;
+  topK?: number;
+  datasetId?: string;
+};
+
 const DEFAULT_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 type ApiErrorResponse = {
@@ -150,6 +170,23 @@ export function createApiClient(options: ApiClientOptions = {}) {
       }
 
       return parseJson<ComplianceSummary>(response);
+    },
+
+    async queryRag(input: RagQueryInput): Promise<RagAnswer> {
+      const response = await fetch(`${baseUrl}/api/rag/query`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getHeaders(),
+        },
+        body: JSON.stringify(input),
+      });
+
+      if (!response.ok) {
+        throw new Error(`RAG query failed with status ${response.status}`);
+      }
+
+      return parseJson<RagAnswer>(response);
     },
   };
 }
